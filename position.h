@@ -85,7 +85,7 @@ struct PositionInfo
 #endif
 };
 
-static_assert(sizeof(PositionInfo) == 256 + 64 + 16, "StellingInfo size incorrect");
+static_assert(sizeof(PositionInfo) == 256 + 64 + 16, "PositionInfo size incorrect");
 static_assert(offsetof(struct PositionInfo, key) == 48, "offset wrong");
 
 
@@ -225,7 +225,7 @@ private:
 #endif
 };
 
-static_assert(sizeof(Position) == 14 * 64, "Stelling foute grootte");
+static_assert(sizeof(Position) == 14 * 64, "Position size incorrect");
 
 extern std::ostream& operator<<(std::ostream& os, const Position& pos);
 

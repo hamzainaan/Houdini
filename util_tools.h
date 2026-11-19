@@ -43,7 +43,7 @@ struct HashTable
 {
 	Tuple* operator[](Key64 key)
 	{
-		static_assert(sizeof(Tuple) == 32 || sizeof(Tuple) == 128, "Verkeerde grootte");
+		static_assert(sizeof(Tuple) == 32 || sizeof(Tuple) == 128, "Wrong size");
 		return (Tuple*)((char *)table + ((uint32_t)key & ((Size - 1) * sizeof(Tuple))));
 		//return table + ((uint32_t)key & (Size - 1));
 	}

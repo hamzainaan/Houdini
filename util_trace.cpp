@@ -43,12 +43,12 @@ void open_tracefile()
 	line_count = 1;
 }
 
-std::string zet_string(Zet zet)
+std::string zet_string(Move zet)
 {
 	char sZet[6];
 
-	Veld van = van_veld(zet);
-	Veld naar = naar_veld(zet);
+	Square van = van_veld(zet);
+	Square naar = naar_veld(zet);
 
 	if (zet == GEEN_ZET || zet == NULL_ZET)
 		return "0000";
@@ -73,9 +73,9 @@ void trace_do_move(int zet)
 		line_count++;
 		if (line_count == 360)
 		{
-			s = zet_string(Zet(zet));
+			s = zet_string(Move(zet));
 		}
-		s = zet_string(Zet(zet));
+		s = zet_string(Move(zet));
 		if (trace_on())
 			fprintf(tracefile, "\n%d %*s%s", line_count, trace_indent, "", s.c_str());
 		trace_indent += 6;

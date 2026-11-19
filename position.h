@@ -7,13 +7,13 @@
 #include "houdini.h"
 #include "bitboard.h"
 
-class Stelling;
+class Position;
 class Thread;
 struct ThreadInfo;
 struct NumaInfo;
-template<int MaxPlus, int MaxMin> struct StukVeldStatistiek;
-typedef StukVeldStatistiek<3*8192, 3*8192> CounterZetWaarden;
-struct ZetEx;
+template<int MaxPlus, int MaxMin> struct PieceSquareStats;
+typedef PieceSquareStats<3*8192, 3*8192> CounterMoveValues;
+struct MoveEx;
 
 namespace PST 
 {
@@ -23,15 +23,15 @@ namespace PST
 	void import_tabel();
 }
 
-struct AanvalInfo 
+struct AttackInfo 
 {
-	Bord aanval[KLEUR_N][STUKTYPE_N];
-	Bord dubbelAanval[KLEUR_N];
-	Bord gepend[KLEUR_N];
-	Bord mobiliteitMask[KLEUR_N];
+	Bitboard aanval[KLEUR_N][STUKTYPE_N];
+	Bitboard dubbelAanval[KLEUR_N];
+	Bitboard gepend[KLEUR_N];
+	Bitboard mobiliteitMask[KLEUR_N];
 	int KAanvalScore[KLEUR_N];
 	bool sterkeDreiging[KLEUR_N];
-	Bord KZone[KLEUR_N];
+	Bitboard KZone[KLEUR_N];
 	//Bord KZoneExtra[KLEUR_N];
 	//int mobiliteit[KLEUR_N];
 };
@@ -39,138 +39,138 @@ struct AanvalInfo
 
 const int UITGESTELD_AANTAL = 7;
 
-struct StellingInfo 
+struct PositionInfo 
 {
 	// tot sleutel wordt gekopieerd bij speel_zet
-	Sleutel64 pionSleutel;
-	Sleutel64 materiaalSleutel, loperKleurSleutel;
-	MateriaalWaarde nietPionMateriaal[KLEUR_N];
+	Key64 pionSleutel;
+	Key64 materiaalSleutel, loperKleurSleutel;
+	MaterialValue nietPionMateriaal[KLEUR_N];
 	Score psq;
-	Waarde stellingWaarde;
+	Value stellingWaarde;
 	uint8_t rokadeMogelijkheden, fase, sterkeDreiging;
-	Veld enpassantVeld;
+	Square enpassantVeld;
 	uint8_t dummy[4];
 
-	Sleutel64 sleutel;
+	Key64 sleutel;
 	int remise50Zetten, afstandTotNullzet, ply, zetNummer;
-	Zet vorigeZet;
-	Stuk geslagenStuk, bewogenStuk, dummyx;
+	Move vorigeZet;
+	Piece geslagenStuk, bewogenStuk, dummyx;
 	bool eval_is_exact;
-	CounterZetWaarden* counterZetWaarden;
-	Bord schaakGevers;
-	Bord xRay[KLEUR_N];
-	Bord schaakVelden[STUKTYPE_N];
-	Zet* pv;
-	Zet killers[2];
-	Zet uitgeslotenZet;
-	SorteerWaarde statsWaarde;
-	EvalWaarde evalPositioneel;
+	CounterMoveValues* counterZetWaarden;
+	Bitboard schaakGevers;
+	Bitboard xRay[KLEUR_N];
+	Bitboard schaakVelden[STUKTYPE_N];
+	Move* pv;
+	Move killers[2];
+	Move uitgeslotenZet;
+	SortValue statsWaarde;
+	EvalValue evalPositioneel;
 	uint8_t evalFactor, lmr_reductie;
 	bool doeGeenVroegePruning, zetHerhaling;
 
 	// zet_keuze
-	ZetEx *mp_huidigeZet, *mp_eindeLijst, *mp_eindeSlechteSlag;
-	PikZetEtappe mp_etappe;
-	Zet mp_ttZet, mp_counterZet;
-	Diepte mp_diepte;
-	Veld mp_slagVeld;
+	MoveEx *mp_huidigeZet, *mp_eindeLijst, *mp_eindeSlechteSlag;
+	PickMoveStage mp_etappe;
+	Move mp_ttZet, mp_counterZet;
+	Depth mp_diepte;
+	Square mp_slagVeld;
 	bool mp_alleen_rustige_schaakzetten, dummyy[2];
-	SeeWaarde mp_threshold;
+	SeeValue mp_threshold;
 	uint8_t mp_uitgesteld_aantal, mp_uitgesteld_huidig;
-	ZetCompact mp_uitgesteld[UITGESTELD_AANTAL];
+	MoveCompact mp_uitgesteld[UITGESTELD_AANTAL];
 
-	Veld penning_door[VELD_N];
+	Square penning_door[VELD_N];
 #if !defined(IS_64BIT)
 	char padding[16];
 #endif
 };
 
-static_assert(sizeof(StellingInfo) == 256 + 64 + 16, "StellingInfo size incorrect");
-static_assert(offsetof(struct StellingInfo, sleutel) == 48, "offset wrong");
+static_assert(sizeof(PositionInfo) == 256 + 64 + 16, "StellingInfo size incorrect");
+static_assert(offsetof(struct PositionInfo, sleutel) == 48, "offset wrong");
 
 
-class Stelling 
+class Position 
 {
 public:
 	static void initialisatie();
 	static void init_hash_move50(int FiftyMoveDistance);
 
-	Stelling() = default;
-	Stelling(const Stelling&) = delete;
-	Stelling& operator=(const Stelling&) = delete;
+	Position() = default;
+	Position(const Position&) = delete;
+	Position& operator=(const Position&) = delete;
 
-	Stelling& set(const std::string& fenStr, bool isChess960, Thread* th);
+	Position& set(const std::string& fenStr, bool isChess960, Thread* th);
 	const std::string fen() const;
 
-	Bord stukken() const;
-	Bord stukken(StukType stuk) const;
-	Bord stukken(StukType stuk1, StukType stuk2) const;
-	Bord stukken(Kleur kleur) const;
-	Bord stukken(Kleur kleur, StukType stuk) const;
-	Bord stukken(Kleur kleur, StukType stuk1, StukType stuk2) const;
-	Bord stukken(Kleur kleur, StukType stuk1, StukType stuk2, StukType stuk3) const;
-	Bord stukken_uitgezonderd(Kleur kleur, StukType stuk) const;
-	Stuk stuk_op_veld(Veld veld) const;
-	Veld enpassant_veld() const;
-	bool leeg_veld(Veld veld) const;
-	int aantal(Kleur kleur, StukType stuk) const;
-	int aantal(Stuk stuk) const;
-	const Veld* stuk_lijst(Kleur kleur, StukType stuk) const;
-	Veld stuk_veld(Kleur kleur, StukType stuk) const;
-	Veld koning(Kleur kleur) const;
+	Bitboard stukken() const;
+	Bitboard stukken(PieceType stuk) const;
+	Bitboard stukken(PieceType stuk1, PieceType stuk2) const;
+	Bitboard stukken(Color kleur) const;
+	Bitboard stukken(Color kleur, PieceType stuk) const;
+	Bitboard stukken(Color kleur, PieceType stuk1, PieceType stuk2) const;
+	Bitboard stukken(Color kleur, PieceType stuk1, PieceType stuk2, PieceType stuk3) const;
+	Bitboard stukken_uitgezonderd(Color kleur, PieceType stuk) const;
+	Piece stuk_op_veld(Square veld) const;
+	Square enpassant_veld() const;
+	bool leeg_veld(Square veld) const;
+	int aantal(Color kleur, PieceType stuk) const;
+	int aantal(Piece stuk) const;
+	const Square* stuk_lijst(Color kleur, PieceType stuk) const;
+	Square stuk_veld(Color kleur, PieceType stuk) const;
+	Square koning(Color kleur) const;
 	int alle_stukken_aantal() const;
 
-	int rokade_mogelijkheden(Kleur kleur) const;
-	int rokade_mogelijk(RokadeMogelijkheid rokade) const;
-	bool rokade_verhinderd(RokadeMogelijkheid rokade) const;
-	Veld rokade_toren_veld(Veld koningVeld) const;
+	int rokade_mogelijkheden(Color kleur) const;
+	int rokade_mogelijk(CastlingRight rokade) const;
+	bool rokade_verhinderd(CastlingRight rokade) const;
+	Square rokade_toren_veld(Square koningVeld) const;
 
-	Bord schaak_gevers() const;
-	Bord aftrek_schaak_mogelijk() const;
-	Bord gepende_stukken() const;
+	Bitboard schaak_gevers() const;
+	Bitboard aftrek_schaak_mogelijk() const;
+	Bitboard gepende_stukken() const;
 	void bereken_schaak_penningen() const;
-	template<Kleur kleur> void bereken_penningen() const;
+	template<Color kleur> void bereken_penningen() const;
 
-	Bord aanvallers_naar(Veld veld) const;
-	Bord aanvallers_naar(Veld veld, Bord bezet) const;
-	Bord aanval_van(StukType stukT, Veld veld) const;
-	template<StukType> Bord aanval_van(Veld veld) const;
-	template<StukType> Bord aanval_van(Veld veld, Kleur kleur) const;
+	Bitboard aanvallers_naar(Square veld) const;
+	Bitboard aanvallers_naar(Square veld, Bitboard bezet) const;
+	Bitboard aanval_van(PieceType stukT, Square veld) const;
+	template<PieceType> Bitboard aanval_van(Square veld) const;
+	template<PieceType> Bitboard aanval_van(Square veld, Color kleur) const;
 
-	bool legale_zet(Zet zet) const;
-	bool geldige_zet(const Zet zet) const;
-	bool is_slagzet(Zet zet) const;
-	bool slag_of_promotie(Zet zet) const;
-	bool geeft_schaak(Zet zet) const;
-	bool vooruitgeschoven_pion(Zet zet) const;
-	bool vrijpion_opmars(Zet zet, Rij r) const;
-	Stuk bewogen_stuk(Zet zet) const;
+	bool legale_zet(Move zet) const;
+	bool geldige_zet(const Move zet) const;
+	bool is_slagzet(Move zet) const;
+	bool slag_of_promotie(Move zet) const;
+	bool geeft_schaak(Move zet) const;
+	bool vooruitgeschoven_pion(Move zet) const;
+	bool vrijpion_opmars(Move zet, Rank r) const;
+	Piece bewogen_stuk(Move zet) const;
 	bool materiaal_of_rokade_gewijzigd() const;
-	Veld bereken_dreiging() const;
+	Square bereken_dreiging() const;
 
-	bool is_vrijpion(Kleur kleur, Veld veld) const;
+	bool is_vrijpion(Color kleur, Square veld) const;
 	bool ongelijke_lopers() const;
 
-	void speel_zet(Zet zet, bool geeftSchaak);
-	void speel_zet(Zet zet);
-	void neem_zet_terug(Zet zet);
+	void speel_zet(Move zet, bool geeftSchaak);
+	void speel_zet(Move zet);
+	void neem_zet_terug(Move zet);
 	void speel_null_zet();
 	void neem_null_terug();
 
-	const SeeWaarde* see_waarden() const;
+	const SeeValue* see_waarden() const;
 	//SeeWaarde see(Zet zet) const;
-	bool see_test(Zet zet, SeeWaarde v) const;
+	bool see_test(Move zet, SeeValue v) const;
 
-	Sleutel64 sleutel() const;
-	Sleutel64 sleutel_na_zet(Zet zet) const;
-	Sleutel64 uitzondering_sleutel(Zet zet) const;
-	Sleutel64 materiaal_sleutel() const;
-	Sleutel64 loperkleur_sleutel() const;
-	Sleutel64 pion_sleutel() const;
-	Sleutel64 remise50_sleutel() const;
+	Key64 sleutel() const;
+	Key64 sleutel_na_zet(Move zet) const;
+	Key64 uitzondering_sleutel(Move zet) const;
+	Key64 materiaal_sleutel() const;
+	Key64 loperkleur_sleutel() const;
+	Key64 pion_sleutel() const;
+	Key64 remise50_sleutel() const;
 
-	Kleur aan_zet() const;
-	PartijFase partij_fase() const;
+	Color aan_zet() const;
+	GamePhase partij_fase() const;
 	int partij_ply() const;
 	void verhoog_partij_ply();
 	void verhoog_tb_hits();
@@ -182,40 +182,40 @@ public:
 	uint64_t tb_hits() const;
 	int vijftig_zetten_teller() const;
 	Score psq_score() const;
-	MateriaalWaarde niet_pion_materiaal(Kleur kleur) const;
-	StellingInfo* info() const { return st; }
-	void kopieer_stelling(const Stelling* pos, Thread* th, StellingInfo* copyState);
+	MaterialValue niet_pion_materiaal(Color kleur) const;
+	PositionInfo* info() const { return st; }
+	void kopieer_stelling(const Position* pos, Thread* th, PositionInfo* copyState);
 
 	bool stelling_is_ok(int* failedStep = nullptr) const;
 	void draaiBord();
 	std::string valideer_stelling() const;
 
 private:
-	void set_rokade_mogelijkheid(Kleur kleur, Veld vanT);
-	void set_stelling_info(StellingInfo* si) const;
+	void set_rokade_mogelijkheid(Color kleur, Square vanT);
+	void set_stelling_info(PositionInfo* si) const;
 	void bereken_loper_kleur_sleutel() const;
 
-	void zet_stuk(Kleur kleur, Stuk stuk, Veld veld);
-	void verwijder_stuk(Kleur kleur, Stuk stuk, Veld veld);
-	void verplaats_stuk(Kleur kleur, Stuk stuk, Veld van, Veld naar);
+	void zet_stuk(Color kleur, Piece stuk, Square veld);
+	void verwijder_stuk(Color kleur, Piece stuk, Square veld);
+	void verplaats_stuk(Color kleur, Piece stuk, Square van, Square naar);
 	template<bool Do>
-	void speel_rokade(Kleur ik, Veld van, Veld naar, Veld& vanT, Veld& naarT);
+	void speel_rokade(Color ik, Square van, Square naar, Square& vanT, Square& naarT);
 	bool is_remise() const;
 
-	StellingInfo* st;
-	Kleur aanZet;
+	PositionInfo* st;
+	Color aanZet;
 	Thread* mijnThread;
 	ThreadInfo* threadInfo;
 	NumaInfo* numaInfo;
-	Stuk bord[VELD_N];
-	Bord stukBB[STUK_N];
-	Bord kleurBB[KLEUR_N];
+	Piece bord[VELD_N];
+	Bitboard stukBB[STUK_N];
+	Bitboard kleurBB[KLEUR_N];
 	uint8_t stukAantal[STUK_N];
-	Veld stukLijst[STUK_N][16];
+	Square stukLijst[STUK_N][16];
 	uint8_t stukIndex[VELD_N];
 	uint8_t rokadeMask[VELD_N];
-	Veld rokadeTorenVeld[VELD_N];
-	Bord rokadePad[ROKADE_MOGELIJK_N];
+	Square rokadeTorenVeld[VELD_N];
+	Bitboard rokadePad[ROKADE_MOGELIJK_N];
 	uint64_t knopen, tbHits;
 	int partijPly;
 	bool chess960;
@@ -225,128 +225,128 @@ private:
 #endif
 };
 
-static_assert(sizeof(Stelling) == 14 * 64, "Stelling foute grootte");
+static_assert(sizeof(Position) == 14 * 64, "Stelling foute grootte");
 
-extern std::ostream& operator<<(std::ostream& os, const Stelling& pos);
+extern std::ostream& operator<<(std::ostream& os, const Position& pos);
 
-inline Kleur Stelling::aan_zet() const 
+inline Color Position::aan_zet() const 
 {
 	return aanZet;
 }
 
-inline bool Stelling::leeg_veld(Veld veld) const
+inline bool Position::leeg_veld(Square veld) const
 {
 	return bord[veld] == GEEN_STUK;
 }
 
-inline Stuk Stelling::stuk_op_veld(Veld veld) const
+inline Piece Position::stuk_op_veld(Square veld) const
 {
 	return bord[veld];
 }
 
-inline Stuk Stelling::bewogen_stuk(Zet zet) const
+inline Piece Position::bewogen_stuk(Move zet) const
 {
 	return bord[van_veld(zet)];
 }
 
-inline Bord Stelling::stukken() const
+inline Bitboard Position::stukken() const
 {
 	return stukBB[ALLE_STUKKEN];
 }
 
-inline Bord Stelling::stukken(StukType stuk) const
+inline Bitboard Position::stukken(PieceType stuk) const
 {
 	return stukBB[maak_stuk(WIT, stuk)] | stukBB[maak_stuk(ZWART, stuk)];
 }
 
-inline Bord Stelling::stukken(StukType stuk1, StukType stuk2) const
+inline Bitboard Position::stukken(PieceType stuk1, PieceType stuk2) const
 {
 	return stukken(stuk1) | stukken(stuk2);
 }
 
-inline Bord Stelling::stukken(Kleur kleur) const
+inline Bitboard Position::stukken(Color kleur) const
 {
 	return kleurBB[kleur];
 }
 
-inline Bord Stelling::stukken(Kleur kleur, StukType stuk) const
+inline Bitboard Position::stukken(Color kleur, PieceType stuk) const
 {
 	return stukBB[maak_stuk(kleur, stuk)];
 }
 
-inline Bord Stelling::stukken(Kleur kleur, StukType stuk1, StukType stuk2) const
+inline Bitboard Position::stukken(Color kleur, PieceType stuk1, PieceType stuk2) const
 {
 	return stukken(kleur, stuk1) | stukken(kleur, stuk2);
 }
 
-inline Bord Stelling::stukken(Kleur kleur, StukType stuk1, StukType stuk2, StukType stuk3) const
+inline Bitboard Position::stukken(Color kleur, PieceType stuk1, PieceType stuk2, PieceType stuk3) const
 {
 	return stukken(kleur, stuk1) | stukken(kleur, stuk2) | stukken(kleur, stuk3);
 }
 
-inline Bord Stelling::stukken_uitgezonderd(Kleur kleur, StukType stuk) const
+inline Bitboard Position::stukken_uitgezonderd(Color kleur, PieceType stuk) const
 {
 	return kleurBB[kleur] ^ stukBB[maak_stuk(kleur, stuk)];
 }
 
-inline int Stelling::aantal(Kleur kleur, StukType stuk) const
+inline int Position::aantal(Color kleur, PieceType stuk) const
 {
 	return stukAantal[maak_stuk(kleur, stuk)];
 }
 
-inline int Stelling::aantal(Stuk stuk) const
+inline int Position::aantal(Piece stuk) const
 {
 	return stukAantal[stuk];
 }
 
-inline int Stelling::alle_stukken_aantal() const
+inline int Position::alle_stukken_aantal() const
 {
 	return popcount(stukken());
 }
 
-inline const Veld* Stelling::stuk_lijst(Kleur kleur, StukType stuk) const
+inline const Square* Position::stuk_lijst(Color kleur, PieceType stuk) const
 {
 	return stukLijst[maak_stuk(kleur, stuk)];
 }
 
-inline Veld Stelling::stuk_veld(Kleur kleur, StukType stuk) const
+inline Square Position::stuk_veld(Color kleur, PieceType stuk) const
 {
 	assert(stukAantal[maak_stuk(kleur, stuk)] == 1);
 	return stukLijst[maak_stuk(kleur, stuk)][0];
 }
 
-inline Veld Stelling::koning(Kleur kleur) const
+inline Square Position::koning(Color kleur) const
 {
 	return stukLijst[maak_stuk(kleur, KONING)][0];
 }
 
-inline Veld Stelling::enpassant_veld() const
+inline Square Position::enpassant_veld() const
 {
 	return st->enpassantVeld;
 }
 
-inline int Stelling::rokade_mogelijk(RokadeMogelijkheid rokade) const
+inline int Position::rokade_mogelijk(CastlingRight rokade) const
 {
 	return st->rokadeMogelijkheden & rokade;
 }
 
-inline int Stelling::rokade_mogelijkheden(Kleur kleur) const
+inline int Position::rokade_mogelijkheden(Color kleur) const
 {
 	return st->rokadeMogelijkheden & ((WIT_KORT | WIT_LANG) << (2 * kleur));
 }
 
-inline bool Stelling::rokade_verhinderd(RokadeMogelijkheid rokade) const
+inline bool Position::rokade_verhinderd(CastlingRight rokade) const
 {
 	return stukken() & rokadePad[rokade];
 }
 
-inline Veld Stelling::rokade_toren_veld(Veld koningVeld) const
+inline Square Position::rokade_toren_veld(Square koningVeld) const
 {
 	return rokadeTorenVeld[koningVeld];
 }
 
-template<StukType StukT>
-inline Bord Stelling::aanval_van(Veld veld) const
+template<PieceType StukT>
+inline Bitboard Position::aanval_van(Square veld) const
 {
 	return StukT == LOPER ? aanval_bb_loper(veld, stukken())
 		 : StukT == TOREN ? aanval_bb_toren(veld, stukken())
@@ -355,134 +355,134 @@ inline Bord Stelling::aanval_van(Veld veld) const
 }
 
 template<>
-inline Bord Stelling::aanval_van<PION>(Veld veld, Kleur kleur) const
+inline Bitboard Position::aanval_van<PION>(Square veld, Color kleur) const
 {
 	return PionAanval[kleur][veld];
 }
 
-inline Bord Stelling::aanval_van(StukType stukT, Veld veld) const
+inline Bitboard Position::aanval_van(PieceType stukT, Square veld) const
 {
 	return aanval_bb(stukT, veld, stukken());
 }
 
-inline Bord Stelling::aanvallers_naar(Veld veld) const
+inline Bitboard Position::aanvallers_naar(Square veld) const
 {
 	return aanvallers_naar(veld, stukken());
 }
 
-inline Bord Stelling::schaak_gevers() const
+inline Bitboard Position::schaak_gevers() const
 {
 	return st->schaakGevers;
 }
 
-inline Bord Stelling::aftrek_schaak_mogelijk() const
+inline Bitboard Position::aftrek_schaak_mogelijk() const
 {
 	return st->xRay[~aanZet] & stukken(aanZet);
 }
 
-inline Bord Stelling::gepende_stukken() const
+inline Bitboard Position::gepende_stukken() const
 {
 	return st->xRay[aanZet] & stukken(aanZet);
 }
 
-inline bool Stelling::is_vrijpion(Kleur kleur, Veld veld) const
+inline bool Position::is_vrijpion(Color kleur, Square veld) const
 {
 	return !(stukken(~kleur, PION) & vrijpion_mask(kleur, veld));
 }
 
-inline bool Stelling::vooruitgeschoven_pion(Zet zet) const
+inline bool Position::vooruitgeschoven_pion(Move zet) const
 {
 	return stuk_type(bewogen_stuk(zet)) == PION
 		&& relatieve_rij(aanZet, naar_veld(zet)) >= RIJ_6;
 }
 
-inline bool Stelling::vrijpion_opmars(Zet zet, Rij r) const
+inline bool Position::vrijpion_opmars(Move zet, Rank r) const
 {
-	Stuk stuk = bewogen_stuk(zet);
+	Piece stuk = bewogen_stuk(zet);
 	return stuk_type(stuk) == PION
 		&& relatieve_rij(aanZet, naar_veld(zet)) >= r
 		&& is_vrijpion(stuk_kleur(stuk), naar_veld(zet));
 }
 
-inline Sleutel64 Stelling::sleutel() const
+inline Key64 Position::sleutel() const
 {
 	return st->sleutel;
 }
 
-inline Sleutel64 Stelling::pion_sleutel() const
+inline Key64 Position::pion_sleutel() const
 {
 	return st->pionSleutel;
 }
 
-inline Sleutel64 Stelling::materiaal_sleutel() const
+inline Key64 Position::materiaal_sleutel() const
 {
 	return st->materiaalSleutel;
 }
 
-inline Sleutel64 Stelling::loperkleur_sleutel() const
+inline Key64 Position::loperkleur_sleutel() const
 {
 	return st->loperKleurSleutel;
 }
 
-inline Score Stelling::psq_score() const
+inline Score Position::psq_score() const
 {
 	return st->psq;
 }
 
-inline MateriaalWaarde Stelling::niet_pion_materiaal(Kleur kleur) const
+inline MaterialValue Position::niet_pion_materiaal(Color kleur) const
 {
 	return st->nietPionMateriaal[kleur];
 }
 
-inline int Stelling::partij_ply() const
+inline int Position::partij_ply() const
 {
 	return partijPly;
 }
 
-inline void Stelling::verhoog_partij_ply()
+inline void Position::verhoog_partij_ply()
 {
 	++partijPly;
 }
 
-inline void Stelling::verhoog_tb_hits()
+inline void Position::verhoog_tb_hits()
 {
 	++tbHits;
 }
 
-inline int Stelling::vijftig_zetten_teller() const
+inline int Position::vijftig_zetten_teller() const
 {
 	return st->remise50Zetten;
 }
 
-inline uint64_t Stelling::bezochte_knopen() const
+inline uint64_t Position::bezochte_knopen() const
 {
 	return knopen;
 }
 
-inline uint64_t Stelling::tb_hits() const
+inline uint64_t Position::tb_hits() const
 {
 	return tbHits;
 }
 
-inline bool Stelling::ongelijke_lopers() const
+inline bool Position::ongelijke_lopers() const
 {
 	return stukAantal[W_LOPER] == 1
 		&& stukAantal[Z_LOPER] == 1
 		&& verschillende_kleur(stuk_veld(WIT, LOPER), stuk_veld(ZWART, LOPER));
 }
 
-inline bool Stelling::is_chess960() const
+inline bool Position::is_chess960() const
 {
 	return chess960;
 }
 
-inline bool Stelling::slag_of_promotie(Zet zet) const
+inline bool Position::slag_of_promotie(Move zet) const
 {
 	assert(is_ok(zet));
-	return zet < Zet(ROKADE) ? !leeg_veld(naar_veld(zet)) : zet >= Zet(ENPASSANT);
+	return zet < Move(ROKADE) ? !leeg_veld(naar_veld(zet)) : zet >= Move(ENPASSANT);
 }
 
-inline bool Stelling::is_slagzet(Zet zet) const
+inline bool Position::is_slagzet(Move zet) const
 {
 
 	assert(is_ok(zet));
@@ -490,28 +490,28 @@ inline bool Stelling::is_slagzet(Zet zet) const
 	//return leeg_veld(naar_veld(zet)) ? zet_type(zet) == ENPASSANT : zet_type(zet) != ROKADE;
 }
 
-inline bool Stelling::materiaal_of_rokade_gewijzigd() const
+inline bool Position::materiaal_of_rokade_gewijzigd() const
 {
 	return st->materiaalSleutel != (st - 1)->materiaalSleutel
 		|| st->rokadeMogelijkheden != (st - 1)->rokadeMogelijkheden;
 }
 
-inline Thread* Stelling::mijn_thread() const
+inline Thread* Position::mijn_thread() const
 {
 	return mijnThread;
 }
 
-inline ThreadInfo* Stelling::ti() const
+inline ThreadInfo* Position::ti() const
 {
 	return threadInfo;
 }
 
-inline NumaInfo* Stelling::ni() const
+inline NumaInfo* Position::ni() const
 {
 	return numaInfo;
 }
 
-inline void Stelling::zet_stuk(Kleur kleur, Stuk stuk, Veld veld)
+inline void Position::zet_stuk(Color kleur, Piece stuk, Square veld)
 {
 	bord[veld] = stuk;
 	stukBB[stuk] |= veld;
@@ -520,19 +520,19 @@ inline void Stelling::zet_stuk(Kleur kleur, Stuk stuk, Veld veld)
 	stukLijst[stuk][stukIndex[veld]] = veld;
 }
 
-inline void Stelling::verwijder_stuk(Kleur kleur, Stuk stuk, Veld veld)
+inline void Position::verwijder_stuk(Color kleur, Piece stuk, Square veld)
 {
 	stukBB[stuk] ^= veld;
 	kleurBB[kleur] ^= veld;
-	Veld laatsteVeld = stukLijst[stuk][--stukAantal[stuk]];
+	Square laatsteVeld = stukLijst[stuk][--stukAantal[stuk]];
 	stukIndex[laatsteVeld] = stukIndex[veld];
 	stukLijst[stuk][stukIndex[laatsteVeld]] = laatsteVeld;
 	stukLijst[stuk][stukAantal[stuk]] = SQ_NONE;
 }
 
-inline void Stelling::verplaats_stuk(Kleur kleur, Stuk stuk, Veld van, Veld naar)
+inline void Position::verplaats_stuk(Color kleur, Piece stuk, Square van, Square naar)
 {
-	Bord van_naar_bb = bbVeld[van] ^ bbVeld[naar];
+	Bitboard van_naar_bb = bbVeld[van] ^ bbVeld[naar];
 	stukBB[stuk] ^= van_naar_bb;
 	kleurBB[kleur] ^= van_naar_bb;
 	bord[van] = GEEN_STUK;

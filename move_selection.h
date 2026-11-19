@@ -9,14 +9,14 @@
 #include "position.h"
 
 template<typename T>
-struct StukVeldTabel
+struct PieceSquareTable
 {
-	const T* operator[](Stuk stuk) const { return tabel[stuk]; }
-	T* operator[](Stuk stuk) { return tabel[stuk]; }
+	const T* operator[](Piece stuk) const { return tabel[stuk]; }
+	T* operator[](Piece stuk) { return tabel[stuk]; }
 	void clear() { std::memset(tabel, 0, sizeof(tabel)); }
 
-	T get(Stuk stuk, Veld naar) { return tabel[stuk][naar]; }
-	void update(Stuk stuk, Veld naar, T v)
+	T get(Piece stuk, Square naar) { return tabel[stuk][naar]; }
+	void update(Piece stuk, Square naar, T v)
 	{
 		tabel[stuk][naar] = v;
 	}
@@ -27,29 +27,29 @@ protected:
 
 
 template<int MaxPlus, int MaxMin>
-struct StukVeldStatistiek : StukVeldTabel<SorteerWaardeCompact>
+struct PieceSquareStats : PieceSquareTable<SortValueCompact>
 {
-	static int bereken_offset(Stuk stuk, Veld naar) { return 64 * int(stuk) + int(naar); }
-	SorteerWaardeCompact valueAtOffset(int offset) const { return *((const SorteerWaardeCompact*)tabel + offset); }
+	static int bereken_offset(Piece stuk, Square naar) { return 64 * int(stuk) + int(naar); }
+	SortValueCompact valueAtOffset(int offset) const { return *((const SortValueCompact*)tabel + offset); }
 
-	void fill(SorteerWaarde v)
+	void fill(SortValue v)
 	{
 		int vv = (uint16_t(v) << 16) | uint16_t(v);
 		std::fill((int *)tabel, (int *)((char *)tabel + sizeof(tabel)), vv);
 	}
 
-	void updatePlus(int offset, SorteerWaarde v)
+	void updatePlus(int offset, SortValue v)
 	{
 		//v = v * 2 * MaxPlus / (MaxPlus + MaxMin);
-		SorteerWaardeCompact& elem = *((SorteerWaardeCompact*)tabel + offset);
+		SortValueCompact& elem = *((SortValueCompact*)tabel + offset);
 		elem -= elem * int(v) / MaxPlus;
 		elem += v;
 	}
 
-	void updateMinus(int offset, SorteerWaarde v)
+	void updateMinus(int offset, SortValue v)
 	{
 		//v = v * 2 * MaxMin / (MaxPlus + MaxMin);
-		SorteerWaardeCompact& elem = *((SorteerWaardeCompact*)tabel + offset);
+		SortValueCompact& elem = *((SortValueCompact*)tabel + offset);
 		elem -= elem * int(v) / MaxMin;
 		elem -= v;
 	}
@@ -57,10 +57,10 @@ struct StukVeldStatistiek : StukVeldTabel<SorteerWaardeCompact>
 
 
 template<typename T>
-struct KleurVeldStatistiek
+struct ColorSquareStats
 {
-	const T* operator[](Kleur kleur) const { return tabel[kleur]; }
-	T* operator[](Kleur kleur) { return tabel[kleur]; }
+	const T* operator[](Color kleur) const { return tabel[kleur]; }
+	T* operator[](Color kleur) { return tabel[kleur]; }
 	void clear() { std::memset(tabel, 0, sizeof(tabel)); }
 
 private:
@@ -68,96 +68,96 @@ private:
 };
 
 
-struct CounterZetFullStats
+struct CounterMoveFullStats
 {
-	Zet get(Kleur kleur, Zet zet) { return Zet(tabel[kleur][zet & 0xfff]); }
+	Move get(Color kleur, Move zet) { return Move(tabel[kleur][zet & 0xfff]); }
 	void clear() { std::memset(tabel, 0, sizeof(tabel)); }
-	void update(Kleur kleur, Zet zet1, Zet zet)
+	void update(Color kleur, Move zet1, Move zet)
 	{
 		tabel[kleur][zet1 & 0xfff] = zet;
 	}
 
 private:
-	ZetCompact tabel[KLEUR_N][64 * 64];
+	MoveCompact tabel[KLEUR_N][64 * 64];
 };
 
 
-struct CounterZetFullPieceStats
+struct CounterMoveFullPieceStats
 {
-	Zet get(Stuk stuk, Zet zet) { return Zet(tabel[stuk][zet & 0xfff]); }
+	Move get(Piece stuk, Move zet) { return Move(tabel[stuk][zet & 0xfff]); }
 	void clear() { std::memset(tabel, 0, sizeof(tabel)); }
-	void update(Stuk stuk, Zet zet1, Zet zet)
+	void update(Piece stuk, Move zet1, Move zet)
 	{
 		tabel[stuk][zet1 & 0xfff] = zet;
 	}
 
 private:
-	ZetCompact tabel[STUK_N][64 * 64];
+	MoveCompact tabel[STUK_N][64 * 64];
 };
 
 
-struct CounterFollowUpZetStats
+struct CounterFollowUpMoveStats
 {
-	Zet get(Stuk stuk1, Veld naar1, Stuk stuk2, Veld naar2) { return Zet(tabel[stuk1][naar1][stuk_type(stuk2)][naar2]); }
+	Move get(Piece stuk1, Square naar1, Piece stuk2, Square naar2) { return Move(tabel[stuk1][naar1][stuk_type(stuk2)][naar2]); }
 	void clear() { std::memset(tabel, 0, sizeof(tabel)); }
-	void update(Stuk stuk1, Veld naar1, Stuk stuk2, Veld naar2, Zet zet)
+	void update(Piece stuk1, Square naar1, Piece stuk2, Square naar2, Move zet)
 	{
 		tabel[stuk1][naar1][stuk_type(stuk2)][naar2] = zet;
 	}
 
 private:
-	ZetCompact tabel[STUK_N][VELD_N][STUKTYPE_N][VELD_N];
+	MoveCompact tabel[STUK_N][VELD_N][STUKTYPE_N][VELD_N];
 };
 
 
-struct MaxWinstStats
+struct MaxGainStats
 {
-	Waarde get(Stuk stuk, Zet zet) const { return tabel[stuk][zet & 0x0fff]; }
+	Value get(Piece stuk, Move zet) const { return tabel[stuk][zet & 0x0fff]; }
 	void clear() { std::memset(tabel, 0, sizeof(tabel)); }
-	void update(Stuk stuk, Zet zet, Waarde gain) 
+	void update(Piece stuk, Move zet, Value gain) 
 	{
-		Waarde* pGain = &tabel[stuk][zet & 0x0fff];
-		*pGain += Waarde((gain - *pGain + 8) >> 4);
+		Value* pGain = &tabel[stuk][zet & 0x0fff];
+		*pGain += Value((gain - *pGain + 8) >> 4);
 	}
 
 private:
-	Waarde tabel[STUK_N][64 * 64];
+	Value tabel[STUK_N][64 * 64];
 };
 
 
 struct SpecialKillerStats
 {
-	static int index_mijn_stukken(const Stelling &pos, Kleur kleur);
-	static int index_jouw_stukken(const Stelling &pos, Kleur kleur, Veld veld);
+	static int index_mijn_stukken(const Position &pos, Color kleur);
+	static int index_jouw_stukken(const Position &pos, Color kleur, Square veld);
 
-	Zet get(Kleur kleur, int index) const { return tabel[kleur][index]; }
+	Move get(Color kleur, int index) const { return tabel[kleur][index]; }
 	void clear() { std::memset(tabel, 0, sizeof(tabel)); }
-	void update(Kleur kleur, int index, Zet zet) 
+	void update(Color kleur, int index, Move zet) 
 	{
 		tabel[kleur][index] = zet;
 	}
 private:
-	Zet tabel[KLEUR_N][65536];
+	Move tabel[KLEUR_N][65536];
 };
 
 
-typedef StukVeldTabel<ZetCompact> CounterZetStats;
-typedef StukVeldStatistiek<8192, 8192> ZetWaardeStatistiek;
-typedef StukVeldStatistiek<3*8192, 3*8192> CounterZetWaarden;
-typedef StukVeldTabel<CounterZetWaarden> CounterZetHistoriek;
+typedef PieceSquareTable<MoveCompact> CounterMoveStats;
+typedef PieceSquareStats<8192, 8192> MoveValueStats;
+typedef PieceSquareStats<3*8192, 3*8192> CounterMoveValues;
+typedef PieceSquareTable<CounterMoveValues> CounterMoveHistory;
 
 
-inline PikZetEtappe& operator++(PikZetEtappe& d) { return d = PikZetEtappe(int(d) + 1); }
+inline PickMoveStage& operator++(PickMoveStage& d) { return d = PickMoveStage(int(d) + 1); }
 
-namespace ZetKeuze 
+namespace MoveSelection 
 {
-	void init_search(const Stelling&, Zet, Diepte, bool);
-	void init_qsearch(const Stelling&, Zet, Diepte, Veld);
-	void init_probcut(const Stelling&, Zet, SeeWaarde);
+	void init_search(const Position&, Move, Depth, bool);
+	void init_qsearch(const Position&, Move, Depth, Square);
+	void init_probcut(const Position&, Move, SeeValue);
 
-	Zet geef_zet(const Stelling& pos);
+	Move geef_zet(const Position& pos);
 
-	template<ZetGeneratie> void score(const Stelling& pos);
+	template<MoveGeneration> void score(const Position& pos);
 }
 
 #endif // #ifndef MOVE_SELECTION_H

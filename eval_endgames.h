@@ -9,35 +9,35 @@
 #include "position.h"
 #include "houdini.h"
 
-typedef Waarde (*eindspel_waarde_fx)(const Stelling& pos);
-typedef SchaalFactor (*eindspel_schaalfactor_fx)(const Stelling& pos);
+typedef Value (*endgame_value_fx)(const Position& pos);
+typedef ScaleFactor (*endgame_scalefactor_fx)(const Position& pos);
 
-class Eindspelen 
+class Endgames 
 {
-	void add_waarde(const char* pieces, eindspel_waarde_fx, eindspel_waarde_fx);
-	void add_schaalfactor(const char* pieces, eindspel_schaalfactor_fx, eindspel_schaalfactor_fx);
+	void add_waarde(const char* pieces, endgame_value_fx, endgame_value_fx);
+	void add_schaalfactor(const char* pieces, endgame_scalefactor_fx, endgame_scalefactor_fx);
 
-	typedef std::map<Sleutel64, int> FunctieIndexMap;
+	typedef std::map<Key64, int> FunctionIndexMap;
 
 	int waarde_aantal, factor_aantal;
-	FunctieIndexMap mapWaarde;
-	FunctieIndexMap mapSchaalFactor;
+	FunctionIndexMap mapWaarde;
+	FunctionIndexMap mapSchaalFactor;
 public:
-	Eindspelen();
+	Endgames();
 	void initialisatie();
 
-	int probe_waarde(Sleutel64 key);
-	int probe_schaalfactor(Sleutel64 key, Kleur& sterkeZijde);
+	int probe_waarde(Key64 key);
+	int probe_schaalfactor(Key64 key, Color& sterkeZijde);
 
-	eindspel_waarde_fx waarde_functies[16];
-	eindspel_schaalfactor_fx factor_functies[32];
+	endgame_value_fx waarde_functies[16];
+	endgame_scalefactor_fx factor_functies[32];
 };
 
-template <Kleur sterkeZijde> Waarde endgameValue_KXK(const Stelling& pos);
-template <Kleur sterkeZijde> SchaalFactor endgameScaleFactor_KBPsK(const Stelling& pos);
-template <Kleur sterkeZijde> SchaalFactor endgameScaleFactor_KQKRPs(const Stelling& pos);
-template <Kleur sterkeZijde> SchaalFactor endgameScaleFactor_KPsK(const Stelling& pos);
-template <Kleur sterkeZijde> SchaalFactor endgameScaleFactor_KPKP(const Stelling& pos);
+template <Color sterkeZijde> Value endgameValue_KXK(const Position& pos);
+template <Color sterkeZijde> ScaleFactor endgameScaleFactor_KBPsK(const Position& pos);
+template <Color sterkeZijde> ScaleFactor endgameScaleFactor_KQKRPs(const Position& pos);
+template <Color sterkeZijde> ScaleFactor endgameScaleFactor_KPsK(const Position& pos);
+template <Color sterkeZijde> ScaleFactor endgameScaleFactor_KPKP(const Position& pos);
 
 
 #endif // #ifndef EVAL_ENDGAMES_H

@@ -13,7 +13,7 @@ struct AttackInfo {
 	Bitboard gepend[COLOR_NB];
 };
 
-enum eindspel_kind
+enum endgame_kind
 {
 	eindspel_none,
 	eindspel_white_minor,
@@ -39,9 +39,9 @@ enum eindspel_kind
 	ENDGAME_COUNT
 };
 
-typedef Value(*eindspel_waarde_fx)(const Position& pos, AttackInfo& ai, const Pawns::Entry *pionEntry, Value waarde);
+typedef Value(*endgame_value_fx)(const Position& pos, AttackInfo& ai, const Pawns::Entry *pionEntry, Value waarde);
 
-eindspel_waarde_fx eindspel_waarde_functies[ENDGAME_COUNT];
+endgame_value_fx eindspel_waarde_functies[ENDGAME_COUNT];
 
 #define SC(x) Value(x * 2)
 inline Bitboard bb(Square s) { return (1ULL << s); }
@@ -432,7 +432,7 @@ void ext_init_eindspel_functions()
 	eindspel_waarde_functies[eindspel_KRP_KB] = &eindspel_waarde_KRP_KB;
 }
 
-eindspel_kind bereken_eindspel_index(int WPion, int WP, int WL, int WLL, int WLD, int WT, int WD,
+endgame_kind bereken_eindspel_index(int WPion, int WP, int WL, int WLL, int WLD, int WT, int WD,
 	int ZPion, int ZP, int ZL, int ZLL, int ZLD, int ZT, int ZD)
 {
 	int WAantal = WD + WT + WL + WP;

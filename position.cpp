@@ -18,20 +18,20 @@ using std::string;
 
 namespace Zobrist
 {
-	Sleutel64 psq[STUK_N][VELD_N];
-	Sleutel64 enpassant[LIJN_N];
-	Sleutel64 rokade[ROKADE_MOGELIJK_N];
-	Sleutel64 aanZet;
-	Sleutel64 hash_50move[32];
+	Key64 psq[STUK_N][VELD_N];
+	Key64 enpassant[LIJN_N];
+	Key64 rokade[ROKADE_MOGELIJK_N];
+	Key64 aanZet;
+	Key64 hash_50move[32];
 }
 
-Sleutel64 Stelling::uitzondering_sleutel(Zet zet) const
+Key64 Position::uitzondering_sleutel(Move zet) const
 { 
 	return Zobrist::psq[W_KONING][van_veld(zet)] ^ Zobrist::psq[Z_KONING][naar_veld(zet)];
 	//return zet;
 }
 
-Sleutel64 Stelling::remise50_sleutel() const
+Key64 Position::remise50_sleutel() const
 {
 	return Zobrist::hash_50move[st->remise50Zetten >> 2];
 }
@@ -43,11 +43,11 @@ namespace
 } // namespace
 
 
-void Stelling::bereken_schaak_penningen() const
+void Position::bereken_schaak_penningen() const
 {
 	bereken_penningen<WIT>();
 	bereken_penningen<ZWART>();
-	Veld veldK = koning(~aanZet);
+	Square veldK = koning(~aanZet);
 	st->schaakVelden[PION]  = aanval_van<PION>(veldK, ~aanZet);
 	st->schaakVelden[PAARD] = aanval_van<PAARD>(veldK);
 	st->schaakVelden[LOPER] = aanval_van<LOPER>(veldK);
@@ -56,19 +56,19 @@ void Stelling::bereken_schaak_penningen() const
 	st->schaakVelden[KONING] = 0;
 }
 
-template <Kleur kleur>
-void Stelling::bereken_penningen() const
+template <Color kleur>
+void Position::bereken_penningen() const
 {
-	Bord penningGevers, result = 0;
-	Veld veldK = koning(kleur);
+	Bitboard penningGevers, result = 0;
+	Square veldK = koning(kleur);
 
 	penningGevers = (LegeAanval[TOREN][veldK] & stukken(~kleur, DAME, TOREN))
 		          | (LegeAanval[LOPER][veldK] & stukken(~kleur, DAME, LOPER));
 
 	while (penningGevers)
 	{
-		Veld veld = pop_lsb(&penningGevers);
-		Bord b = bb_tussen(veldK, veld) & stukken();
+		Square veld = pop_lsb(&penningGevers);
+		Bitboard b = bb_tussen(veldK, veld) & stukken();
 
 		if (b && !meer_dan_een(b))
 		{
@@ -80,13 +80,13 @@ void Stelling::bereken_penningen() const
 }
 
 
-std::ostream& operator<<(std::ostream& os, const Stelling& pos)
+std::ostream& operator<<(std::ostream& os, const Position& pos)
 {
 	os << "\n +---+---+---+---+---+---+---+---+\n";
 
-	for (Rij r = RIJ_8; r >= RIJ_1; --r)
+	for (Rank r = RIJ_8; r >= RIJ_1; --r)
 	{
-		for (Lijn f = LIJN_A; f <= LIJN_H; ++f)
+		for (File f = LIJN_A; f <= LIJN_H; ++f)
 			os << " | " << PieceToChar[pos.stuk_op_veld(maak_veld(f, r))];
 
 		os << " |\n +---+---+---+---+---+---+---+---+\n";
@@ -98,35 +98,35 @@ std::ostream& operator<<(std::ostream& os, const Stelling& pos)
 }
 
 
-void Stelling::initialisatie()
+void Position::initialisatie()
 {
 	PRNG rng(19680708);
 
-	for (Kleur kleur = WIT; kleur <= ZWART; ++kleur)
-		for (StukType stuk = KONING; stuk <= DAME; ++stuk)
-			for (Veld veld = SQ_A1; veld <= SQ_H8; ++veld)
-				Zobrist::psq[maak_stuk(kleur, stuk)][veld] = rng.rand<Sleutel64>();
+	for (Color kleur = WIT; kleur <= ZWART; ++kleur)
+		for (PieceType stuk = KONING; stuk <= DAME; ++stuk)
+			for (Square veld = SQ_A1; veld <= SQ_H8; ++veld)
+				Zobrist::psq[maak_stuk(kleur, stuk)][veld] = rng.rand<Key64>();
 
-	for (Lijn f = LIJN_A; f <= LIJN_H; ++f)
-		Zobrist::enpassant[f] = rng.rand<Sleutel64>();
+	for (File f = LIJN_A; f <= LIJN_H; ++f)
+		Zobrist::enpassant[f] = rng.rand<Key64>();
 
 	for (int rokade = GEEN_ROKADE; rokade <= ALLE_ROKADE; ++rokade)
 	{
 		Zobrist::rokade[rokade] = 0;
-		Bord b = rokade;
+		Bitboard b = rokade;
 		while (b)
 		{
-			Sleutel64 k = Zobrist::rokade[1ULL << pop_lsb(&b)];
-			Zobrist::rokade[rokade] ^= k ? k : rng.rand<Sleutel64>();
+			Key64 k = Zobrist::rokade[1ULL << pop_lsb(&b)];
+			Zobrist::rokade[rokade] ^= k ? k : rng.rand<Key64>();
 		}
 	}
 
-	Zobrist::aanZet = rng.rand<Sleutel64>();
+	Zobrist::aanZet = rng.rand<Key64>();
 	init_hash_move50(50);
 }
 
 
-void Stelling::init_hash_move50(int FiftyMoveDistance)
+void Position::init_hash_move50(int FiftyMoveDistance)
 {
 	for (int i = 0; i < 32; i++)
 		if (4 * i + 50 < 2 * FiftyMoveDistance)
@@ -136,19 +136,19 @@ void Stelling::init_hash_move50(int FiftyMoveDistance)
 }
 
 
-Stelling& Stelling::set(const string& fenStr, bool isChess960, Thread* th)
+Position& Position::set(const string& fenStr, bool isChess960, Thread* th)
 {
 	assert(th != nullptr);
 
 	unsigned char col, row, token;
 	size_t idx;
-	Veld sq = SQ_A8;
+	Square sq = SQ_A8;
 	std::istringstream ss(fenStr);
 
-	std::memset(this, 0, sizeof(Stelling));
-	std::fill_n(&stukLijst[0][0], sizeof(stukLijst) / sizeof(Veld), SQ_NONE);
+	std::memset(this, 0, sizeof(Position));
+	std::fill_n(&stukLijst[0][0], sizeof(stukLijst) / sizeof(Square), SQ_NONE);
 	st = th->ti->stellingInfo + 5;
-	std::memset(st, 0, sizeof(StellingInfo));
+	std::memset(st, 0, sizeof(PositionInfo));
 	chess960 = isChess960;
 
 	ss >> std::noskipws;
@@ -157,14 +157,14 @@ Stelling& Stelling::set(const string& fenStr, bool isChess960, Thread* th)
 	while ((ss >> token) && !isspace(token))
 	{
 		if (isdigit(token))
-			sq += Veld(token - '0'); // Advance the given number of files
+			sq += Square(token - '0'); // Advance the given number of files
 
 		else if (token == '/')
-			sq -= Veld(16);
+			sq -= Square(16);
 
 		else if ((idx = PieceToChar.find(token)) != string::npos)
 		{
-			zet_stuk(stuk_kleur(Stuk(idx)), Stuk(idx), sq);
+			zet_stuk(stuk_kleur(Piece(idx)), Piece(idx), sq);
 			++sq;
 		}
 	}
@@ -178,9 +178,9 @@ Stelling& Stelling::set(const string& fenStr, bool isChess960, Thread* th)
 	// rokade
 	while ((ss >> token) && !isspace(token))
 	{
-		Veld rsq;
-		Kleur kleur = islower(token) ? ZWART : WIT;
-		Stuk toren = maak_stuk(kleur, TOREN);
+		Square rsq;
+		Color kleur = islower(token) ? ZWART : WIT;
+		Piece toren = maak_stuk(kleur, TOREN);
 
 		token = char(toupper(token));
 
@@ -191,7 +191,7 @@ Stelling& Stelling::set(const string& fenStr, bool isChess960, Thread* th)
 			for (rsq = relatief_veld(kleur, SQ_A1); stuk_op_veld(rsq) != toren; ++rsq) {}
 
 		else if (token >= 'A' && token <= 'H')
-			rsq = maak_veld(Lijn(token - 'A'), relatieve_rij(kleur, RIJ_1));
+			rsq = maak_veld(File(token - 'A'), relatieve_rij(kleur, RIJ_1));
 
 		else
 			continue;
@@ -203,7 +203,7 @@ Stelling& Stelling::set(const string& fenStr, bool isChess960, Thread* th)
 	if (((ss >> col) && (col >= 'a' && col <= 'h'))
 		&& ((ss >> row) && (row == '3' || row == '6')))
 	{
-		st->enpassantVeld = maak_veld(Lijn(col - 'a'), Rij(row - '1'));
+		st->enpassantVeld = maak_veld(File(col - 'a'), Rank(row - '1'));
 
 		if (!(aanvallers_naar(st->enpassantVeld) & stukken(aanZet, PION)))
 			st->enpassantVeld = SQ_NONE;
@@ -228,9 +228,9 @@ Stelling& Stelling::set(const string& fenStr, bool isChess960, Thread* th)
 }
 
 
-void Stelling::kopieer_stelling(const Stelling* pos, Thread* th, StellingInfo* copyState)
+void Position::kopieer_stelling(const Position* pos, Thread* th, PositionInfo* copyState)
 {
-	std::memcpy(this, pos, sizeof(Stelling));
+	std::memcpy(this, pos, sizeof(Position));
 	if (th)
 	{
 		mijnThread = th;
@@ -238,7 +238,7 @@ void Stelling::kopieer_stelling(const Stelling* pos, Thread* th, StellingInfo* c
 		numaInfo = th->ni;
 		st = th->ti->stellingInfo + 5;
 
-		StellingInfo* origSt = pos->threadInfo->stellingInfo + 5;
+		PositionInfo* origSt = pos->threadInfo->stellingInfo + 5;
 		while (origSt < copyState - 4)
 		{
 			st->sleutel = origSt->sleutel;
@@ -258,24 +258,24 @@ void Stelling::kopieer_stelling(const Stelling* pos, Thread* th, StellingInfo* c
 }
 
 
-void Stelling::set_rokade_mogelijkheid(Kleur kleur, Veld vanT)
+void Position::set_rokade_mogelijkheid(Color kleur, Square vanT)
 {
-	Veld vanK = koning(kleur);
-	RokadeMogelijkheid rokade = RokadeMogelijkheid(WIT_KORT << ((vanK >= vanT) + 2 * kleur));
+	Square vanK = koning(kleur);
+	CastlingRight rokade = CastlingRight(WIT_KORT << ((vanK >= vanT) + 2 * kleur));
 
-	Veld naarK = relatief_veld(kleur, vanK < vanT ? SQ_G1 : SQ_C1);
-	Veld naarT = relatief_veld(kleur, vanK < vanT ? SQ_F1 : SQ_D1);
+	Square naarK = relatief_veld(kleur, vanK < vanT ? SQ_G1 : SQ_C1);
+	Square naarT = relatief_veld(kleur, vanK < vanT ? SQ_F1 : SQ_D1);
 
 	st->rokadeMogelijkheden |= rokade;
 	rokadeMask[vanK] |= rokade;
 	rokadeMask[vanT] |= rokade;
 	rokadeTorenVeld[naarK] = vanT;
 
-	Bord pad = 0;
-	for (Veld veld = std::min(vanT, naarT); veld <= std::max(vanT, naarT); ++veld)
+	Bitboard pad = 0;
+	for (Square veld = std::min(vanT, naarT); veld <= std::max(vanT, naarT); ++veld)
 		pad |= veld;
 
-	for (Veld veld = std::min(vanK, naarK); veld <= std::max(vanK, naarK); ++veld)
+	for (Square veld = std::min(vanK, naarK); veld <= std::max(vanK, naarK); ++veld)
 		pad |= veld;
 
 	rokadePad[rokade] = pad & ~(bbVeld[vanK] | bbVeld[vanT]);
@@ -289,9 +289,9 @@ void Stelling::set_rokade_mogelijkheid(Kleur kleur, Veld vanT)
 }
 
 
-void Stelling::bereken_loper_kleur_sleutel() const
+void Position::bereken_loper_kleur_sleutel() const
 {
-	Sleutel64 key = 0;
+	Key64 key = 0;
 	if (stukken(WIT, LOPER) & DonkereVelden)
 		key ^= 0xF3094B57AC4789A2;
 	if (stukken(WIT, LOPER) & ~DonkereVelden)
@@ -304,7 +304,7 @@ void Stelling::bereken_loper_kleur_sleutel() const
 }
 
 
-void Stelling::set_stelling_info(StellingInfo* si) const
+void Position::set_stelling_info(PositionInfo* si) const
 {
 	si->sleutel = si->materiaalSleutel = 0;
 	si->nietPionMateriaal[WIT] = si->nietPionMateriaal[ZWART] = MATL_0;
@@ -313,10 +313,10 @@ void Stelling::set_stelling_info(StellingInfo* si) const
 
 	si->schaakGevers = aanvallers_naar(koning(aanZet)) & stukken(~aanZet);
 
-	for (Bord b = stukken(); b; )
+	for (Bitboard b = stukken(); b; )
 	{
-		Veld veld = pop_lsb(&b);
-		Stuk stuk = stuk_op_veld(veld);
+		Square veld = pop_lsb(&b);
+		Piece stuk = stuk_op_veld(veld);
 		si->sleutel ^= Zobrist::psq[stuk][veld];
 		si->psq += PST::psq[stuk][veld];
 		si->fase += StukFase[stuk_type(stuk)];
@@ -331,33 +331,33 @@ void Stelling::set_stelling_info(StellingInfo* si) const
 	si->sleutel ^= Zobrist::rokade[si->rokadeMogelijkheden];
 
 	si->pionSleutel = 0x1234567890ABCDEF;
-	for (Bord b = stukken(PION); b; )
+	for (Bitboard b = stukken(PION); b; )
 	{
-		Veld veld = pop_lsb(&b);
+		Square veld = pop_lsb(&b);
 		si->pionSleutel ^= Zobrist::psq[stuk_op_veld(veld)][veld];
 	}
 
-	for (Kleur kleur = WIT; kleur <= ZWART; ++kleur)
-		for (StukType stuk = KONING; stuk <= DAME; ++stuk)
+	for (Color kleur = WIT; kleur <= ZWART; ++kleur)
+		for (PieceType stuk = KONING; stuk <= DAME; ++stuk)
 			for (int cnt = 0; cnt < stukAantal[maak_stuk(kleur, stuk)]; ++cnt)
 				si->materiaalSleutel ^= Zobrist::psq[maak_stuk(kleur, stuk)][cnt];
 
 	bereken_loper_kleur_sleutel();
 
-	for (Kleur kleur = WIT; kleur <= ZWART; ++kleur)
-		for (StukType stuk = PAARD; stuk <= DAME; ++stuk)
+	for (Color kleur = WIT; kleur <= ZWART; ++kleur)
+		for (PieceType stuk = PAARD; stuk <= DAME; ++stuk)
 			si->nietPionMateriaal[kleur] += MateriaalWaarden[stuk] * (int)stukAantal[maak_stuk(kleur, stuk)];
 }
 
 
-const string Stelling::fen() const
+const string Position::fen() const
 {
 	int emptyCnt;
 	std::ostringstream ss;
 
-	for (Rij r = RIJ_8; ; --r)
+	for (Rank r = RIJ_8; ; --r)
 	{
-		for (Lijn f = LIJN_A; f <= LIJN_H; ++f)
+		for (File f = LIJN_A; f <= LIJN_H; ++f)
 		{
 			for (emptyCnt = 0; f <= LIJN_H && leeg_veld(maak_veld(f, r)); ++f)
 				++emptyCnt;
@@ -399,13 +399,13 @@ const string Stelling::fen() const
 }
 
 
-PartijFase Stelling::partij_fase() const
+GamePhase Position::partij_fase() const
 {
-	return PartijFase(std::max(0, std::min((int)MIDDENSPEL_FASE, (int)st->fase - 6)));
+	return GamePhase(std::max(0, std::min((int)MIDDENSPEL_FASE, (int)st->fase - 6)));
 }
 
 
-Bord Stelling::aanvallers_naar(Veld veld, Bord bezet) const
+Bitboard Position::aanvallers_naar(Square veld, Bitboard bezet) const
 {
 	return (aanval_van<PION>(veld, ZWART) & stukken(WIT, PION))
 		| (aanval_van<PION>(veld, WIT)    & stukken(ZWART, PION))
@@ -416,22 +416,22 @@ Bord Stelling::aanvallers_naar(Veld veld, Bord bezet) const
 }
 
 
-bool Stelling::legale_zet(Zet zet) const
+bool Position::legale_zet(Move zet) const
 {
 	assert(is_ok(zet));
 
-	Kleur ik = aanZet;
-	Veld van = van_veld(zet);
+	Color ik = aanZet;
+	Square van = van_veld(zet);
 
 	assert(stuk_kleur(bewogen_stuk(zet)) == ik);
 	assert(stuk_op_veld(koning(ik)) == maak_stuk(ik, KONING));
 
 	if (zet_type(zet) == ENPASSANT)
 	{
-		Veld veldK = koning(ik);
-		Veld naar = naar_veld(zet);
-		Veld slagveld = naar - pion_vooruit(ik);
-		Bord bezet = (stukken() ^ van ^ slagveld) | naar;
+		Square veldK = koning(ik);
+		Square naar = naar_veld(zet);
+		Square slagveld = naar - pion_vooruit(ik);
+		Bitboard bezet = (stukken() ^ van ^ slagveld) | naar;
 
 		assert(naar == enpassant_veld());
 		assert(bewogen_stuk(zet) == maak_stuk(ik, PION));
@@ -449,26 +449,26 @@ bool Stelling::legale_zet(Zet zet) const
 }
 
 
-bool Stelling::geldige_zet(const Zet zet) const
+bool Position::geldige_zet(const Move zet) const
 {
-	Kleur ik = aanZet;
-	Veld van = van_veld(zet);
+	Color ik = aanZet;
+	Square van = van_veld(zet);
 
 	if (!(stukken(ik) & van))
 		return false;
 
-	Veld naar = naar_veld(zet);
-	StukType stuk = stuk_type(bewogen_stuk(zet));
+	Square naar = naar_veld(zet);
+	PieceType stuk = stuk_type(bewogen_stuk(zet));
 
 	// rokade 0,8%  enpassant 0,03%  promotie 0,6%
-	if (zet >= Zet(ROKADE))
+	if (zet >= Move(ROKADE))
 	{
-		if (zet >= Zet(PROMOTIE_P))
+		if (zet >= Move(PROMOTIE_P))
 		{
 			if (stuk != PION)
 				return false;
 		}
-		else if (zet < Zet(ENPASSANT)) // rokade
+		else if (zet < Move(ENPASSANT)) // rokade
 			return LegaleZettenLijstBevatRokade(*this, zet);
 		else  // en-passant
 			return LegaleZettenLijstBevatZet(*this, zet);
@@ -484,7 +484,7 @@ bool Stelling::geldige_zet(const Zet zet) const
 
 	if (stuk == PION)
 	{
-		if ((zet >= Zet(PROMOTIE_P)) ^ (rij(naar) == relatieve_rij(ik, RIJ_8)))
+		if ((zet >= Move(PROMOTIE_P)) ^ (rij(naar) == relatieve_rij(ik, RIJ_8)))
 			return false;
 
 		if (!(aanval_van<PION>(van, ik) & stukken(~ik) & naar)
@@ -517,14 +517,14 @@ bool Stelling::geldige_zet(const Zet zet) const
 }
 
 
-bool Stelling::geeft_schaak(Zet zet) const
+bool Position::geeft_schaak(Move zet) const
 {
 	assert(is_ok(zet));
 	assert(stuk_kleur(bewogen_stuk(zet)) == aanZet);
 
-	Veld van = van_veld(zet);
-	Veld naar = naar_veld(zet);
-	Veld veldK = koning(~aanZet);
+	Square van = van_veld(zet);
+	Square naar = naar_veld(zet);
+	Square veldK = koning(~aanZet);
 
 	if (st->schaakVelden[stuk_type(stuk_op_veld(van))] & naar)
 		return true;
@@ -532,16 +532,16 @@ bool Stelling::geeft_schaak(Zet zet) const
 	if ((st->xRay[~aanZet] & van) && !op_een_lijn(van, naar, veldK))
 		return true;
 
-	if (zet < Zet(ROKADE))
+	if (zet < Move(ROKADE))
 		return false;
 
-	if (zet >= Zet(PROMOTIE_P))
+	if (zet >= Move(PROMOTIE_P))
 		return aanval_bb(promotie_stuk(zet), naar, stukken() ^ van) & veldK;
 
-	if (zet < Zet(ENPASSANT))  // rokade
+	if (zet < Move(ENPASSANT))  // rokade
 	{
-		Veld vanT = rokade_toren_veld(naar);
-		Veld naarT = relatief_veld(aanZet, vanT > van ? SQ_F1 : SQ_D1);
+		Square vanT = rokade_toren_veld(naar);
+		Square naarT = relatief_veld(aanZet, vanT > van ? SQ_F1 : SQ_D1);
 
 		return (LegeAanval[TOREN][naarT] & veldK)
 			&& (aanval_bb_toren(naarT, (stukken() ^ van ^ vanT) | naarT | naar) & veldK);
@@ -549,8 +549,8 @@ bool Stelling::geeft_schaak(Zet zet) const
 
 	// en-passant
 	{
-		Veld ep_veld = maak_veld(lijn(naar), rij(van));
-		Bord b = (stukken() ^ van ^ ep_veld) | naar;
+		Square ep_veld = maak_veld(lijn(naar), rij(van));
+		Bitboard b = (stukken() ^ van ^ ep_veld) | naar;
 
 		return  (aanval_bb_toren(veldK, b) & stukken(aanZet, DAME, TOREN))
 			| (aanval_bb_loper(veldK, b) & stukken(aanZet, DAME, LOPER));
@@ -558,35 +558,35 @@ bool Stelling::geeft_schaak(Zet zet) const
 }
 
 
-void Stelling::speel_zet(Zet zet)
+void Position::speel_zet(Move zet)
 {
-	bool geeftSchaak = zet < Zet(ROKADE) && !aftrek_schaak_mogelijk()
+	bool geeftSchaak = zet < Move(ROKADE) && !aftrek_schaak_mogelijk()
 		? st->schaakVelden[stuk_type(stuk_op_veld(van_veld(zet)))] & naar_veld(zet)
 		: geeft_schaak(zet);
 
 	speel_zet(zet, geeftSchaak);
 }
 
-void Stelling::speel_zet(Zet zet, bool geeftSchaak)
+void Position::speel_zet(Move zet, bool geeftSchaak)
 {
 	assert(is_ok(zet));
 
 	++knopen;
 	trace_do_move(zet);
-	Sleutel64 sleutel64 = st->sleutel ^ Zobrist::aanZet;
+	Key64 sleutel64 = st->sleutel ^ Zobrist::aanZet;
 
-	std::memcpy(st + 1, st, offsetof(StellingInfo, sleutel));
+	std::memcpy(st + 1, st, offsetof(PositionInfo, sleutel));
 	st++;
 
 	st->remise50Zetten = (st - 1)->remise50Zetten + 1;
 	st->afstandTotNullzet = (st - 1)->afstandTotNullzet + 1;
 
-	Kleur ik = aanZet;
-	Kleur jij = ~ik;
-	Veld van = van_veld(zet);
-	Veld naar = naar_veld(zet);
-	Stuk stuk = stuk_op_veld(van);
-	Stuk slagstuk;
+	Color ik = aanZet;
+	Color jij = ~ik;
+	Square van = van_veld(zet);
+	Square naar = naar_veld(zet);
+	Piece stuk = stuk_op_veld(van);
+	Piece slagstuk;
 
 	assert(stuk_kleur(stuk) == ik);
 
@@ -594,11 +594,11 @@ void Stelling::speel_zet(Zet zet, bool geeftSchaak)
 	{
 		assert(stuk_type(stuk) == KONING);
 
-		Veld vanT, naarT;
+		Square vanT, naarT;
 		speel_rokade<true>(ik, van, naar, vanT, naarT);
 
 		slagstuk = GEEN_STUK;
-		Stuk mijnToren = maak_stuk(ik, TOREN);
+		Piece mijnToren = maak_stuk(ik, TOREN);
 		st->psq += PST::psq[mijnToren][naarT] - PST::psq[mijnToren][vanT];
 		sleutel64 ^= Zobrist::psq[mijnToren][vanT] ^ Zobrist::psq[mijnToren][naarT];
 	}
@@ -609,7 +609,7 @@ void Stelling::speel_zet(Zet zet, bool geeftSchaak)
 	{
 		assert(stuk_type(slagstuk) != KONING);
 		assert(stuk_kleur(slagstuk) == jij);
-		Veld slagveld = naar;
+		Square slagveld = naar;
 
 		if (stuk_type(slagstuk) == PION)
 		{
@@ -674,9 +674,9 @@ void Stelling::speel_zet(Zet zet, bool geeftSchaak)
 			sleutel64 ^= Zobrist::enpassant[lijn(st->enpassantVeld)];
 		}
 
-		else if (zet >= Zet(PROMOTIE_P))
+		else if (zet >= Move(PROMOTIE_P))
 		{
-			Stuk promotie = maak_stuk(ik, promotie_stuk(zet));
+			Piece promotie = maak_stuk(ik, promotie_stuk(zet));
 
 			assert(relatieve_rij(ik, naar) == RIJ_8);
 			assert(stuk_type(promotie) >= PAARD && stuk_type(promotie) <= DAME);
@@ -727,23 +727,23 @@ void Stelling::speel_zet(Zet zet, bool geeftSchaak)
 }
 
 
-void Stelling::neem_zet_terug(Zet zet)
+void Position::neem_zet_terug(Move zet)
 {
 	assert(is_ok(zet));
 	trace_cancel_move();
 
 	aanZet = ~aanZet;
 
-	Kleur ik = aanZet;
-	Veld van = van_veld(zet);
-	Veld naar = naar_veld(zet);
-	Stuk stuk = stuk_op_veld(naar);
+	Color ik = aanZet;
+	Square van = van_veld(zet);
+	Square naar = naar_veld(zet);
+	Piece stuk = stuk_op_veld(naar);
 
 	assert(leeg_veld(van) || zet_type(zet) == ROKADE);
 	assert(stuk_type(st->geslagenStuk) != KONING);
 	assert(stuk == st->bewogenStuk);
 
-	if (zet < Zet(ROKADE))
+	if (zet < Move(ROKADE))
 	{
 		verplaats_stuk(ik, stuk, naar, van);
 		if (st->geslagenStuk)
@@ -751,7 +751,7 @@ void Stelling::neem_zet_terug(Zet zet)
 	}
 	else
 	{
-		if (zet >= Zet(PROMOTIE_P))
+		if (zet >= Move(PROMOTIE_P))
 		{
 			assert(relatieve_rij(ik, naar) == RIJ_8);
 			assert(stuk_type(stuk) == promotie_stuk(zet));
@@ -764,7 +764,7 @@ void Stelling::neem_zet_terug(Zet zet)
 
 		if (zet_type(zet) == ROKADE)
 		{
-			Veld vanT, naarT;
+			Square vanT, naarT;
 			speel_rokade<false>(ik, van, naar, vanT, naarT);
 		}
 		else
@@ -773,7 +773,7 @@ void Stelling::neem_zet_terug(Zet zet)
 
 			if (st->geslagenStuk)
 			{
-				Veld slagveld = naar;
+				Square slagveld = naar;
 
 				if (zet_type(zet) == ENPASSANT)
 				{
@@ -799,7 +799,7 @@ void Stelling::neem_zet_terug(Zet zet)
 
 
 template<bool Do>
-void Stelling::speel_rokade(Kleur ik, Veld van, Veld naar, Veld& vanT, Veld& naarT)
+void Position::speel_rokade(Color ik, Square van, Square naar, Square& vanT, Square& naarT)
 {
 	vanT = rokade_toren_veld(naar);
 	naarT = relatief_veld(ik, vanT > van ? SQ_F1 : SQ_D1);
@@ -820,20 +820,20 @@ void Stelling::speel_rokade(Kleur ik, Veld van, Veld naar, Veld& vanT, Veld& naa
 }
 
 
-void Stelling::speel_null_zet()
+void Position::speel_null_zet()
 {
 	assert(!schaak_gevers());
 
 	++knopen;
 	trace_do_move(0);
 
-	Sleutel64 sleutel64 = st->sleutel ^ Zobrist::aanZet;
+	Key64 sleutel64 = st->sleutel ^ Zobrist::aanZet;
 	if (st->enpassantVeld != SQ_NONE)
 		sleutel64 ^= Zobrist::enpassant[lijn(st->enpassantVeld)];
 
 	HoofdHash.prefetch_tuple(sleutel64);
 
-	std::memcpy(st + 1, st, offsetof(StellingInfo, sleutel));
+	std::memcpy(st + 1, st, offsetof(PositionInfo, sleutel));
 	st++;
 
 	st->sleutel = sleutel64;
@@ -856,7 +856,7 @@ void Stelling::speel_null_zet()
 	assert(stelling_is_ok());
 }
 
-void Stelling::neem_null_terug()
+void Position::neem_null_terug()
 {
 	assert(!schaak_gevers());
 	trace_cancel_move();
@@ -866,13 +866,13 @@ void Stelling::neem_null_terug()
 }
 
 
-Sleutel64 Stelling::sleutel_na_zet(Zet zet) const
+Key64 Position::sleutel_na_zet(Move zet) const
 {
-	Veld van = van_veld(zet);
-	Veld naar = naar_veld(zet);
-	Stuk stuk = stuk_op_veld(van);
-	Stuk slagstuk = stuk_op_veld(naar);
-	Sleutel64 k = st->sleutel ^ Zobrist::aanZet;
+	Square van = van_veld(zet);
+	Square naar = naar_veld(zet);
+	Piece stuk = stuk_op_veld(van);
+	Piece slagstuk = stuk_op_veld(naar);
+	Key64 k = st->sleutel ^ Zobrist::aanZet;
 
 	if (slagstuk)
 		k ^= Zobrist::psq[slagstuk][naar];
@@ -881,13 +881,13 @@ Sleutel64 Stelling::sleutel_na_zet(Zet zet) const
 }
 
 
-const SeeWaarde SeeValueSimple[STUK_N] =
+const SeeValue SeeValueSimple[STUK_N] =
 {
 	SEE_0, SEE_0, SEE_PION, SEE_PAARD, SEE_LOPER, SEE_TOREN, SEE_DAME, SEE_0,
 	SEE_0, SEE_0, SEE_PION, SEE_PAARD, SEE_LOPER, SEE_TOREN, SEE_DAME, SEE_0
 };
 
-const SeeWaarde* Stelling::see_waarden() const
+const SeeValue* Position::see_waarden() const
 {
 	return SeeValueSimple;
 }
@@ -1010,16 +1010,16 @@ SeeWaarde Stelling::see(Zet zet) const
 
 // Test of see(zet) >= value
 //template <bool UsePins>
-bool Stelling::see_test(Zet zet, SeeWaarde limiet) const
+bool Position::see_test(Move zet, SeeValue limiet) const
 {
 	if (zet_type(zet) == ROKADE)
 		return 0 >= limiet;
 
-	const SeeWaarde* see_waarde = see_waarden();
-	Veld van = van_veld(zet);
-	Veld naar = naar_veld(zet);
-	Bord bezet = stukken();
-	const Kleur ik = stuk_kleur(stuk_op_veld(van));
+	const SeeValue* see_waarde = see_waarden();
+	Square van = van_veld(zet);
+	Square naar = naar_veld(zet);
+	Bitboard bezet = stukken();
+	const Color ik = stuk_kleur(stuk_op_veld(van));
 
 	int waarde = see_waarde[stuk_op_veld(naar)] - limiet;
 	if (zet_type(zet) == ENPASSANT)
@@ -1035,17 +1035,17 @@ bool Stelling::see_test(Zet zet, SeeWaarde limiet) const
 		return true;
 
 	bezet ^= van;
-	Bord aanvallers = aanvallers_naar(naar, bezet) & bezet;
+	Bitboard aanvallers = aanvallers_naar(naar, bezet) & bezet;
 
 	do {
-		Bord mijnAanvallers = aanvallers & stukken(~ik);
+		Bitboard mijnAanvallers = aanvallers & stukken(~ik);
 		if (!mijnAanvallers)
 			return true;
 		//if (UsePins)
 		{
-			Bord gepend = mijnAanvallers & st->xRay[~ik];
+			Bitboard gepend = mijnAanvallers & st->xRay[~ik];
 			while (gepend) {
-				Veld veld = pop_lsb(&gepend);
+				Square veld = pop_lsb(&gepend);
 				if (bezet & st->penning_door[veld])
 				{
 					mijnAanvallers ^= veld;
@@ -1055,8 +1055,8 @@ bool Stelling::see_test(Zet zet, SeeWaarde limiet) const
 			}
 		}
 
-		Bord bb;
-		StukType slagstuk;
+		Bitboard bb;
+		PieceType slagstuk;
 		if ((bb = mijnAanvallers & stukken(PION)))
 			slagstuk = PION;
 		else if ((bb = mijnAanvallers & stukken(PAARD)))
@@ -1085,9 +1085,9 @@ bool Stelling::see_test(Zet zet, SeeWaarde limiet) const
 			return false;
 		//if (UsePins)
 		{
-			Bord gepend = mijnAanvallers & st->xRay[ik];
+			Bitboard gepend = mijnAanvallers & st->xRay[ik];
 			while (gepend) {
-				Veld veld = pop_lsb(&gepend);
+				Square veld = pop_lsb(&gepend);
 				if (bezet & st->penning_door[veld])
 				{
 					mijnAanvallers ^= veld;
@@ -1123,7 +1123,7 @@ bool Stelling::see_test(Zet zet, SeeWaarde limiet) const
 }
 
 
-bool Stelling::is_remise() const
+bool Position::is_remise() const
 {
 	if (st->remise50Zetten >= 2 * Threads.vijftigZettenAfstand)
 	{
@@ -1136,7 +1136,7 @@ bool Stelling::is_remise() const
 	if (n < 0)
 		return false;
 
-	StellingInfo* stp = st - 4;
+	PositionInfo* stp = st - 4;
 	do
 	{
 		if (stp->sleutel == st->sleutel)
@@ -1150,12 +1150,12 @@ bool Stelling::is_remise() const
 }
 
 
-void Stelling::draaiBord()
+void Position::draaiBord()
 {
 	string f, token;
 	std::stringstream ss(fen());
 
-	for (Rij r = RIJ_8; r >= RIJ_1; --r)
+	for (Rank r = RIJ_8; r >= RIJ_1; --r)
 	{
 		std::getline(ss, token, r > RIJ_1 ? '/' : ' ');
 		f.insert(0, token + (f.empty() ? " " : "/"));
@@ -1182,7 +1182,7 @@ void Stelling::draaiBord()
 }
 
 
-bool Stelling::stelling_is_ok(int* failedStep) const
+bool Position::stelling_is_ok(int* failedStep) const
 {
 	const bool Fast = true;
 
@@ -1213,23 +1213,23 @@ bool Stelling::stelling_is_ok(int* failedStep) const
 				|| (stukken(WIT) | stukken(ZWART)) != stukken())
 				return false;
 
-			for (StukType p1 = KONING; p1 <= DAME; ++p1)
-				for (StukType p2 = KONING; p2 <= DAME; ++p2)
+			for (PieceType p1 = KONING; p1 <= DAME; ++p1)
+				for (PieceType p2 = KONING; p2 <= DAME; ++p2)
 					if (p1 != p2 && (stukken(p1) & stukken(p2)))
 						return false;
 		}
 
 		if (step == State)
 		{
-			StellingInfo si = *st;
+			PositionInfo si = *st;
 			set_stelling_info(&si);
-			if (std::memcmp(&si, st, sizeof(StellingInfo)))
+			if (std::memcmp(&si, st, sizeof(PositionInfo)))
 				return false;
 		}
 
 		if (step == Lists)
-			for (Kleur kleur = WIT; kleur <= ZWART; ++kleur)
-				for (StukType stuk = KONING; stuk <= DAME; ++stuk)
+			for (Color kleur = WIT; kleur <= ZWART; ++kleur)
+				for (PieceType stuk = KONING; stuk <= DAME; ++stuk)
 				{
 					if (stukAantal[maak_stuk(kleur, stuk)] != popcount(stukken(kleur, stuk)))
 						return false;
@@ -1241,10 +1241,10 @@ bool Stelling::stelling_is_ok(int* failedStep) const
 				}
 
 		if (step == Castling)
-			for (Kleur kleur = WIT; kleur <= ZWART; ++kleur)
+			for (Color kleur = WIT; kleur <= ZWART; ++kleur)
 				for (int n = 0; n < 2; n++)
 				{
-					RokadeMogelijkheid rokade = RokadeMogelijkheid(WIT_KORT << (n + 2 * kleur));
+					CastlingRight rokade = CastlingRight(WIT_KORT << (n + 2 * kleur));
 
 					if (!rokade_mogelijk(rokade))
 						continue;
@@ -1260,7 +1260,7 @@ bool Stelling::stelling_is_ok(int* failedStep) const
 }
 
 
-std::string Stelling::valideer_stelling() const
+std::string Position::valideer_stelling() const
 {
 	if (aantal(WIT, KONING) != 1)
 		return "Exactly one white king required";
@@ -1303,46 +1303,46 @@ std::string Stelling::valideer_stelling() const
 	return "";
 }
 
-Veld Stelling::bereken_dreiging() const
+Square Position::bereken_dreiging() const
 {
 	if (!st->counterZetWaarden)
 		return SQ_NONE;
 
-	Veld naar = naar_veld(st->vorigeZet);
+	Square naar = naar_veld(st->vorigeZet);
 	switch (st->bewogenStuk)
 	{
 	case W_PION:
-		if (Bord b = PionAanval[WIT][naar] & stukken_uitgezonderd(ZWART, PION))
+		if (Bitboard b = PionAanval[WIT][naar] & stukken_uitgezonderd(ZWART, PION))
 			return lsb(b);
 		break;
 	case Z_PION:
-		if (Bord b = PionAanval[ZWART][naar] & stukken_uitgezonderd(WIT, PION))
+		if (Bitboard b = PionAanval[ZWART][naar] & stukken_uitgezonderd(WIT, PION))
 			return msb(b);
 		break;
 	case W_PAARD:
-		if (Bord b = LegeAanval[PAARD][naar] & stukken(ZWART, TOREN, DAME))
+		if (Bitboard b = LegeAanval[PAARD][naar] & stukken(ZWART, TOREN, DAME))
 			return lsb(b);
 		break;
 	case Z_PAARD:
-		if (Bord b = LegeAanval[PAARD][naar] & stukken(WIT, TOREN, DAME))
+		if (Bitboard b = LegeAanval[PAARD][naar] & stukken(WIT, TOREN, DAME))
 			return msb(b);
 		break;
 	case W_LOPER:
 		// bij L en T eventueel testen dat de dreiging al niet eerder bestond
 		// (vorigeZet in dezelfde richting als dreiging)
-		if (Bord b = aanval_bb_loper(naar, stukken()) & stukken(ZWART, TOREN, DAME))
+		if (Bitboard b = aanval_bb_loper(naar, stukken()) & stukken(ZWART, TOREN, DAME))
 			return lsb(b);
 		break;
 	case Z_LOPER:
-		if (Bord b = aanval_bb_loper(naar, stukken()) & stukken(WIT, TOREN, DAME))
+		if (Bitboard b = aanval_bb_loper(naar, stukken()) & stukken(WIT, TOREN, DAME))
 			return msb(b);
 		break;
 	case W_TOREN:
-		if (Bord b = aanval_bb_toren(naar, stukken()) & stukken(ZWART, DAME))
+		if (Bitboard b = aanval_bb_toren(naar, stukken()) & stukken(ZWART, DAME))
 			return lsb(b);
 		break;
 	case Z_TOREN:
-		if (Bord b = aanval_bb_toren(naar, stukken()) & stukken(WIT, DAME))
+		if (Bitboard b = aanval_bb_toren(naar, stukken()) & stukken(WIT, DAME))
 			return msb(b);
 		break;
 	default:

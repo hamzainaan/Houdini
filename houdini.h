@@ -68,22 +68,22 @@ void trace_tm_msg(int MoveNumber, int elapsed, int optimum, const char *MSG);
 //#define IMPORT_TABELLEN
 //#define EXPORT_TABELLEN
 
-typedef uint64_t Sleutel64;
-typedef uint64_t Bord;
+typedef uint64_t Key64;
+typedef uint64_t Bitboard;
 
 const int MAX_ZETTEN = 220;
 const int MAX_PLY = 128;
 const int MAX_PV = 63;
 
-enum Zet : unsigned int
+enum Move : unsigned int
 {
 	GEEN_ZET,
 	NULL_ZET = 65
 };
 
-typedef uint16_t ZetCompact;
+typedef uint16_t MoveCompact;
 
-enum ZetType
+enum MoveType
 {
 	ROKADE     =  9 << 12,
 	ENPASSANT  = 10 << 12,
@@ -93,12 +93,12 @@ enum ZetType
 	PROMOTIE_D = 14 << 12
 };
 
-enum Kleur
+enum Color
 {
 	WIT, ZWART, KLEUR_N = 2
 };
 
-enum RokadeMogelijkheid : uint8_t
+enum CastlingRight : uint8_t
 {
 	GEEN_ROKADE,
 	WIT_KORT = 1,
@@ -109,12 +109,12 @@ enum RokadeMogelijkheid : uint8_t
 	ROKADE_MOGELIJK_N = 16
 };
 
-enum PartijFase
+enum GamePhase
 {
 	MIDDENSPEL_FASE = 26,
 };
 
-enum SchaalFactor
+enum ScaleFactor
 {
 	REMISE_FACTOR = 0,
 	EEN_PION_FACTOR = 75,
@@ -123,15 +123,15 @@ enum SchaalFactor
 	GEEN_FACTOR = 255
 };
 
-enum SorteerWaarde : int
+enum SortValue : int
 {
 	SORT_ZERO = 0,
 	SORT_MAX = 999999
 };
 
-typedef int16_t SorteerWaardeCompact;
+typedef int16_t SortValueCompact;
 
-enum EvalWaarde : int
+enum EvalValue : int
 {
 	EVAL_0 = 0,
 	REMISE_EVAL = 0,
@@ -140,7 +140,7 @@ enum EvalWaarde : int
 	LOPER_EVAL = 360 * 16
 };
 
-enum MateriaalWaarde : int
+enum MaterialValue : int
 {  // eenheid = 8 cp
 	MATL_0 = 0,
 	MATL_PAARD = 41,
@@ -149,7 +149,7 @@ enum MateriaalWaarde : int
 	MATL_DAME = 127,
 };
 
-enum SeeWaarde : int
+enum SeeValue : int
 {
 	SEE_0 = 0,
 	SEE_PION = 100,
@@ -159,7 +159,7 @@ enum SeeWaarde : int
 	SEE_DAME = 950
 };
 
-enum Waarde : int  // in 1/200 pion
+enum Value : int  // in 1/200 pion
 {
 	WAARDE_0 = 0,
 	WAARDE_1 = 1,
@@ -172,18 +172,18 @@ enum Waarde : int  // in 1/200 pion
 	GEEN_WAARDE = 32750,
 };
 
-#define DEFAULT_DRAW_VALUE Waarde(24)
-#define WAARDE_TEMPO Waarde(24)
-#define WAARDE_PION Waarde(200)
+#define DEFAULT_DRAW_VALUE Value(24)
+#define WAARDE_TEMPO Value(24)
+#define WAARDE_PION Value(200)
 
-enum StukType : uint8_t
+enum PieceType : uint8_t
 {
 	GEEN_STUKTYPE, KONING, PION, PAARD, LOPER, TOREN, DAME,
 	ALLE_STUKKEN = 0, STUKKEN_ZONDER_KONING = 7,
 	STUKTYPE_N = 8
 };
 
-enum Stuk : uint8_t
+enum Piece : uint8_t
 {
 	GEEN_STUK,
 	W_KONING = 1, W_PION, W_PAARD, W_LOPER, W_TOREN, W_DAME,
@@ -191,13 +191,13 @@ enum Stuk : uint8_t
 	STUK_N = 16
 };
 
-const MateriaalWaarde MateriaalWaarden[STUK_N] =
+const MaterialValue MateriaalWaarden[STUK_N] =
 {
 	MATL_0, MATL_0, MATL_0, MATL_PAARD, MATL_LOPER, MATL_TOREN, MATL_DAME, MATL_0,
 	MATL_0, MATL_0, MATL_0, MATL_PAARD, MATL_LOPER, MATL_TOREN, MATL_DAME, MATL_0
 };
 
-inline Waarde WaardeVanMateriaal(MateriaalWaarde v) { return Waarde(16 * (int)v); }
+inline Value WaardeVanMateriaal(MaterialValue v) { return Value(16 * (int)v); }
 
 const int StukFase[STUK_N] =
 {
@@ -210,7 +210,7 @@ const int PION_HASH_GROOTTE = 16384;
 
 const int DEFAULT_BENCHMARK_DEPTH = 12;
 
-enum Diepte
+enum Depth
 {
 	PLY = 8,
 	MAIN_THREAD_INC = 9,
@@ -221,7 +221,7 @@ enum Diepte
 	MAX_DIEPTE = MAX_PLY * int(PLY)
 };
 
-enum Veld : int8_t
+enum Square : int8_t
 {
 	SQ_A1, SQ_B1, SQ_C1, SQ_D1, SQ_E1, SQ_F1, SQ_G1, SQ_H1,
 	SQ_A2, SQ_B2, SQ_C2, SQ_D2, SQ_E2, SQ_F2, SQ_G2, SQ_H2,
@@ -246,17 +246,17 @@ enum Veld : int8_t
 	LINKSBOVEN = (int8_t)BOVEN + LINKS
 };
 
-enum Lijn
+enum File
 {
 	LIJN_A, LIJN_B, LIJN_C, LIJN_D, LIJN_E, LIJN_F, LIJN_G, LIJN_H, LIJN_N
 };
 
-enum Rij
+enum Rank
 {
 	RIJ_1, RIJ_2, RIJ_3, RIJ_4, RIJ_5, RIJ_6, RIJ_7, RIJ_8, RIJ_N
 };
 
-enum PikZetEtappe
+enum PickMoveStage
 {
 	NORMAAL_ZOEKEN, GOEDE_SLAGEN_GEN, GOEDE_SLAGEN, KILLERS, KILLERS1, LxP_SLAGEN_GEN, LxP_SLAGEN,
 		/*RUSTIGE_ZETTEN_GEN,*/ RUSTIGE_ZETTEN, SLECHTE_SLAGEN, UITGESTELDE_ZETTEN,
@@ -274,28 +274,28 @@ enum Score : int
 };
 
 inline int ScoreMultiply(int x) { return x * 8 / 5; }
-inline Waarde ValueFromEval(EvalWaarde v) { return Waarde(v / 8); }
+inline Value ValueFromEval(EvalValue v) { return Value(v / 8); }
 
 inline Score maak_score(int mg, int eg)
 {
 	return Score((ScoreMultiply(mg) << 16) + ScoreMultiply(eg));
 }
 
-inline Score remake_score(EvalWaarde mg, EvalWaarde eg)
+inline Score remake_score(EvalValue mg, EvalValue eg)
 {
 	return Score(((int)mg << 16) + (int)eg);
 }
 
-inline EvalWaarde mg_waarde(Score score)
+inline EvalValue mg_waarde(Score score)
 {
 	union { uint16_t u; int16_t s; } mg = { uint16_t(unsigned(score + 0x8000) >> 16) };
-	return EvalWaarde(mg.s);
+	return EvalValue(mg.s);
 }
 
-inline EvalWaarde eg_waarde(Score score)
+inline EvalValue eg_waarde(Score score)
 {
 	union { uint16_t u; int16_t s; } eg = { uint16_t(unsigned(score)) };
-	return EvalWaarde(eg.s);
+	return EvalValue(eg.s);
 }
 
 #define ENABLE_BASE_OPERATORS_ON(T)                             \
@@ -318,20 +318,20 @@ inline T operator/(T d, int i) { return T(int(d) / i); }        \
 inline int operator/(T d1, T d2) { return int(d1) / int(d2); }  \
 inline T& operator/=(T& d, int i) { return d = T(int(d) / i); }
 
-ENABLE_FULL_OPERATORS_ON(Waarde)
-ENABLE_FULL_OPERATORS_ON(StukType)
-ENABLE_FULL_OPERATORS_ON(Stuk)
-ENABLE_FULL_OPERATORS_ON(Kleur)
-ENABLE_FULL_OPERATORS_ON(Diepte)
-ENABLE_FULL_OPERATORS_ON(Veld)
-ENABLE_FULL_OPERATORS_ON(Lijn)
-ENABLE_FULL_OPERATORS_ON(Rij)
-ENABLE_FULL_OPERATORS_ON(SorteerWaarde)
-ENABLE_FULL_OPERATORS_ON(EvalWaarde)
+ENABLE_FULL_OPERATORS_ON(Value)
+ENABLE_FULL_OPERATORS_ON(PieceType)
+ENABLE_FULL_OPERATORS_ON(Piece)
+ENABLE_FULL_OPERATORS_ON(Color)
+ENABLE_FULL_OPERATORS_ON(Depth)
+ENABLE_FULL_OPERATORS_ON(Square)
+ENABLE_FULL_OPERATORS_ON(File)
+ENABLE_FULL_OPERATORS_ON(Rank)
+ENABLE_FULL_OPERATORS_ON(SortValue)
+ENABLE_FULL_OPERATORS_ON(EvalValue)
 
 ENABLE_BASE_OPERATORS_ON(Score)
-ENABLE_BASE_OPERATORS_ON(MateriaalWaarde)
-ENABLE_BASE_OPERATORS_ON(SeeWaarde)
+ENABLE_BASE_OPERATORS_ON(MaterialValue)
+ENABLE_BASE_OPERATORS_ON(SeeValue)
 
 #undef ENABLE_FULL_OPERATORS_ON
 #undef ENABLE_BASE_OPERATORS_ON
@@ -348,151 +348,151 @@ inline Score score_muldiv(Score score, int mul, int div)
 	return remake_score(mg_waarde(score) * mul / div, eg_waarde(score) * mul / div);
 }
 
-inline Kleur operator~(Kleur kleur)
+inline Color operator~(Color kleur)
 {
-	return Kleur(kleur ^ 1);
+	return Color(kleur ^ 1);
 }
 
-inline Veld operator~(Veld veld)
+inline Square operator~(Square veld)
 {
-	return Veld(veld ^ 56);
+	return Square(veld ^ 56);
 }
 
-inline Waarde geeft_mat(int ply)
+inline Value geeft_mat(int ply)
 {
-	return Waarde(MAT_WAARDE - ply);
+	return Value(MAT_WAARDE - ply);
 }
 
-inline Waarde staat_mat(int ply)
+inline Value staat_mat(int ply)
 {
-	return Waarde(-MAT_WAARDE + ply);
+	return Value(-MAT_WAARDE + ply);
 }
 
-inline Veld maak_veld(Lijn f, Rij r)
+inline Square maak_veld(File f, Rank r)
 {
-	return Veld((r << 3) + f);
+	return Square((r << 3) + f);
 }
 
-inline Stuk maak_stuk(Kleur kleur, StukType stuk)
+inline Piece maak_stuk(Color kleur, PieceType stuk)
 {
-	return Stuk((kleur << 3) + stuk);
+	return Piece((kleur << 3) + stuk);
 }
 
-inline StukType stuk_type(Stuk stuk)
+inline PieceType stuk_type(Piece stuk)
 {
-	return StukType(stuk & 7);
+	return PieceType(stuk & 7);
 }
 
-inline Kleur stuk_kleur(Stuk stuk)
+inline Color stuk_kleur(Piece stuk)
 {
 	assert(stuk != GEEN_STUK);
-	return Kleur(stuk >> 3);
+	return Color(stuk >> 3);
 }
 
-inline Lijn lijn(Veld veld)
+inline File lijn(Square veld)
 {
-	return Lijn(veld & 7);
+	return File(veld & 7);
 }
 
-inline Rij rij(Veld veld)
+inline Rank rij(Square veld)
 {
-	return Rij(veld >> 3);
+	return Rank(veld >> 3);
 }
 
-inline Veld relatief_veld(Kleur kleur, Veld veld)
+inline Square relatief_veld(Color kleur, Square veld)
 {
-	return Veld(veld ^ (kleur * 56));
+	return Square(veld ^ (kleur * 56));
 }
 
-inline Rij relatieve_rij(Kleur kleur, Rij r)
+inline Rank relatieve_rij(Color kleur, Rank r)
 {
-	return Rij(r ^ (kleur * 7));
+	return Rank(r ^ (kleur * 7));
 }
 
-inline Rij relatieve_rij(Kleur kleur, Veld veld)
+inline Rank relatieve_rij(Color kleur, Square veld)
 {
 	return relatieve_rij(kleur, rij(veld));
 }
 
-inline bool verschillende_kleur(Veld v1, Veld v2)
+inline bool verschillende_kleur(Square v1, Square v2)
 {
 	int v = int(v1) ^ int(v2);
 	return ((v >> 3) ^ v) & 1;
 }
 
-inline Veld pion_vooruit(Kleur kleur)
+inline Square pion_vooruit(Color kleur)
 {
 	return kleur == WIT ? BOVEN : ONDER;
 }
 
-inline Veld veld_voor(Kleur kleur, Veld veld)
+inline Square veld_voor(Color kleur, Square veld)
 {
 	return kleur == WIT ? veld + BOVEN : veld + ONDER;
 }
 
-inline Veld veld_achter(Kleur kleur, Veld veld)
+inline Square veld_achter(Color kleur, Square veld)
 {
 	return kleur == WIT ? veld - BOVEN : veld - ONDER;
 }
 
-inline Veld van_veld(Zet zet)
+inline Square van_veld(Move zet)
 {
-	return Veld((zet >> 6) & 0x3F);
+	return Square((zet >> 6) & 0x3F);
 }
 
-inline Veld naar_veld(Zet zet)
+inline Square naar_veld(Move zet)
 {
-	return Veld(zet & 0x3F);
+	return Square(zet & 0x3F);
 }
 
-inline ZetType zet_type(Zet zet)
+inline MoveType zet_type(Move zet)
 {
-	return ZetType(zet & (15 << 12));
+	return MoveType(zet & (15 << 12));
 }
 
-inline StukType promotie_stuk(Zet zet)
+inline PieceType promotie_stuk(Move zet)
 {
-	return StukType(PAARD + (((zet >> 12) & 15) - (PROMOTIE_P >> 12)));
+	return PieceType(PAARD + (((zet >> 12) & 15) - (PROMOTIE_P >> 12)));
 }
 
-inline StukType stuk_van_zet(Zet zet)
+inline PieceType stuk_van_zet(Move zet)
 {
-	assert(zet < Zet(ROKADE));
-	return StukType((zet >> 12) & 7);
+	assert(zet < Move(ROKADE));
+	return PieceType((zet >> 12) & 7);
 }
 
-inline Zet maak_zet(StukType stuk, Veld van, Veld naar)
+inline Move maak_zet(PieceType stuk, Square van, Square naar)
 {
 	//return Zet(naar + (van << 6) + (stuk << 12));
-	return Zet(naar + (van << 6));
+	return Move(naar + (van << 6));
 }
 
-inline Zet maak_zet(ZetType type, Veld van, Veld naar)
+inline Move maak_zet(MoveType type, Square van, Square naar)
 {
-	return Zet(naar + (van << 6) + type);
+	return Move(naar + (van << 6) + type);
 }
 
-inline bool is_ok(Zet zet)
+inline bool is_ok(Move zet)
 {
 	return zet != GEEN_ZET && zet != NULL_ZET;
 }
 
 template <int Capacity>
-struct VasteZettenLijst
+struct FixedMoveList
 {
 	int zetNummer;
-	Zet zetten[Capacity];
+	Move zetten[Capacity];
 
-	VasteZettenLijst() : zetNummer(0) {}
-	void add(Zet zet) { if (zetNummer < Capacity) zetten[zetNummer++] = zet; }
-	Zet& operator[](int index) { return zetten[index]; }
-	const Zet& operator[](int index) const { return zetten[index]; }
+	FixedMoveList() : zetNummer(0) {}
+	void add(Move zet) { if (zetNummer < Capacity) zetten[zetNummer++] = zet; }
+	Move& operator[](int index) { return zetten[index]; }
+	const Move& operator[](int index) const { return zetten[index]; }
 	int size() const { return zetNummer; }
 	void resize(int newSize) { zetNummer = newSize; }
 	void clear() { zetNummer = 0; }
 	bool empty() { return zetNummer == 0; }
 
-	int find(Zet zet)
+	int find(Move zet)
 	{
 		for (int i = 0; i < zetNummer; i++)
 			if (zetten[i] == zet)
@@ -501,7 +501,7 @@ struct VasteZettenLijst
 	}
 };
 
-typedef VasteZettenLijst<MAX_PV> HoofdVariant;
-typedef VasteZettenLijst<MAX_ZETTEN> MaxZettenLijst;
+typedef FixedMoveList<MAX_PV> PrincipalVariation;
+typedef FixedMoveList<MAX_ZETTEN> MaxMoveList;
 
 #endif // #ifndef HOUDINI_H

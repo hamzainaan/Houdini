@@ -8,36 +8,36 @@
 
 #include "houdini.h"
 
-class Stelling;
+class Position;
 
 namespace UCI
 {
-	class UciOptie;
+	class UciOption;
 
 	struct CaseInsensitiveLess
 	{
 		bool operator() (const std::string&, const std::string&) const;
 	};
 
-	typedef std::map<std::string, UciOptie, CaseInsensitiveLess> UciOptiesMap;
+	typedef std::map<std::string, UciOption, CaseInsensitiveLess> UciOptionsMap;
 
-	class UciOptie
+	class UciOption
 	{
-		typedef void(*OnChange)(const UciOptie&);
+		typedef void(*OnChange)(const UciOption&);
 
 	public:
-		UciOptie(OnChange = nullptr);
-		UciOptie(bool v, OnChange = nullptr);
-		UciOptie(const char* v, OnChange = nullptr);
-		UciOptie(int v, int min, int max, OnChange = nullptr);
+		UciOption(OnChange = nullptr);
+		UciOption(bool v, OnChange = nullptr);
+		UciOption(const char* v, OnChange = nullptr);
+		UciOption(int v, int min, int max, OnChange = nullptr);
 
-		UciOptie& operator=(const std::string&);
-		void operator<<(const UciOptie&);
+		UciOption& operator=(const std::string&);
+		void operator<<(const UciOption&);
 		operator int() const;
 		operator std::string() const;
 
 	private:
-		friend std::ostream& operator<<(std::ostream&, const UciOptiesMap&);
+		friend std::ostream& operator<<(std::ostream&, const UciOptionsMap&);
 
 		int min, max;
 		int index;
@@ -45,17 +45,17 @@ namespace UCI
 		OnChange on_change;
 	};
 
-	void initialisatie(UciOptiesMap&);
+	void initialisatie(UciOptionsMap&);
 	void hoofdLus(int argc, char* argv[]);
-	std::string waarde(Waarde v);
-	std::string veld(Veld veld);
-	std::string zet(Zet zet, const Stelling& pos);
-	std::string pv(const Stelling& pos, Waarde alfa, Waarde beta, int actievePV, int actieveZet);
-	Zet zet_van_string(const Stelling& pos, std::string& str);
+	std::string waarde(Value v);
+	std::string veld(Square veld);
+	std::string zet(Move zet, const Position& pos);
+	std::string pv(const Position& pos, Value alfa, Value beta, int actievePV, int actieveZet);
+	Move zet_van_string(const Position& pos, std::string& str);
 	int sterkte_voor_elo(int elo);
 }
 
-extern UCI::UciOptiesMap UciOpties;
+extern UCI::UciOptionsMap UciOpties;
 extern int TUNE_1, TUNE_2, TUNE_3, TUNE_4, TUNE_5, TUNE_6, TUNE_7, TUNE_8, TUNE_9, TUNE_10;
 extern int TUNE_11, TUNE_12, TUNE_13, TUNE_14, TUNE_15, TUNE_16, TUNE_17, TUNE_18, TUNE_19, TUNE_20;
 

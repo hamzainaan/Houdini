@@ -6,9 +6,9 @@
 
 #include "houdini.h"
 
-class Stelling;
+class Position;
 
-enum ZetGeneratie 
+enum MoveGeneration 
 {
 	GEN_SLAG_OF_PROMOTIE,
 	GEN_RUSTIGE_ZETTEN,
@@ -20,39 +20,39 @@ enum ZetGeneratie
 	GEN_ROKADE
 };
 
-struct ZetEx 
+struct MoveEx 
 {
-	Zet zet;
-	SorteerWaarde waarde;
+	Move zet;
+	SortValue waarde;
 
-	operator Zet() const { return zet; }
-	void operator=(Zet z) { zet = z; }
+	operator Move() const { return zet; }
+	void operator=(Move z) { zet = z; }
 };
 
-inline bool operator<(const ZetEx& f, const ZetEx& s) 
+inline bool operator<(const MoveEx& f, const MoveEx& s) 
 {
 	return f.waarde < s.waarde;
 }
 
-template<ZetGeneratie>
-ZetEx* genereerZetten(const Stelling& pos, ZetEx* zetten);
+template<MoveGeneration>
+MoveEx* genereerZetten(const Position& pos, MoveEx* zetten);
 
-ZetEx* genereerSlagzettenOpVeld(const Stelling& pos, ZetEx* zetten, Veld veld);
-ZetEx* genereerLegaleZetten(const Stelling& pos, ZetEx* zetten);
+MoveEx* genereerSlagzettenOpVeld(const Position& pos, MoveEx* zetten, Square veld);
+MoveEx* genereerLegaleZetten(const Position& pos, MoveEx* zetten);
 
-struct LegaleZettenLijst 
+struct LegalMoveList 
 {
-	explicit LegaleZettenLijst(const Stelling& pos) { einde = genereerLegaleZetten(pos, zetten); }
-	const ZetEx* begin() const { return zetten; }
-	const ZetEx* end() const { return einde; }
+	explicit LegalMoveList(const Position& pos) { einde = genereerLegaleZetten(pos, zetten); }
+	const MoveEx* begin() const { return zetten; }
+	const MoveEx* end() const { return einde; }
 
 private:
-	ZetEx* einde;
-	ZetEx zetten[MAX_ZETTEN];
+	MoveEx* einde;
+	MoveEx zetten[MAX_ZETTEN];
 };
 
-bool LegaleZettenLijstBevatZet(const Stelling& pos, Zet zet);
-bool MinstensEenLegaleZet(const Stelling& pos);
-bool LegaleZettenLijstBevatRokade(const Stelling& pos, Zet zet);
+bool LegaleZettenLijstBevatZet(const Position& pos, Move zet);
+bool MinstensEenLegaleZet(const Position& pos);
+bool LegaleZettenLijstBevatRokade(const Position& pos, Move zet);
 
 #endif // #ifndef MOVE_GENERATION_H

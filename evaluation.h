@@ -6,16 +6,16 @@
 
 #include "houdini.h"
 
-class Stelling;
+class Position;
 
-namespace Evaluatie 
+namespace Evaluation 
 {
 	void initialisatie();
 	void init_tune();
 
-	Waarde evaluatie(const Stelling& pos, Waarde alfa, Waarde beta);
-	Waarde evaluatie_na_nullzet(Waarde eval);
-	bool minstens_twee_mobiele_stukken(const Stelling& pos);
+	Value evaluatie(const Position& pos, Value alfa, Value beta);
+	Value evaluatie_na_nullzet(Value eval);
+	bool minstens_twee_mobiele_stukken(const Position& pos);
 	void export_tabel();
 	void import_tabel();
 	extern Score VeiligheidTabel[1024];

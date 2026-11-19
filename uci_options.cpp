@@ -18,7 +18,7 @@
 
 using std::string;
 
-UCI::UciOptiesMap UciOpties;
+UCI::UciOptionsMap UciOpties;
 
 int TUNE_1, TUNE_2, TUNE_3, TUNE_4, TUNE_5, TUNE_6, TUNE_7, TUNE_8, TUNE_9, TUNE_10;
 int TUNE_11, TUNE_12, TUNE_13, TUNE_14, TUNE_15, TUNE_16, TUNE_17, TUNE_18, TUNE_19, TUNE_20;
@@ -27,53 +27,53 @@ extern void Syzygy_init(const std::string& path);
 
 namespace UCI
 {
-	void on_clear_hash(const UciOptie&)
+	void on_clear_hash(const UciOption&)
 	{
-		Zoeken::wis_alles();
+		Search::wis_alles();
 		if (UciOpties["Never Clear Hash"])
 			sync_cout << "info string \"Never Clear Hash\" option is enabled" << sync_endl;
 		else
 			sync_cout << "info string Hash cleared" << sync_endl;
 	}
 
-	void on_hash_size(const UciOptie& o)
+	void on_hash_size(const UciOption& o)
 	{
 		HoofdHash.verander_grootte(o);
 	}
 
-	void on_logger(const UciOptie& o)
+	void on_logger(const UciOption& o)
 	{
 		start_logger(o);
 	}
 
-	void on_threads(const UciOptie&)
+	void on_threads(const UciOption&)
 	{
 		Threads.verander_thread_aantal();
 	}
 
-	void on_syzygy_path(const UciOptie& o)
+	void on_syzygy_path(const UciOption& o)
 	{
 		Syzygy_init(o);
 	}
 
 #ifdef USE_NALIMOV
-	void on_nalimov_path(const UciOptie& o)
+	void on_nalimov_path(const UciOption& o)
 	{
 		Nalimov_init(o);
 	}
 
-	void on_nalimov_cache(const UciOptie& o)
+	void on_nalimov_cache(const UciOption& o)
 	{
 		Nalimov_setCache(o, true);
 	}
 #endif
 
-	void on_50move_distance(const UciOptie& o)
+	void on_50move_distance(const UciOption& o)
 	{
-		Stelling::init_hash_move50(o);
+		Position::init_hash_move50(o);
 	}
 
-	void on_save_hash_to_file(const UciOptie& o)
+	void on_save_hash_to_file(const UciOption& o)
 	{
 		if (HoofdHash.save_to_file(UciOpties["Hash File"]))
 			sync_cout << "info string Hash Saved to File" << sync_endl;
@@ -81,7 +81,7 @@ namespace UCI
 			sync_cout << "info string Failure to Save Hash to File" << sync_endl;
 	}
 
-	void on_load_hash_from_file(const UciOptie& o)
+	void on_load_hash_from_file(const UciOption& o)
 	{
 		if (!UciOpties["Never Clear Hash"])
 		{
@@ -116,7 +116,7 @@ namespace UCI
 			return 3000;
 	}
 
-	void on_uci_elo(const UciOptie& o)
+	void on_uci_elo(const UciOption& o)
 	{
 		int elo = int(o);
 		elo = std::min(std::max(elo, 1400), 3200);
@@ -124,7 +124,7 @@ namespace UCI
 			sync_cout << "info string UCI_Elo " << elo << " is translated to Strength " << sterkte_voor_elo(elo - 200) << sync_endl;
 	}
 
-	void on_strength(const UciOptie& o)
+	void on_strength(const UciOption& o)
 	{
 		int strength = int(o);
 		strength = std::min(std::max(strength, 0), 100);
@@ -133,37 +133,37 @@ namespace UCI
 	}
 
 #ifdef USE_NUMA
-	void on_numa_offset(const UciOptie& o)
+	void on_numa_offset(const UciOption& o)
 	{
 		Threads.verander_numa_offset(o);
 	}
 
-	void on_numa_enabled(const UciOptie& o)
+	void on_numa_enabled(const UciOption& o)
 	{
 		Threads.verander_numa(o);
 	}
 #endif
 
-	void on_tune1(const UciOptie& o) { TUNE_1 = o; Evaluatie::init_tune(); }
-	void on_tune2(const UciOptie& o) { TUNE_2 = o; Evaluatie::init_tune(); }
-	void on_tune3(const UciOptie& o) { TUNE_3 = o; Evaluatie::init_tune(); }
-	void on_tune4(const UciOptie& o) { TUNE_4 = o; Evaluatie::init_tune(); }
-	void on_tune5(const UciOptie& o) { TUNE_5 = o; Evaluatie::init_tune(); }
-	void on_tune6(const UciOptie& o) { TUNE_6 = o; Evaluatie::init_tune(); }
-	void on_tune7(const UciOptie& o) { TUNE_7 = o; Evaluatie::init_tune(); }
-	void on_tune8(const UciOptie& o) { TUNE_8 = o; Evaluatie::init_tune(); }
-	void on_tune9(const UciOptie& o) { TUNE_9 = o; Evaluatie::init_tune(); }
-	void on_tune10(const UciOptie& o) { TUNE_10 = o; Evaluatie::init_tune(); }
-	void on_tune11(const UciOptie& o) { TUNE_11 = o; Evaluatie::init_tune(); }
-	void on_tune12(const UciOptie& o) { TUNE_12 = o; Evaluatie::init_tune(); }
-	void on_tune13(const UciOptie& o) { TUNE_13 = o; Evaluatie::init_tune(); }
-	void on_tune14(const UciOptie& o) { TUNE_14 = o; Evaluatie::init_tune(); }
-	void on_tune15(const UciOptie& o) { TUNE_15 = o; Evaluatie::init_tune(); }
-	void on_tune16(const UciOptie& o) { TUNE_16 = o; Evaluatie::init_tune(); }
-	void on_tune17(const UciOptie& o) { TUNE_17 = o; Evaluatie::init_tune(); }
-	void on_tune18(const UciOptie& o) { TUNE_18 = o; Evaluatie::init_tune(); }
-	void on_tune19(const UciOptie& o) { TUNE_19 = o; Evaluatie::init_tune(); }
-	void on_tune20(const UciOptie& o) { TUNE_20 = o; Evaluatie::init_tune(); }
+	void on_tune1(const UciOption& o) { TUNE_1 = o; Evaluation::init_tune(); }
+	void on_tune2(const UciOption& o) { TUNE_2 = o; Evaluation::init_tune(); }
+	void on_tune3(const UciOption& o) { TUNE_3 = o; Evaluation::init_tune(); }
+	void on_tune4(const UciOption& o) { TUNE_4 = o; Evaluation::init_tune(); }
+	void on_tune5(const UciOption& o) { TUNE_5 = o; Evaluation::init_tune(); }
+	void on_tune6(const UciOption& o) { TUNE_6 = o; Evaluation::init_tune(); }
+	void on_tune7(const UciOption& o) { TUNE_7 = o; Evaluation::init_tune(); }
+	void on_tune8(const UciOption& o) { TUNE_8 = o; Evaluation::init_tune(); }
+	void on_tune9(const UciOption& o) { TUNE_9 = o; Evaluation::init_tune(); }
+	void on_tune10(const UciOption& o) { TUNE_10 = o; Evaluation::init_tune(); }
+	void on_tune11(const UciOption& o) { TUNE_11 = o; Evaluation::init_tune(); }
+	void on_tune12(const UciOption& o) { TUNE_12 = o; Evaluation::init_tune(); }
+	void on_tune13(const UciOption& o) { TUNE_13 = o; Evaluation::init_tune(); }
+	void on_tune14(const UciOption& o) { TUNE_14 = o; Evaluation::init_tune(); }
+	void on_tune15(const UciOption& o) { TUNE_15 = o; Evaluation::init_tune(); }
+	void on_tune16(const UciOption& o) { TUNE_16 = o; Evaluation::init_tune(); }
+	void on_tune17(const UciOption& o) { TUNE_17 = o; Evaluation::init_tune(); }
+	void on_tune18(const UciOption& o) { TUNE_18 = o; Evaluation::init_tune(); }
+	void on_tune19(const UciOption& o) { TUNE_19 = o; Evaluation::init_tune(); }
+	void on_tune20(const UciOption& o) { TUNE_20 = o; Evaluation::init_tune(); }
 
 
 	bool CaseInsensitiveLess::operator() (const string& s1, const string& s2) const
@@ -182,51 +182,51 @@ namespace UCI
 	const int MAX_HASH_MB = 1024;
 #endif
 
-	void initialisatie(UciOptiesMap& o)
+	void initialisatie(UciOptionsMap& o)
 	{
-		o["Threads"] << UciOptie(1, 1, MAX_THREADS, on_threads);
-		o["Hash"] << UciOptie(128, 1, MAX_HASH_MB, on_hash_size);
-		o["Clear Hash"] << UciOptie(on_clear_hash);
+		o["Threads"] << UciOption(1, 1, MAX_THREADS, on_threads);
+		o["Hash"] << UciOption(128, 1, MAX_HASH_MB, on_hash_size);
+		o["Clear Hash"] << UciOption(on_clear_hash);
 		//o["Tactical Mode"] << UciOptie(false);
-		o["Tactical Mode"] << UciOptie(0, 0, MAX_THREADS);
-		o["Ponder"] << UciOptie(false);
-		o["Contempt"] << UciOptie(2, -10, 10);
-		o["Analysis Contempt"] << UciOptie(false);
-		o["MultiPV"] << UciOptie(1, 1, 220);
-		o["MultiPV_cp"] << UciOptie(0, 0, 999);
-		o["SyzygyPath"] << UciOptie("<empty>", on_syzygy_path);
-		o["EGTB Probe Depth"] << UciOptie(1, 0, 99);
-		o["EGTB Fifty Move Rule"] << UciOptie(true);
+		o["Tactical Mode"] << UciOption(0, 0, MAX_THREADS);
+		o["Ponder"] << UciOption(false);
+		o["Contempt"] << UciOption(2, -10, 10);
+		o["Analysis Contempt"] << UciOption(false);
+		o["MultiPV"] << UciOption(1, 1, 220);
+		o["MultiPV_cp"] << UciOption(0, 0, 999);
+		o["SyzygyPath"] << UciOption("<empty>", on_syzygy_path);
+		o["EGTB Probe Depth"] << UciOption(1, 0, 99);
+		o["EGTB Fifty Move Rule"] << UciOption(true);
 #ifdef USE_NALIMOV
-		o["NalimovPath"] << UciOptie("<empty>", on_nalimov_path);
-		o["NalimovCache"] << UciOptie(32, 4, 1024, on_nalimov_cache);
+		o["NalimovPath"] << UciOption("<empty>", on_nalimov_path);
+		o["NalimovCache"] << UciOption(32, 4, 1024, on_nalimov_cache);
 #endif
 #ifdef USE_NUMA
-		o["NUMA Offset"] << UciOptie(0, 0, MAX_NUMA_NODES - 1, on_numa_offset);
-		o["NUMA Enabled"] << UciOptie(true, on_numa_enabled);
+		o["NUMA Offset"] << UciOption(0, 0, MAX_NUMA_NODES - 1, on_numa_offset);
+		o["NUMA Enabled"] << UciOption(true, on_numa_enabled);
 #endif
-		o["Strength"] << UciOptie(100, 0, 100, on_strength);
-		o["UCI_LimitStrength"] << UciOptie(false);
-		o["UCI_Elo"] << UciOptie(3200, 1000, 3200, on_uci_elo);
+		o["Strength"] << UciOption(100, 0, 100, on_strength);
+		o["UCI_LimitStrength"] << UciOption(false);
+		o["UCI_Elo"] << UciOption(3200, 1000, 3200, on_uci_elo);
 
-		o["UCI_Chess960"] << UciOptie(false);
-		o["Never Clear Hash"] << UciOptie(false);
-		o["Hash File"] << UciOptie("<empty>");
-		o["Save Hash to File"] << UciOptie(on_save_hash_to_file);
-		o["Load Hash from File"] << UciOptie(on_load_hash_from_file);
+		o["UCI_Chess960"] << UciOption(false);
+		o["Never Clear Hash"] << UciOption(false);
+		o["Hash File"] << UciOption("<empty>");
+		o["Save Hash to File"] << UciOption(on_save_hash_to_file);
+		o["Load Hash from File"] << UciOption(on_load_hash_from_file);
 #ifdef LEARNING
-		o["Learning File"] << UciOptie("<empty>");
-		o["Learning Threshold"] << UciOptie(10, -100, 200);
-		o["Learning"] << UciOptie(false);
+		o["Learning File"] << UciOption("<empty>");
+		o["Learning Threshold"] << UciOption(10, -100, 200);
+		o["Learning"] << UciOption(false);
 #endif
-		o["FiftyMoveDistance"] << UciOptie(50, 5, 50, on_50move_distance);
-		o["Move Overhead"] << UciOptie(0, 0, 5000);
-		o["UCI Log File"] << UciOptie("", on_logger);
-		o["Hide Redundant Output"] << UciOptie(false);
+		o["FiftyMoveDistance"] << UciOption(50, 5, 50, on_50move_distance);
+		o["Move Overhead"] << UciOption(0, 0, 5000);
+		o["UCI Log File"] << UciOption("", on_logger);
+		o["Hide Redundant Output"] << UciOption(false);
 
-		o["Own Book"] << UciOptie(false);
-		o["Book File"] << UciOptie("<empty>");
-		o["Best Book Line"] << UciOptie(false);
+		o["Own Book"] << UciOption(false);
+		o["Book File"] << UciOption("<empty>");
+		o["Best Book Line"] << UciOption(false);
 
 		//o["Tune1"] << UciOptie(256, -99999, 99999, on_tune1);
 		//o["Tune2"] << UciOptie(256, -99999, 99999, on_tune2);
@@ -253,13 +253,13 @@ namespace UCI
 	}
 
 
-	std::ostream& operator<<(std::ostream& os, const UciOptiesMap& om)
+	std::ostream& operator<<(std::ostream& os, const UciOptionsMap& om)
 	{
 		for (int n = 0; n < (int)om.size(); ++n)
 			for (const auto& it : om)
 				if (it.second.index == n)
 				{
-					const UciOptie& o = it.second;
+					const UciOption& o = it.second;
 					os << "option name " << it.first << " type " << o.type;
 
 					if (o.type == "spin")
@@ -276,44 +276,44 @@ namespace UCI
 	}
 
 
-	UciOptie::UciOptie(const char* v, OnChange f) : min(0), max(0), type("string"), on_change(f)
+	UciOption::UciOption(const char* v, OnChange f) : min(0), max(0), type("string"), on_change(f)
 	{
 		defaultWaarde = waarde = v;
 	}
 
-	UciOptie::UciOptie(bool v, OnChange f) : min(0), max(0), type("check"), on_change(f)
+	UciOption::UciOption(bool v, OnChange f) : min(0), max(0), type("check"), on_change(f)
 	{
 		defaultWaarde = waarde = (v ? "true" : "false");
 	}
 
-	UciOptie::UciOptie(OnChange f) : min(0), max(0), type("button"), on_change(f)
+	UciOption::UciOption(OnChange f) : min(0), max(0), type("button"), on_change(f)
 	{}
 
-	UciOptie::UciOptie(int v, int minv, int maxv, OnChange f) : min(minv), max(maxv), type("spin"), on_change(f)
+	UciOption::UciOption(int v, int minv, int maxv, OnChange f) : min(minv), max(maxv), type("spin"), on_change(f)
 	{
 		defaultWaarde = waarde = std::to_string(v);
 	}
 
-	UciOptie::operator int() const
+	UciOption::operator int() const
 	{
 		assert(type == "check" || type == "spin");
 		return (type == "spin" ? stoi(waarde) : waarde == "true" || waarde == "yes" || waarde == "1");
 	}
 
-	UciOptie::operator std::string() const
+	UciOption::operator std::string() const
 	{
 		assert(type == "string");
 		return waarde;
 	}
 
-	void UciOptie::operator<<(const UciOptie& o)
+	void UciOption::operator<<(const UciOption& o)
 	{
 		static int volgorde = 0;
 		*this = o;
 		index = volgorde++;
 	}
 
-	UciOptie& UciOptie::operator=(const string& v)
+	UciOption& UciOption::operator=(const string& v)
 	{
 		assert(!type.empty());
 

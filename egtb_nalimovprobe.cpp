@@ -38,7 +38,7 @@ int NalimovCacheSize = 32;
 
 static bool NalimovInUse = false;
 void *NalimovCache;
-Waarde Nalimov_probe(Stelling& pos, Waarde alfa, Waarde beta);
+Value Nalimov_probe(Position& pos, Value alfa, Value beta);
 
 void Nalimov_init(const std::string& path)
 {
@@ -129,7 +129,7 @@ void write_egtbtracefile(const char *msg)
 #endif
 
 
-void register_piece(int rgiCounters[], int offset, square rgSquares[], int stuk, Bord bb)
+void register_piece(int rgiCounters[], int offset, square rgSquares[], int stuk, Bitboard bb)
 {
 	if (bb)
 	{
@@ -152,7 +152,7 @@ void register_piece(int rgiCounters[], int offset, square rgSquares[], int stuk,
 		rgiCounters[offset] = 0;
 }
 
-Waarde Nalimov_probe(Stelling& pos, Waarde alfa, Waarde beta)
+Value Nalimov_probe(Position& pos, Value alfa, Value beta)
 {
 	int rgiCounters[10], iTb;
 	bool Inverted;
@@ -211,11 +211,11 @@ Waarde Nalimov_probe(Stelling& pos, Waarde alfa, Waarde beta)
 
 	pos.verhoog_tb_hits();
 
-	Waarde result;
+	Value result;
 	if (probe_result > 0)
-		result = Waarde(MAT_WAARDE - 1 + 2 * (probe_result - L_bev_mi1) - pos.info()->ply);
+		result = Value(MAT_WAARDE - 1 + 2 * (probe_result - L_bev_mi1) - pos.info()->ply);
 	else if (probe_result < 0)
-		result = Waarde(-MAT_WAARDE + 2 * (L_bev_mi1 + probe_result) + pos.info()->ply);
+		result = Value(-MAT_WAARDE + 2 * (L_bev_mi1 + probe_result) + pos.info()->ply);
 	else
 		result = REMISE_WAARDE;
 

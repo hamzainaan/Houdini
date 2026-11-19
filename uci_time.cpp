@@ -5,7 +5,7 @@
 #include "uci_time.h"
 #include "uci.h"
 
-Tijdsbeheer Tijdscontrole;
+TimeManagement Tijdscontrole;
 
 namespace
 {
@@ -23,7 +23,7 @@ namespace
 }
 
 
-void Tijdsbeheer::initialisatie(TijdLimiet& tijdLimiet, Kleur ik, int ply)
+void TimeManagement::initialisatie(TimeLimit& tijdLimiet, Color ik, int ply)
 {
 	const int ZettenHorizon = 50; 
 	const double MaxRatio = 7.09;
@@ -93,12 +93,12 @@ void Tijdsbeheer::initialisatie(TijdLimiet& tijdLimiet, Kleur ik, int ply)
 	//	optimaleTijd = std::min(optimaleTijd, maximumTijd);
 }
 
-int64_t Tijdsbeheer::verstreken() const
+int64_t TimeManagement::verstreken() const
 {
 	return int64_t(nu() - startTijd);
 }
 
-void Tijdsbeheer::aanpassing_na_ponderhit()
+void TimeManagement::aanpassing_na_ponderhit()
 {
 	int64_t nieuweMaxTijd = maximumTijd + verstreken();
 	optimaleTijd = optimaleTijd * nieuweMaxTijd / maximumTijd;

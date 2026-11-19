@@ -8,51 +8,51 @@
 #include "position.h"
 #include "houdini.h"
 
-namespace Pionnen 
+namespace Pawns 
 {
 	struct Tuple
 	{
 		Score pionnen_score() const { return score; }
-		Bord pion_aanval(Kleur kleur) const { return pionAanval[kleur]; }
-		Bord vrijpionnen(Kleur kleur) const { return vrijPionnen[kleur]; }
-		Bord veilig_voor_pion(Kleur kleur) const { return veiligVoorPion[kleur]; }
-		int pion_bereik(Kleur kleur) const { return pionBereik[kleur]; }
+		Bitboard pion_aanval(Color kleur) const { return pionAanval[kleur]; }
+		Bitboard vrijpionnen(Color kleur) const { return vrijPionnen[kleur]; }
+		Bitboard veilig_voor_pion(Color kleur) const { return veiligVoorPion[kleur]; }
+		int pion_bereik(Color kleur) const { return pionBereik[kleur]; }
 
-		int half_open_lijn(Kleur kleur, Lijn f) const
+		int half_open_lijn(Color kleur, File f) const
 		{
 			return halfOpenLijnen[kleur] & (1 << f);
 		}
 
-		int semiopen_side(Kleur kleur, Lijn f, bool leftSide) const
+		int semiopen_side(Color kleur, File f, bool leftSide) const
 		{
 			return halfOpenLijnen[kleur] & (leftSide ? (1 << f) - 1 : ~((1 << (f + 1)) - 1));
 		}
 
-		int pionnen_op_kleur(Kleur kleur, Veld veld) const
+		int pionnen_op_kleur(Color kleur, Square veld) const
 		{
 			return pionnenOpKleur[kleur][!!(DonkereVelden & veld)];
 		}
 
-		int pionnen_niet_op_kleur(Kleur kleur, Veld veld) const
+		int pionnen_niet_op_kleur(Color kleur, Square veld) const
 		{
 			return pionnenOpKleur[kleur][!(DonkereVelden & veld)];
 		}
 
-		template<Kleur IK>
-		Score koning_veiligheid(const Stelling& pos)
+		template<Color IK>
+		Score koning_veiligheid(const Position& pos)
 		{
 			if (koningVeld[IK] != pos.koning(IK) || rokadeMogelijkheden[IK] != pos.rokade_mogelijkheden(IK))
 				koningVeiligheid[IK] = bereken_koning_veiligheid<IK>(pos);
 			return koningVeiligheid[IK];
 		}
 
-		template<Kleur IK>
-		Score bereken_koning_veiligheid(const Stelling& pos);
+		template<Color IK>
+		Score bereken_koning_veiligheid(const Position& pos);
 
-		Sleutel64 sleutel64;
-		Bord vrijPionnen[KLEUR_N];
-		Bord pionAanval[KLEUR_N];
-		Bord veiligVoorPion[KLEUR_N];
+		Key64 sleutel64;
+		Bitboard vrijPionnen[KLEUR_N];
+		Bitboard pionAanval[KLEUR_N];
+		Bitboard veiligVoorPion[KLEUR_N];
 		Score score;
 		Score koningVeiligheid[KLEUR_N];
 		uint8_t koningVeld[KLEUR_N];
@@ -71,10 +71,10 @@ namespace Pionnen
 	static_assert(offsetof(struct Tuple, halfOpenLijnen) == 72, "offset wrong");
 	static_assert(sizeof(Tuple) == 128, "Pawn Entry size incorrect");
 
-	typedef HashTabel<Tuple, PION_HASH_GROOTTE> Tabel;
+	typedef HashTable<Tuple, PION_HASH_GROOTTE> Table;
 
 	void initialisatie();
-	Tuple* probe(const Stelling& pos);
+	Tuple* probe(const Position& pos);
 } // namespace
 
 #endif // #ifndef EVAL_PAWNSTRUCT_H

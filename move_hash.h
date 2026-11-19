@@ -10,7 +10,7 @@
 
 using std::string;
 
-enum TTVlaggen : uint8_t
+enum TTFlags : uint8_t
 {
 	GEEN_LIMIET,
 	DREIGING_WIT   = 1,
@@ -28,14 +28,14 @@ const uint8_t GebruikMask   = 0xfb;
 
 struct TTTuple 
 {
-	Zet zet() const { return (Zet)zet16; }
-	Waarde waarde() const { return (Waarde)waarde16; }
-	Waarde eval() const { return (Waarde)eval16; }
-	Diepte diepte() const { return Diepte(diepte8 * int(PLY) + PLY - 1); }
-	TTVlaggen limiet() const { return (TTVlaggen)(vlaggen8 & EXACTE_WAARDE); }
-	TTVlaggen dreiging() const { return (TTVlaggen)(vlaggen8 & DreigingMask); }
+	Move zet() const { return (Move)zet16; }
+	Value waarde() const { return (Value)waarde16; }
+	Value eval() const { return (Value)eval16; }
+	Depth diepte() const { return Depth(diepte8 * int(PLY) + PLY - 1); }
+	TTFlags limiet() const { return (TTFlags)(vlaggen8 & EXACTE_WAARDE); }
+	TTFlags dreiging() const { return (TTFlags)(vlaggen8 & DreigingMask); }
 
-	void bewaar(Sleutel64 k, Waarde v, uint8_t vlaggen, Diepte d, Zet z, Waarde evaluatie, uint8_t gen)
+	void bewaar(Key64 k, Value v, uint8_t vlaggen, Depth d, Move z, Value evaluatie, uint8_t gen)
 	{
 		int dd = d / PLY;
 		uint16_t k16 = k >> 48;
@@ -55,7 +55,7 @@ struct TTTuple
 	}
 
 private:
-	friend class TranspositieTabel;
+	friend class TranspositionTable;
 
 	// 10 bytes
 	uint16_t sleutel16;
@@ -67,7 +67,7 @@ private:
 };
 
 
-class TranspositieTabel 
+class TranspositionTable 
 {
 	static const int CacheLineSize = 64;
 	static const int ClusterGrootte = 3;
@@ -81,24 +81,24 @@ class TranspositieTabel
 	static_assert(CacheLineSize % sizeof(Cluster) == 0, "Cluster size incorrect");
 
 public:
-	~TranspositieTabel() { free_large_page_mem(tabel); }
+	~TranspositionTable() { free_large_page_mem(tabel); }
 	void nieuwe_generatie() { generatie8 = (generatie8 + 8) & GeneratieMask; }
 	uint8_t generatie() const { return generatie8; }
 	int tuple_vervang_waarde(TTTuple* t) const;
-	TTTuple* zoek_bestaand(const Sleutel64 sleutel) const;
-	TTTuple* zoek_vervang(const Sleutel64 sleutel) const;
+	TTTuple* zoek_bestaand(const Key64 sleutel) const;
+	TTTuple* zoek_vervang(const Key64 sleutel) const;
 	int bereken_hashfull() const;
 	void verander_grootte(size_t mbSize);
 	void wis();
-	bool is_entry_in_use(const Sleutel64 sleutel, Diepte diepte) const;
-	void mark_entry_in_use(const Sleutel64 sleutel, Diepte diepte, uint8_t waarde);
+	bool is_entry_in_use(const Key64 sleutel, Depth diepte) const;
+	void mark_entry_in_use(const Key64 sleutel, Depth diepte, uint8_t waarde);
 
-	inline TTTuple* tuple(const Sleutel64 key) const
+	inline TTTuple* tuple(const Key64 key) const
 	{
 		//return &tabel[(size_t)key & (clusterAantal - 1)].entry[0];
 		return (TTTuple*)((char *)tabel + (key & clusterMask));
 	}
-	inline void prefetch_tuple(const Sleutel64 sleutel) const
+	inline void prefetch_tuple(const Key64 sleutel) const
 	{
 		prefetch(tuple(sleutel));
 	}
@@ -112,6 +112,6 @@ private:
 	uint8_t generatie8;
 };
 
-extern TranspositieTabel HoofdHash;
+extern TranspositionTable HoofdHash;
 
 #endif // #ifndef MOVE_HASH_H

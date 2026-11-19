@@ -9,31 +9,31 @@
 #include "position.h"
 #include "houdini.h"
 
-namespace Materiaal 
+namespace Material 
 {
 	struct Tuple
 	{
-		PartijFase partij_fase() const { return PartijFase(partijFase); }
+		GamePhase partij_fase() const { return GamePhase(partijFase); }
 
 		bool heeft_waarde_functie() const { return waardeFunctieIndex >= 0; }
-		Waarde waarde_uit_functie(const Stelling& pos) const;
+		Value waarde_uit_functie(const Position& pos) const;
 
-		SchaalFactor schaalfactor_uit_functie(const Stelling& pos, Kleur kleur) const;
+		ScaleFactor schaalfactor_uit_functie(const Position& pos, Color kleur) const;
 
-		Sleutel64 sleutel64;
+		Key64 sleutel64;
 		int waardeFunctieIndex;
 		int schaalFunctieIndex[KLEUR_N];
-		EvalWaarde waarde;
-		SchaalFactor conversie;
+		EvalValue waarde;
+		ScaleFactor conversie;
 		uint8_t factor[KLEUR_N], partijFase;
 		bool conversie_is_geschat;
 		//char padding[8]; // Align to 32 bytes
 	};
 	static_assert(sizeof(Tuple) == 32, "Material Entry size incorrect");
 
-	typedef HashTabel<Tuple, MATERIAAL_HASH_GROOTTE> Tabel;
+	typedef HashTable<Tuple, MATERIAAL_HASH_GROOTTE> Table;
 
-	Tuple* probe(const Stelling& pos);
+	Tuple* probe(const Position& pos);
 }
 
 #endif // #ifndef EVAL_MATERIAL_H

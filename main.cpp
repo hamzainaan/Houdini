@@ -24,14 +24,14 @@ int main(int argc, char* argv[])
 	UCI::initialisatie(UciOpties);
 	PST::initialisatie();
 	Bitboards::initialisatie();
-	Stelling::initialisatie();
-	Zoeken::initialisatie();
-	Evaluatie::initialisatie();
-	Pionnen::initialisatie();
+	Position::initialisatie();
+	Search::initialisatie();
+	Evaluation::initialisatie();
+	Pawns::initialisatie();
 
 #ifdef EXPORT_TABELLEN
-	Zoeken::export_tabel();
-	Evaluatie::export_tabel();
+	Search::export_tabel();
+	Evaluation::export_tabel();
 	PST::export_tabel();
 #endif
 #ifdef USE_LICENSE
@@ -40,8 +40,8 @@ int main(int argc, char* argv[])
 		std::cout << "info string No valid license found - the engine strength will be reduced" << std::endl;
 #endif
 #ifdef IMPORT_TABELLEN
-	Zoeken::import_tabel();
-	Evaluatie::import_tabel();
+	Search::import_tabel();
+	Evaluation::import_tabel();
 	PST::import_tabel();
 #endif
 

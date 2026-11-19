@@ -215,12 +215,12 @@ uint64_t ThreadPool::tb_hits()
 }
 
 
-void ThreadPool::begin_zoek_opdracht(Stelling& pos, const TijdLimiet& tijdLimiet)
+void ThreadPool::begin_zoek_opdracht(Position& pos, const TimeLimit& tijdLimiet)
 {
 	main()->wacht_op_einde_zoeken();
 
-	Zoeken::Signalen.stopBijPonderhit = Zoeken::Signalen.stopAnalyse = false;
-	Zoeken::Klok = tijdLimiet;
+	Search::Signalen.stopBijPonderhit = Search::Signalen.stopAnalyse = false;
+	Search::Klok = tijdLimiet;
 
 	rootStelling = &pos;
 

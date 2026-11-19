@@ -16,39 +16,39 @@
 extern EngineTest *Chessbase_License;
 #endif
 
-template<int MaxPlus, int MaxMin> struct StukVeldStatistiek;
-typedef StukVeldStatistiek<3*8192, 3*8192> CounterZetWaarden;
+template<int MaxPlus, int MaxMin> struct PieceSquareStats;
+typedef PieceSquareStats<3*8192, 3*8192> CounterMoveValues;
 
-struct RootZet
+struct RootMove
 {
-	RootZet() {}
-	RootZet(Zet zet) { pv.zetNummer = 1; pv.zetten[0] = zet; }
+	RootMove() {}
+	RootMove(Move zet) { pv.zetNummer = 1; pv.zetten[0] = zet; }
 
-	bool operator<(const RootZet& rootZet) const { return rootZet.score < score; }
-	bool operator==(const Zet& zet) const { return pv[0] == zet; }
-	bool vind_ponder_zet_in_tt(Stelling& pos);
-	void vervolledig_pv_met_tt(Stelling& pos);
+	bool operator<(const RootMove& rootZet) const { return rootZet.score < score; }
+	bool operator==(const Move& zet) const { return pv[0] == zet; }
+	bool vind_ponder_zet_in_tt(Position& pos);
+	void vervolledig_pv_met_tt(Position& pos);
 
-	Diepte diepte = DIEPTE_0;
-	Waarde score = -HOOGSTE_WAARDE;
-	Waarde vorigeScore = -HOOGSTE_WAARDE;
-	Waarde startWaarde;
-	HoofdVariant pv;
+	Depth diepte = DIEPTE_0;
+	Value score = -HOOGSTE_WAARDE;
+	Value vorigeScore = -HOOGSTE_WAARDE;
+	Value startWaarde;
+	PrincipalVariation pv;
 };
 
-struct RootZetten
+struct RootMoves
 {
-	RootZetten() : zetAantal(0) {}
+	RootMoves() : zetAantal(0) {}
 
 	int zetAantal, dummy;
-	RootZet zetten[MAX_ZETTEN];
+	RootMove zetten[MAX_ZETTEN];
 
-	void add(RootZet rootZet) { zetten[zetAantal++] = rootZet; }
-	RootZet& operator[](int index) { return zetten[index]; }
-	const RootZet& operator[](int index) const { return zetten[index]; }
+	void add(RootMove rootZet) { zetten[zetAantal++] = rootZet; }
+	RootMove& operator[](int index) { return zetten[index]; }
+	const RootMove& operator[](int index) const { return zetten[index]; }
 	void clear() { zetAantal = 0; }
 
-	int find(Zet zet)
+	int find(Move zet)
 	{
 		for (int i = 0; i < zetAantal; i++)
 			if (zetten[i].pv[0] == zet)
@@ -57,16 +57,16 @@ struct RootZetten
 	}
 };
 
-struct Seinen
+struct SignalsType
 {
 	std::atomic_bool stopAnalyse, stopBijPonderhit;
 };
 
 
-namespace Zoeken
+namespace Search
 {
-	extern Seinen Signalen;
-	extern TijdLimiet Klok;
+	extern SignalsType Signalen;
+	extern TimeLimit Klok;
 	extern bool Running;
 
 	void initialisatie();
@@ -78,7 +78,7 @@ namespace Zoeken
 }
 
 
-typedef Waarde(*EGTB_probe_fx)(Stelling& pos, Waarde alfa, Waarde beta);
+typedef Value(*EGTB_probe_fx)(Position& pos, Value alfa, Value beta);
 
 namespace EGTB
 {

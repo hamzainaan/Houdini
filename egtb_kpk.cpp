@@ -789,13 +789,13 @@ namespace
 	// bit    12: side to move (WHITE or BLACK)
 	// bit 13-14: white pawn file (from LIJN_A to LIJN_D)
 	// bit 15-17: white pawn RIJ_7 - rank (from RIJ_7 - RIJ_7 to RIJ_7 - RIJ_2)
-	unsigned index(Kleur ik, Veld zK, Veld wK, Veld pion) {
+	unsigned index(Color ik, Square zK, Square wK, Square pion) {
 		return wK | (zK << 6) | (ik << 12) | (lijn(pion) << 13) | ((RIJ_7 - rij(pion)) << 15);
 	}
 } // namespace
 
 
-bool Bitbases::probe(Veld wK, Veld pion, Veld zK, Kleur ik)
+bool Bitbases::probe(Square wK, Square pion, Square zK, Color ik)
 {
   assert(lijn(pion) <= LIJN_D);
 

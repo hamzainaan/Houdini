@@ -360,11 +360,11 @@ void lees_licentie_tabellen()
 	if (!LICENTIE_OK)
 		return;
 
-	do_decompress((Bytef *)Lmat_Stream + 8, (Bytef *)Zoeken::LMReducties, ACTIVATIONKEY, HARDWAREKEY, sizeof(Zoeken::LMReducties));
+	do_decompress((Bytef *)Lmat_Stream + 8, (Bytef *)Search::LMReducties, ACTIVATIONKEY, HARDWAREKEY, sizeof(Search::LMReducties));
 	if (!LICENTIE_OK)
 		return;
 
-	do_decompress((Bytef *)Veil_Stream + 8, (Bytef *)Evaluatie::VeiligheidTabel, ACTIVATIONKEY, HARDWAREKEY, sizeof(Evaluatie::VeiligheidTabel));
+	do_decompress((Bytef *)Veil_Stream + 8, (Bytef *)Evaluation::VeiligheidTabel, ACTIVATIONKEY, HARDWAREKEY, sizeof(Evaluation::VeiligheidTabel));
 }
 
 

@@ -10,7 +10,7 @@
 #include "search_smp.h"
 
 
-namespace Evaluatie
+namespace Evaluation
 {
 	Score VeiligheidTabel[1024];
 }
@@ -51,7 +51,7 @@ namespace
 		1476, 1476, 1476, 1476, 1476, 1476, 1476, 1476, 1476, 1476, 1476, 1476, 1476, 1476, 1476, 1476
 	};
 
-	static const Bord bb_L_domineert_P[2][64] = 
+	static const Bitboard bb_L_domineert_P[2][64] = 
 	{
 		{
 			0, 0, 0, 0, 0, 0, 0, 0,
@@ -75,7 +75,7 @@ namespace
 		}
 	};
 
-	static const Bord opgesloten_loper_b3_c2[2][64] =
+	static const Bitboard opgesloten_loper_b3_c2[2][64] =
 	{
 		{
 			bb(SQ_B2), bb(SQ_C2), 0, 0, 0, 0, bb(SQ_F2), bb(SQ_G2),
@@ -98,7 +98,7 @@ namespace
 			bb(SQ_B7), bb(SQ_C7), 0, 0, 0, 0, bb(SQ_F7), bb(SQ_G7)
 		} 
 	};
-	static const Bord opgesloten_loper_b3_c2_extra[64] =
+	static const Bitboard opgesloten_loper_b3_c2_extra[64] =
 	{
 		bb(SQ_B3), bb(SQ_B3), 0, 0, 0, 0, bb(SQ_G3), bb(SQ_G3),
 		bb(SQ_C2), 0, 0, 0, 0, 0, 0, bb(SQ_F2),
@@ -160,10 +160,10 @@ namespace
 	*/
 
 
-	SchaalFactor bereken_schaalfactor(const Stelling& pos, const Materiaal::Tuple* materiaalTuple, EvalWaarde waarde) {
+	ScaleFactor bereken_schaalfactor(const Position& pos, const Material::Tuple* materiaalTuple, EvalValue waarde) {
 
-		Kleur sterkeZijde = waarde > REMISE_EVAL ? WIT : ZWART;
-		SchaalFactor sf = materiaalTuple->schaalfactor_uit_functie(pos, sterkeZijde);
+		Color sterkeZijde = waarde > REMISE_EVAL ? WIT : ZWART;
+		ScaleFactor sf = materiaalTuple->schaalfactor_uit_functie(pos, sterkeZijde);
 
 		if (abs(waarde) <= LOPER_EVAL && (sf == NORMAAL_FACTOR || sf == EEN_PION_FACTOR))
 		{
@@ -171,14 +171,14 @@ namespace
 			{
 				if (pos.niet_pion_materiaal(WIT) == MATL_LOPER
 					&& pos.niet_pion_materiaal(ZWART) == MATL_LOPER)
-					sf = pos.aantal(sterkeZijde, PION) > 1 ? SchaalFactor(50) : SchaalFactor(12);
+					sf = pos.aantal(sterkeZijde, PION) > 1 ? ScaleFactor(50) : ScaleFactor(12);
 
 				else
-					sf = SchaalFactor(3 * sf / 4);
+					sf = ScaleFactor(3 * sf / 4);
 			}
 			else if (pos.aantal(sterkeZijde, PION) <= 2
 				&& !pos.is_vrijpion(~sterkeZijde, pos.koning(~sterkeZijde)))
-				sf = SchaalFactor(58 + 11 * pos.aantal(sterkeZijde, PION));
+				sf = ScaleFactor(58 + 11 * pos.aantal(sterkeZijde, PION));
 		}
 
 		return sf;
@@ -232,7 +232,7 @@ namespace
 
 	//Bord bb_centrum_pivot_W[LIJN_N], bb_centrum_pivot_Z[LIJN_N];
 	
-	Bord bb_koning_flankaanval[KLEUR_N][LIJN_N] = {
+	Bitboard bb_koning_flankaanval[KLEUR_N][LIJN_N] = {
 		{
 			(Rank5BB | Rank4BB | Rank3BB | Rank2BB | Rank1BB) & (FileABB | FileBBB | FileCBB | FileDBB),
 			(Rank5BB | Rank4BB | Rank3BB | Rank2BB | Rank1BB) & (FileABB | FileBBB | FileCBB | FileDBB),
@@ -271,9 +271,9 @@ namespace
 	//static const int T_GEMIDDELD_MOBILITEIT = 7;
 	//static const int D_GEMIDDELD_MOBILITEIT = 11;
 
-	const Bord DrieLijnen = FileABB | FileBBB | FileCBB;
+	const Bitboard DrieLijnen = FileABB | FileBBB | FileCBB;
 
-	const Bord KoningVleugelLijnen[LIJN_N] =
+	const Bitboard KoningVleugelLijnen[LIJN_N] =
 	{
 		DrieLijnen, DrieLijnen, DrieLijnen << 1, DrieLijnen << 2,
 		DrieLijnen << 3, DrieLijnen << 4, DrieLijnen << 5, DrieLijnen << 5
@@ -282,12 +282,12 @@ namespace
 } // namespace
 
 
-template<Kleur IK>
-Bord bereken_aanval(const Stelling& pos)
+template<Color IK>
+Bitboard bereken_aanval(const Position& pos)
 {
-	const Veld* pVeld;
-	Veld veld;
-	Bord aanval;
+	const Square* pVeld;
+	Square veld;
+	Bitboard aanval;
 
 	aanval = pos.aanval_van<KONING>(pos.koning(IK));
 	aanval |= pion_aanval<IK>(pos.stukken(IK, PION));
@@ -312,20 +312,20 @@ Bord bereken_aanval(const Stelling& pos)
 }
 
 
-template<Kleur IK>
-bool minstens_twee_mobiele_stukken(const Stelling& pos)
+template<Color IK>
+bool minstens_twee_mobiele_stukken(const Position& pos)
 {
-	const Kleur JIJ = (IK == WIT ? ZWART : WIT);
-	const Veld* pVeld;
-	Veld veld;
+	const Color JIJ = (IK == WIT ? ZWART : WIT);
+	const Square* pVeld;
+	Square veld;
 
-	Bord jouwAanval = bereken_aanval<JIJ>(pos);
-	Bord gepend = pos.info()->xRay[IK];
+	Bitboard jouwAanval = bereken_aanval<JIJ>(pos);
+	Bitboard gepend = pos.info()->xRay[IK];
 
-	Bord veilig = ~pos.stukken(IK) & ~jouwAanval;
+	Bitboard veilig = ~pos.stukken(IK) & ~jouwAanval;
 	bool mobiel = false;
 
-	Bord aanval = pos.aanval_van<KONING>(pos.koning(IK));
+	Bitboard aanval = pos.aanval_van<KONING>(pos.koning(IK));
 	if (aanval & veilig)
 	{
 		// koning die aangevallen stuk verdedigt is niet mobiel
@@ -388,7 +388,7 @@ bool minstens_twee_mobiele_stukken(const Stelling& pos)
 	return false;
 }
 
-bool Evaluatie::minstens_twee_mobiele_stukken(const Stelling& pos)
+bool Evaluation::minstens_twee_mobiele_stukken(const Position& pos)
 {
 	if (pos.aan_zet() == WIT)
 		return ::minstens_twee_mobiele_stukken<WIT>(pos);
@@ -397,7 +397,7 @@ bool Evaluatie::minstens_twee_mobiele_stukken(const Stelling& pos)
 }
 
 
-void Evaluatie::export_tabel()
+void Evaluation::export_tabel()
 {
 	FILE *f = fopen("R:\\Schaak\\h6-veilig-export.dat", "wb");
 	fwrite(VeiligheidTabel, 1, sizeof(VeiligheidTabel), f);
@@ -405,7 +405,7 @@ void Evaluatie::export_tabel()
 }
 
 
-void Evaluatie::import_tabel()
+void Evaluation::import_tabel()
 {
 	FILE *f = fopen("R:\\Schaak\\h6-veilig-export.dat", "rb");
 	fread(VeiligheidTabel, 1, sizeof(VeiligheidTabel), f);
@@ -413,18 +413,18 @@ void Evaluatie::import_tabel()
 }
 
 
-template<Kleur IK>
-inline Score Dreigingen(const Stelling& pos, const AanvalInfo& ai)
+template<Color IK>
+inline Score Dreigingen(const Position& pos, const AttackInfo& ai)
 {
-	const Kleur JIJ = (IK == WIT ? ZWART : WIT);
+	const Color JIJ = (IK == WIT ? ZWART : WIT);
 	const Score Score_NietVerdedigdePionnen = maak_score(-15, -30);
 	const Score Score_StukkenMoetenVerdedigen = maak_score(17, 42);
 
-	Bord bb_niet_verdedigd_Z = pos.stukken(JIJ) & ~ai.aanval[JIJ][ALLE_STUKKEN];
+	Bitboard bb_niet_verdedigd_Z = pos.stukken(JIJ) & ~ai.aanval[JIJ][ALLE_STUKKEN];
 
-	Bord ZP_Pion_aangevallen_L = ai.aanval[IK][LOPER] & pos.stukken(JIJ, PAARD, PION);
-	Bord ZLP_Pion_aangevallen_T = ai.aanval[IK][TOREN] & pos.stukken(JIJ, LOPER, PAARD, PION);
-	Bord ZL_Pion_aangevallen_P = ai.aanval[IK][PAARD] & pos.stukken(JIJ, LOPER, PION);
+	Bitboard ZP_Pion_aangevallen_L = ai.aanval[IK][LOPER] & pos.stukken(JIJ, PAARD, PION);
+	Bitboard ZLP_Pion_aangevallen_T = ai.aanval[IK][TOREN] & pos.stukken(JIJ, LOPER, PAARD, PION);
+	Bitboard ZL_Pion_aangevallen_P = ai.aanval[IK][PAARD] & pos.stukken(JIJ, LOPER, PION);
 
 	// zwarte stukken aangevallen door WPion, ZD aangevallend door WT, ZD of ZT aangevallend door WL of WP (waardevol aangevallen door minder waardevol)
 	int dreigingenW = popcount((pos.stukken(JIJ) ^ pos.stukken(JIJ, PION)) & ai.aanval[IK][PION]
@@ -443,12 +443,12 @@ inline Score Dreigingen(const Stelling& pos, const AanvalInfo& ai)
 	return score;
 }
 
-template<Kleur IK>
-Score sf_Dreigingen(const Stelling& pos, AanvalInfo& ai) 
+template<Color IK>
+Score sf_Dreigingen(const Position& pos, AttackInfo& ai) 
 {
-	const Kleur JIJ = (IK == WIT ? ZWART : WIT);
-	const Bord RANK2 = (IK == WIT ? Rank2BB : Rank7BB);
-	const Bord RANK7 = (IK == WIT ? Rank7BB : Rank2BB);
+	const Color JIJ = (IK == WIT ? ZWART : WIT);
+	const Bitboard RANK2 = (IK == WIT ? Rank2BB : Rank7BB);
+	const Bitboard RANK7 = (IK == WIT ? Rank7BB : Rank2BB);
 
 	const Score HangendePionDreiging = maak_score(249, 182);
 	//const Score PionDreigingAvg = maak_score(650, 510);
@@ -460,11 +460,11 @@ Score sf_Dreigingen(const Stelling& pos, AanvalInfo& ai)
 	Score score = SCORE_ZERO;
 	ai.sterkeDreiging[IK] = false;
 
-	Bord pionDreigingen = pos.stukken_uitgezonderd(JIJ, PION) & ai.aanval[IK][PION];
+	Bitboard pionDreigingen = pos.stukken_uitgezonderd(JIJ, PION) & ai.aanval[IK][PION];
 	if (pionDreigingen)
 	{
-		Bord veiligePionnen = pos.stukken(IK, PION) & (~ai.aanval[JIJ][ALLE_STUKKEN] | ai.aanval[IK][ALLE_STUKKEN]);
-		Bord veiligeDreigingen = pion_aanval<IK>(veiligePionnen) & pionDreigingen;
+		Bitboard veiligePionnen = pos.stukken(IK, PION) & (~ai.aanval[JIJ][ALLE_STUKKEN] | ai.aanval[IK][ALLE_STUKKEN]);
+		Bitboard veiligeDreigingen = pion_aanval<IK>(veiligePionnen) & pionDreigingen;
 
 		if (pionDreigingen ^ veiligeDreigingen)
 			score += HangendePionDreiging;
@@ -479,13 +479,13 @@ Score sf_Dreigingen(const Stelling& pos, AanvalInfo& ai)
 			score += PionDreiging[stuk_type(pos.stuk_op_veld(pop_lsb(&veiligeDreigingen)))];
 	}
 
-	Bord ondersteundeStukken = pos.stukken_uitgezonderd(JIJ, PION) & ai.aanval[JIJ][PION] & ai.aanval[IK][ALLE_STUKKEN];
-	Bord zwakkeStukken = pos.stukken(JIJ) & ~ai.aanval[JIJ][PION] & ai.aanval[IK][ALLE_STUKKEN];
+	Bitboard ondersteundeStukken = pos.stukken_uitgezonderd(JIJ, PION) & ai.aanval[JIJ][PION] & ai.aanval[IK][ALLE_STUKKEN];
+	Bitboard zwakkeStukken = pos.stukken(JIJ) & ~ai.aanval[JIJ][PION] & ai.aanval[IK][ALLE_STUKKEN];
 	//zwakkeStukken |= ai.gepend[JIJ];
 
 	if (ondersteundeStukken | zwakkeStukken)
 	{
-		Bord b = (ondersteundeStukken | zwakkeStukken) & (ai.aanval[IK][PAARD] | ai.aanval[IK][LOPER]);
+		Bitboard b = (ondersteundeStukken | zwakkeStukken) & (ai.aanval[IK][PAARD] | ai.aanval[IK][LOPER]);
 		if (b & pos.stukken(JIJ, TOREN, DAME))
 			ai.sterkeDreiging[IK] = true;
 		while (b)
@@ -507,7 +507,7 @@ Score sf_Dreigingen(const Stelling& pos, AanvalInfo& ai)
 			score += meer_dan_een(b) ? KoningDreigingMeerdere : KoningDreigingEnkel;
 	}
 
-	Bord b = pos.stukken(IK, PION) & ~RANK7;
+	Bitboard b = pos.stukken(IK, PION) & ~RANK7;
 	b = shift_up<IK>(b | (shift_up<IK>(b & RANK2) & ~pos.stukken()));
 	//b = shift_up<IK>(b | (shift_up<IK>(b & RANK2) & ~pos.stukken() & ~ai.aanval[JIJ][PION]));
 
@@ -524,16 +524,16 @@ Score sf_Dreigingen(const Stelling& pos, AanvalInfo& ai)
 	return score;
 }
 
-template<Kleur IK>
-inline Score Vrijpionnen(const Stelling& pos, const AanvalInfo& ai, Bord bb_vrijpionnen)
+template<Color IK>
+inline Score Vrijpionnen(const Position& pos, const AttackInfo& ai, Bitboard bb_vrijpionnen)
 {
 	assert(bb_vrijpionnen != 0);
-	const Kleur JIJ = (IK == WIT ? ZWART : WIT);
+	const Color JIJ = (IK == WIT ? ZWART : WIT);
 
 	Score score = SCORE_ZERO;
 	while (bb_vrijpionnen)
 	{
-		Veld vrijpion = pop_lsb(&bb_vrijpionnen);
+		Square vrijpion = pop_lsb(&bb_vrijpionnen);
 
 		score += Score_Pion_Vrijpion_ifvLijn[lijn(vrijpion)];
 
@@ -546,7 +546,7 @@ inline Score Vrijpionnen(const Stelling& pos, const AanvalInfo& ai, Bord bb_vrij
 		if (pion_rij > 1)
 		{
 			// afstand tot veld voor pion
-			Veld veld_voor_pion = vrijpion + pion_vooruit(IK);
+			Square veld_voor_pion = vrijpion + pion_vooruit(IK);
 			int mijnAfstand = afstand(veld_voor_pion, pos.koning(IK));
 			int jouwAfstand = afstand(veld_voor_pion, pos.koning(JIJ));
 
@@ -554,7 +554,7 @@ inline Score Vrijpionnen(const Stelling& pos, const AanvalInfo& ai, Bord bb_vrij
 			score += score_muldiv(Score_Vrijpion_Jouw_K[pion_rij][jouwAfstand], 3, 4);
 
 			// afstand tot promotieveld
-			Veld promotie_veld = Veld(maak_veld(lijn(vrijpion), Rij(7 * JIJ)));
+			Square promotie_veld = Square(maak_veld(lijn(vrijpion), Rank(7 * JIJ)));
 			mijnAfstand = afstand(promotie_veld, pos.koning(IK));
 			jouwAfstand = afstand(promotie_veld, pos.koning(JIJ));
 
@@ -563,7 +563,7 @@ inline Score Vrijpionnen(const Stelling& pos, const AanvalInfo& ai, Bord bb_vrij
 
 			if (pion_rij > 2)
 			{
-				Bord bb_achter_vrijpion = bb_voorwaarts(JIJ, vrijpion);
+				Bitboard bb_achter_vrijpion = bb_voorwaarts(JIJ, vrijpion);
 				// toren achter pion
 				if (bb_achter_vrijpion & pos.stukken(IK, TOREN))
 					score += maak_score(62, 274);
@@ -574,14 +574,14 @@ inline Score Vrijpionnen(const Stelling& pos, const AanvalInfo& ai, Bord bb_vrij
 			if (!(pos.stukken() & veld_voor_pion))
 			{
 				// vrijpion kan voorwaarts
-				Bord vrijpion_pad = bb_voorwaarts(IK, vrijpion);
-				Bord bb_opmars_gestuit = vrijpion_pad & (pos.stukken(JIJ) | ai.aanval[JIJ][ALLE_STUKKEN]);
+				Bitboard vrijpion_pad = bb_voorwaarts(IK, vrijpion);
+				Bitboard bb_opmars_gestuit = vrijpion_pad & (pos.stukken(JIJ) | ai.aanval[JIJ][ALLE_STUKKEN]);
 
 				// jouw T of D achter vrijpion -> hele vrijpion_pad is aangevallen
-				Bord aangevallen = pos.stukken(JIJ, TOREN, DAME) & bb_voorwaarts(JIJ, vrijpion);
+				Bitboard aangevallen = pos.stukken(JIJ, TOREN, DAME) & bb_voorwaarts(JIJ, vrijpion);
 				if (aangevallen)
 				{
-					Veld veld = voorste_veld(IK, aangevallen);
+					Square veld = voorste_veld(IK, aangevallen);
 					if (!(pos.stukken() & bb_tussen(vrijpion, veld)))
 						bb_opmars_gestuit = vrijpion_pad;
 				}
@@ -599,10 +599,10 @@ inline Score Vrijpionnen(const Stelling& pos, const AanvalInfo& ai, Bord bb_vrij
 	return score;
 }
 
-template<Kleur IK>
-inline Score KoningsAanval(const Stelling& pos, const AanvalInfo& ai, int AanvalScore)
+template<Color IK>
+inline Score KoningsAanval(const Position& pos, const AttackInfo& ai, int AanvalScore)
 {
-	const Kleur JIJ = (IK == WIT ? ZWART : WIT);
+	const Color JIJ = (IK == WIT ? ZWART : WIT);
 
 	int aanvalIndex = AanvalScore;
 
@@ -615,15 +615,15 @@ inline Score KoningsAanval(const Stelling& pos, const AanvalInfo& ai, int Aanval
 	aanvalIndex += 11 * popcount(shift_down<IK>(ai.aanval[JIJ][KONING]) & ~ai.aanval[JIJ][ALLE_STUKKEN] & ai.aanval[IK][ALLE_STUKKEN] & ~pos.stukken(IK));
 
 	// veilige schaaks
-	const Veld veldK = pos.koning(JIJ);
-	Bord Schaak_OK = ~pos.stukken(IK);
+	const Square veldK = pos.koning(JIJ);
+	Bitboard Schaak_OK = ~pos.stukken(IK);
 	
-	Bord Schaakvelden_T = pos.aanval_van<TOREN>(veldK) & Schaak_OK;
-	Bord Schaakvelden_L = pos.aanval_van<LOPER>(veldK) & Schaak_OK;
-	Bord Schaakvelden_P = pos.aanval_van<PAARD>(veldK) & Schaak_OK;
+	Bitboard Schaakvelden_T = pos.aanval_van<TOREN>(veldK) & Schaak_OK;
+	Bitboard Schaakvelden_L = pos.aanval_van<LOPER>(veldK) & Schaak_OK;
+	Bitboard Schaakvelden_P = pos.aanval_van<PAARD>(veldK) & Schaak_OK;
 
 	// P, L, T
-	Bord veilig_PLT = ~ai.aanval[JIJ][ALLE_STUKKEN] | (ai.dubbelAanval[IK] & ~ai.dubbelAanval[JIJ] & (ai.aanval[JIJ][KONING] | ai.aanval[JIJ][DAME]));
+	Bitboard veilig_PLT = ~ai.aanval[JIJ][ALLE_STUKKEN] | (ai.dubbelAanval[IK] & ~ai.dubbelAanval[JIJ] & (ai.aanval[JIJ][KONING] | ai.aanval[JIJ][DAME]));
 	if (Schaakvelden_P & ai.aanval[IK][PAARD])
 	{
 		if (Schaakvelden_P & ai.aanval[IK][PAARD] & veilig_PLT)
@@ -647,7 +647,7 @@ inline Score KoningsAanval(const Stelling& pos, const AanvalInfo& ai, int Aanval
 	}
 
 	// Dame schaaks / contact schaaks
-	Bord dame_schaak = (Schaakvelden_L | Schaakvelden_T) & ai.aanval[IK][DAME];
+	Bitboard dame_schaak = (Schaakvelden_L | Schaakvelden_T) & ai.aanval[IK][DAME];
 	if (dame_schaak)
 	{
 		if (dame_schaak & ~ai.aanval[JIJ][KONING])
@@ -667,11 +667,11 @@ inline Score KoningsAanval(const Stelling& pos, const AanvalInfo& ai, int Aanval
 	if (aanvalIndex > 1000)
 		aanvalIndex = 1000;
 
-	return Evaluatie::VeiligheidTabel[aanvalIndex];
+	return Evaluation::VeiligheidTabel[aanvalIndex];
 }
 
 
-inline EvalWaarde Initiatief(const Stelling& pos, const Pionnen::Tuple *pionTuple, EvalWaarde eg)
+inline EvalValue Initiatief(const Position& pos, const Pawns::Tuple *pionTuple, EvalValue eg)
 {
 	int k_afstand = lijn_afstand(pos.koning(WIT), pos.koning(ZWART))
 		- rij_afstand(pos.koning(WIT), pos.koning(ZWART));
@@ -680,15 +680,15 @@ inline EvalWaarde Initiatief(const Stelling& pos, const Pionnen::Tuple *pionTupl
 
 	int bonus = ((eg > 0) - (eg < 0)) * std::max(initiatief, -abs(eg / 2));
 
-	return EvalWaarde(bonus);
+	return EvalValue(bonus);
 }
 
 
-template<Kleur IK>
-inline Score SterkeVelden(const Stelling& pos, const AanvalInfo& ai, const Pionnen::Tuple *pionTuple)
+template<Color IK>
+inline Score SterkeVelden(const Position& pos, const AttackInfo& ai, const Pawns::Tuple *pionTuple)
 {
-	const Kleur JIJ = (IK == WIT ? ZWART : WIT);
-	const Bord RIJ456 = (IK == WIT ? 0x3C3C3C000000 : 0x3C3C3C0000);
+	const Color JIJ = (IK == WIT ? ZWART : WIT);
+	const Bitboard RIJ456 = (IK == WIT ? 0x3C3C3C000000 : 0x3C3C3C0000);
 	const Score Score_PL_achter_Pion       = maak_score(32,  8);
 	const Score Score_Ondersteunde_Stukken = maak_score(55, 29);
 	const Score Score_SterkVeld_PL         = maak_score(62, 70);
@@ -700,7 +700,7 @@ inline Score SterkeVelden(const Stelling& pos, const AanvalInfo& ai, const Pionn
 	score += Score_VeiligVoorPion_TLP * popcount(pionTuple->veilig_voor_pion(JIJ) & pos.stukken(IK, PAARD, LOPER, TOREN));
 	score += Score_SterkP_voor_Pion * popcount(pionTuple->veilig_voor_pion(JIJ) & pos.stukken(IK, PAARD) & shift_down<IK>(pos.stukken(JIJ, PION)));
 
-	Bord sterkePL = pionTuple->veilig_voor_pion(JIJ) & ai.aanval[IK][PION] & pos.stukken(IK, PAARD, LOPER) & RIJ456;
+	Bitboard sterkePL = pionTuple->veilig_voor_pion(JIJ) & ai.aanval[IK][PION] & pos.stukken(IK, PAARD, LOPER) & RIJ456;
 	if (sterkePL)
 	{
 		score += Score_SterkVeld_PL * popcount(sterkePL);
@@ -708,8 +708,8 @@ inline Score SterkeVelden(const Stelling& pos, const AanvalInfo& ai, const Pionn
 		{
 			do
 			{
-				Veld veld = pop_lsb(&sterkePL);
-				Bord velden_zelfde_kleur = (DonkereVelden & veld) ? DonkereVelden : ~DonkereVelden;
+				Square veld = pop_lsb(&sterkePL);
+				Bitboard velden_zelfde_kleur = (DonkereVelden & veld) ? DonkereVelden : ~DonkereVelden;
 				if (!(pos.stukken(JIJ, LOPER) & velden_zelfde_kleur))
 					score += Score_SterkVeld_PL_Extra;
 			} while (sterkePL);
@@ -725,16 +725,16 @@ inline Score SterkeVelden(const Stelling& pos, const AanvalInfo& ai, const Pionn
 }
 
 
-template<Kleur IK>
-inline Bord ZoneBeheersing(const Stelling& pos, const AanvalInfo& ai)
+template<Color IK>
+inline Bitboard ZoneBeheersing(const Position& pos, const AttackInfo& ai)
 {
-	const Kleur JIJ = (IK == WIT ? ZWART : WIT);
-	const Bord Rij2tot4 = IK == WIT ? 0x00000000ffffff00 : 0x00ffffff00000000;
+	const Color JIJ = (IK == WIT ? ZWART : WIT);
+	const Bitboard Rij2tot4 = IK == WIT ? 0x00000000ffffff00 : 0x00ffffff00000000;
 
-	Bord veilig = Rij2tot4 & ~(pos.stukken(IK, PION) | ai.aanval[JIJ][PION]
+	Bitboard veilig = Rij2tot4 & ~(pos.stukken(IK, PION) | ai.aanval[JIJ][PION]
 		| (ai.aanval[JIJ][ALLE_STUKKEN] & ~ai.aanval[IK][ALLE_STUKKEN]));
 
-	Bord afgeschermd = pos.stukken(IK, PION);
+	Bitboard afgeschermd = pos.stukken(IK, PION);
 	afgeschermd |= (IK == WIT ? afgeschermd >> 8 : afgeschermd << 8);
 	afgeschermd |= (IK == WIT ? afgeschermd >> 16 : afgeschermd << 16);
 	afgeschermd &= veilig;
@@ -743,29 +743,29 @@ inline Bord ZoneBeheersing(const Stelling& pos, const AanvalInfo& ai)
 }
 
 
-template<Kleur IK>
-inline Score Ruimte(const Stelling& pos, const AanvalInfo& ai)
+template<Color IK>
+inline Score Ruimte(const Position& pos, const AttackInfo& ai)
 {
-	const Kleur JIJ = (IK == WIT ? ZWART : WIT);
-	const Bord CentrumZone = IK == WIT ? 0x000000003c3c3c00 : 0x003c3c3c00000000;
+	const Color JIJ = (IK == WIT ? ZWART : WIT);
+	const Bitboard CentrumZone = IK == WIT ? 0x000000003c3c3c00 : 0x003c3c3c00000000;
 
-	Bord veilig = CentrumZone & ~(pos.stukken(IK, PION) | ai.aanval[JIJ][PION]
+	Bitboard veilig = CentrumZone & ~(pos.stukken(IK, PION) | ai.aanval[JIJ][PION]
 		| (ai.aanval[JIJ][ALLE_STUKKEN] & ~ai.aanval[IK][ALLE_STUKKEN]));
 
-	Bord afgeschermd = pos.stukken(IK, PION);
+	Bitboard afgeschermd = pos.stukken(IK, PION);
 	afgeschermd |= (IK == WIT ? afgeschermd >> 8 : afgeschermd << 8);
 	afgeschermd |= (IK == WIT ? afgeschermd >> 16 : afgeschermd << 16);
 	afgeschermd &= veilig;
 
 	unsigned int beheersing = popcount(veilig | (IK == WIT ? afgeschermd << 32 : afgeschermd >> 32));
 	unsigned int weight = popcount(pos.stukken(IK));
-	Score score = remake_score(EvalWaarde(weight * weight * 3 / 16), EVAL_0);
+	Score score = remake_score(EvalValue(weight * weight * 3 / 16), EVAL_0);
 	return score * beheersing;
 }
 
 
-template<Kleur IK>
-inline void eval_init(const Stelling& pos, AanvalInfo& ai, const Pionnen::Tuple *pionTuple)
+template<Color IK>
+inline void eval_init(const Position& pos, AttackInfo& ai, const Pawns::Tuple *pionTuple)
 {
 	ai.aanval[IK][KONING] = pos.aanval_van<KONING>(pos.koning(IK));
 	ai.aanval[IK][PION] = pionTuple->pion_aanval(IK);
@@ -785,19 +785,19 @@ inline void eval_init(const Stelling& pos, AanvalInfo& ai, const Pionnen::Tuple 
 }
 
 
-template<Kleur IK>
-inline Score eval_Paarden(const Stelling& pos, AanvalInfo& ai)
+template<Color IK>
+inline Score eval_Paarden(const Position& pos, AttackInfo& ai)
 {
-	const Kleur JIJ = (IK == WIT ? ZWART : WIT);
+	const Color JIJ = (IK == WIT ? ZWART : WIT);
 	Score score = SCORE_ZERO;
 
-	Bord velden = pos.stukken(IK, PAARD);
+	Bitboard velden = pos.stukken(IK, PAARD);
 	assert(velden);
 	do
 	{
-		Veld veld = pop_lsb(&velden);
+		Square veld = pop_lsb(&velden);
 		score += Score_Afstand_P_K[afstand(veld, pos.koning(IK))];
-		Bord aanval = pos.aanval_van<PAARD>(veld);
+		Bitboard aanval = pos.aanval_van<PAARD>(veld);
 		if (aanval & ai.KZone[JIJ])
 			ai.KAanvalScore[IK] += 3 * 8;
 		//else if (aanval & ai.KZoneExtra[JIJ])
@@ -823,13 +823,13 @@ inline Score eval_Paarden(const Stelling& pos, AanvalInfo& ai)
 }
 
 
-template<Kleur IK>
-inline Score eval_Lopers(const Stelling& pos, AanvalInfo& ai, const Pionnen::Tuple *pionTuple)
+template<Color IK>
+inline Score eval_Lopers(const Position& pos, AttackInfo& ai, const Pawns::Tuple *pionTuple)
 {
-	const Kleur JIJ = (IK == WIT ? ZWART : WIT);
+	const Color JIJ = (IK == WIT ? ZWART : WIT);
 	Score score = SCORE_ZERO;
 
-	Bord velden = pos.stukken(IK, LOPER);
+	Bitboard velden = pos.stukken(IK, LOPER);
 	assert(velden);
 
 	if (shift_up<IK>(pos.stukken(IK, KONING)) & velden)
@@ -858,19 +858,19 @@ inline Score eval_Lopers(const Stelling& pos, AanvalInfo& ai, const Pionnen::Tup
 
 	do
 	{
-		Veld veld = pop_lsb(&velden);
+		Square veld = pop_lsb(&velden);
 		score += Score_Afstand_L_K[afstand(veld, pos.koning(IK))];
 
-		Bord bb_penning_TD = LegeAanval[LOPER][veld] & pos.stukken(JIJ, TOREN, DAME);
+		Bitboard bb_penning_TD = LegeAanval[LOPER][veld] & pos.stukken(JIJ, TOREN, DAME);
 		while (bb_penning_TD)
 		{
-			Veld veld_TD = pop_lsb(&bb_penning_TD);
-			Bord b = bb_tussen(veld_TD, veld) & pos.stukken();
+			Square veld_TD = pop_lsb(&bb_penning_TD);
+			Bitboard b = bb_tussen(veld_TD, veld) & pos.stukken();
 			if (b && !meer_dan_een(b))
 				score += Score_Loper_Penning[IK][pos.stuk_op_veld(lsb(b))];
 		}
 
-		Bord aanval = aanval_bb_loper(veld, pos.stukken(PION));
+		Bitboard aanval = aanval_bb_loper(veld, pos.stukken(PION));
 		score += mobi_L1[(popcount(aanval) * MobiMult_L1[relatief_veld(IK, veld)] + 16) / 32];
 		//score += mobi_L1[std::min((int)(popcount(aanval) * MobiMult_L1[relatief_veld(Us, veld)] + 16) / 32, 255)];
 
@@ -927,7 +927,7 @@ inline Score eval_Lopers(const Stelling& pos, AanvalInfo& ai, const Pionnen::Tup
 
 		// als ik loperpaar heb en jij hebt geen loper op dezelfde kleur
 		// na ruil van lopers blijf ik zitten met slechte loper
-		Bord velden_zelfde_kleur = (DonkereVelden & veld) ? DonkereVelden : ~DonkereVelden;
+		Bitboard velden_zelfde_kleur = (DonkereVelden & veld) ? DonkereVelden : ~DonkereVelden;
 		if ((pos.stukken(IK, LOPER) & ~velden_zelfde_kleur) && !(velden_zelfde_kleur & pos.stukken(JIJ, LOPER)))
 			score += pionnenOpKleur;
 
@@ -940,12 +940,12 @@ inline Score eval_Lopers(const Stelling& pos, AanvalInfo& ai, const Pionnen::Tup
 }
 
 
-template<Kleur IK>
-inline Score eval_Torens(const Stelling& pos, AanvalInfo& ai)
+template<Color IK>
+inline Score eval_Torens(const Position& pos, AttackInfo& ai)
 {
-	const Kleur JIJ = (IK == WIT ? ZWART : WIT);
+	const Color JIJ = (IK == WIT ? ZWART : WIT);
 	Score score = SCORE_ZERO;
-	Bord velden = pos.stukken(IK, TOREN);
+	Bitboard velden = pos.stukken(IK, TOREN);
 	assert(velden);
 
 	// T opgesloten naast K
@@ -953,15 +953,15 @@ inline Score eval_Torens(const Stelling& pos, AanvalInfo& ai)
 	if (pos.stukken(IK, KONING) & (IK == WIT ? bb2(SQ_F1, SQ_G1) : bb2(SQ_F8, SQ_G8)) && velden & (IK == WIT ? 0xC0C0 : 0xC0C0000000000000))
 		score -= maak_score(282, 101);
 #else
-	Bord bbx = opgesloten_toren[pos.veld<KONING>(IK)] & velden;
+	Bitboard bbx = opgesloten_toren[pos.veld<KONING>(IK)] & velden;
 	if (bbx)
 	{
-		Veld veld = achterste_veld(IK, bbx);
+		Square veld = achterste_veld(IK, bbx);
 		bbx = bb_voorwaarts(IK, veld) & pos.stukken(IK, PION);
 		if (bbx)
 		{
 			veld = achterste_veld(IK, bbx);
-			Rij r = relatieve_rij(IK, veld);
+			Rank r = relatieve_rij(IK, veld);
 			if (!pos.rokade_mogelijk(IK))  // test nodig voor Chess960
 				score -= maak_score(110 * (6 - r), 0);
 			else
@@ -972,7 +972,7 @@ inline Score eval_Torens(const Stelling& pos, AanvalInfo& ai)
 
 	do
 	{
-		Veld veld = pop_lsb(&velden);
+		Square veld = pop_lsb(&velden);
 
 		//Bord bb_penning_D = LegeAanval[TOREN][veld] & pos.stukken(JIJ, DAME);
 		//while (bb_penning_D)
@@ -983,7 +983,7 @@ inline Score eval_Torens(const Stelling& pos, AanvalInfo& ai)
 		//		score += Score_Toren_Penning[IK][pos.stuk_op_veld(lsb(b))];
 		//}
 
-		Bord aanval = aanval_bb_toren(veld, pos.stukken() ^ pos.stukken(IK, TOREN, DAME));
+		Bitboard aanval = aanval_bb_toren(veld, pos.stukken() ^ pos.stukken(IK, TOREN, DAME));
 		if (aanval & ai.KZone[JIJ])
 			ai.KAanvalScore[IK] += 8;
 		//else if (aanval & ai.KZoneExtra[JIJ])
@@ -1000,7 +1000,7 @@ inline Score eval_Torens(const Stelling& pos, AanvalInfo& ai)
 		//ai.mobiliteit[IK] += mobiliteit - T_GEMIDDELD_MOBILITEIT;
 
 		// koning op achtste rij, T op zevende
-		const Bord ACHTSTE_RIJ = IK == WIT ? Rank8BB : Rank1BB;
+		const Bitboard ACHTSTE_RIJ = IK == WIT ? Rank8BB : Rank1BB;
 		if (relatieve_rij(IK, veld) == RIJ_7 && pos.stukken(JIJ, KONING) & ACHTSTE_RIJ)
 			score += maak_score(64, 163);
 
@@ -1010,7 +1010,7 @@ inline Score eval_Torens(const Stelling& pos, AanvalInfo& ai)
 
 		if (!(bb_lijn(veld) & pos.stukken(IK, PION)))
 		{
-			Bord pion = pos.stukken(JIJ, PION) & bb_lijn(veld);
+			Bitboard pion = pos.stukken(JIJ, PION) & bb_lijn(veld);
 			if (!pion)
 				// open lijn
 				score += maak_score(185, 157);
@@ -1027,23 +1027,23 @@ inline Score eval_Torens(const Stelling& pos, AanvalInfo& ai)
 }
 
 
-template<Kleur IK>
-inline Score eval_Dames(const Stelling& pos, AanvalInfo& ai)
+template<Color IK>
+inline Score eval_Dames(const Position& pos, AttackInfo& ai)
 {
-	const Kleur JIJ = (IK == WIT ? ZWART : WIT);
+	const Color JIJ = (IK == WIT ? ZWART : WIT);
 	Score score = SCORE_ZERO;
 
-	Bord velden = pos.stukken(IK, DAME);
+	Bitboard velden = pos.stukken(IK, DAME);
 	assert(velden);
 
-	Bord mobiliteit_mask_D = ~(ai.aanval[JIJ][LOPER] | ai.aanval[JIJ][TOREN] | pos.stukken(IK, KONING, PION) | ai.aanval[JIJ][PION] | ai.aanval[JIJ][PAARD]);
+	Bitboard mobiliteit_mask_D = ~(ai.aanval[JIJ][LOPER] | ai.aanval[JIJ][TOREN] | pos.stukken(IK, KONING, PION) | ai.aanval[JIJ][PION] | ai.aanval[JIJ][PAARD]);
 	ai.KAanvalScore[IK] += 3 * 8;
 
 	do
 	{
-		Veld veld = pop_lsb(&velden);
+		Square veld = pop_lsb(&velden);
 		//Bord aanval = pos.aanval_van<DAME>(veld);
-		Bord aanval = aanval_bb_toren(veld, pos.stukken() ^ pos.stukken(IK, DAME)) | aanval_bb_loper(veld, pos.stukken() ^ pos.stukken(IK, DAME));
+		Bitboard aanval = aanval_bb_toren(veld, pos.stukken() ^ pos.stukken(IK, DAME)) | aanval_bb_loper(veld, pos.stukken() ^ pos.stukken(IK, DAME));
 		//Bord aanval = aanval_bb<TOREN>(veld, pos.stukken() ^ pos.stukken(IK, TOREN, DAME))
 		//	| aanval_bb<LOPER>(veld, pos.stukken());
 		if (aanval & ai.KZone[JIJ])
@@ -1058,7 +1058,7 @@ inline Score eval_Dames(const Stelling& pos, AanvalInfo& ai)
 		if (ai.gepend[IK] & veld)
 			aanval &= bb_tussen(pos.koning(IK), veld);
 
-		const Bord CENTRUM_VIERKANT = 0x00003C3C3C3C0000;
+		const Bitboard CENTRUM_VIERKANT = 0x00003C3C3C3C0000;
 		unsigned int mobiliteit = popcount(aanval) + popcount(aanval & CENTRUM_VIERKANT);
 		score += mobi_D[(mobiliteit * MobiMult_D[relatief_veld(IK, veld)] + 32) / 64];
 		//ai.mobiliteit[IK] += mobiliteit - D_GEMIDDELD_MOBILITEIT;
@@ -1068,16 +1068,16 @@ inline Score eval_Dames(const Stelling& pos, AanvalInfo& ai)
 }
 
 
-Waarde Evaluatie::evaluatie(const Stelling& pos, Waarde alfa, Waarde beta)
+Value Evaluation::evaluatie(const Position& pos, Value alfa, Value beta)
 {
 	assert(!pos.schaak_gevers());
 
-	Materiaal::Tuple* materiaalTuple;
-	Pionnen::Tuple* pionTuple;
+	Material::Tuple* materiaalTuple;
+	Pawns::Tuple* pionTuple;
 
-	materiaalTuple = Materiaal::probe(pos);
+	materiaalTuple = Material::probe(pos);
 
-	StellingInfo* st = pos.info();
+	PositionInfo* st = pos.info();
 	st->eval_is_exact = false;
 
 	if (materiaalTuple->heeft_waarde_functie())
@@ -1093,7 +1093,7 @@ Waarde Evaluatie::evaluatie(const Stelling& pos, Waarde alfa, Waarde beta)
 
 	if (doLazyEval)
 	{
-		EvalWaarde v = (st - 1)->evalPositioneel;
+		EvalValue v = (st - 1)->evalPositioneel;
 		int evalFactor = (st - 1)->evalFactor;
 #if 0
 		// laat meerdere lazyEvals achter elkaar toe
@@ -1105,7 +1105,7 @@ Waarde Evaluatie::evaluatie(const Stelling& pos, Waarde alfa, Waarde beta)
 		if (pos.aan_zet() == ZWART)
 			v = -v;
 
-		Waarde lazyResult = ValueFromEval(v) + WAARDE_TEMPO;
+		Value lazyResult = ValueFromEval(v) + WAARDE_TEMPO;
 
 		if (lazyResult <= alfa || lazyResult >= beta)
 		{
@@ -1114,11 +1114,11 @@ Waarde Evaluatie::evaluatie(const Stelling& pos, Waarde alfa, Waarde beta)
 		}
 	}
 
-	pionTuple = Pionnen::probe(pos);
+	pionTuple = Pawns::probe(pos);
 
 #if 0
-	const EvalWaarde InstantEvalLimiet = 6 * PION_EVAL;
-	EvalWaarde instantWaarde = materiaalTuple->waarde * materiaalTuple->conversie / MAX_FACTOR +
+	const EvalValue InstantEvalLimiet = 6 * PION_EVAL;
+	EvalValue instantWaarde = materiaalTuple->waarde * materiaalTuple->conversie / MAX_FACTOR +
 		mg_waarde(pionTuple->pionnen_score() + pos.psq_score());
 	if (abs(instantWaarde) > InstantEvalLimiet)
 		return ValueFromEval(pos.aan_zet() == ZWART ? -instantWaarde : instantWaarde);
@@ -1130,7 +1130,7 @@ Waarde Evaluatie::evaluatie(const Stelling& pos, Waarde alfa, Waarde beta)
 
 	// evaluatie stukken begint hier
 	// =============================
-	AanvalInfo ai;
+	AttackInfo ai;
 	
 	eval_init<WIT>(pos, ai, pionTuple);
 	eval_init<ZWART>(pos, ai, pionTuple);
@@ -1183,7 +1183,7 @@ Waarde Evaluatie::evaluatie(const Stelling& pos, Waarde alfa, Waarde beta)
 	// score koningsaanval
 	// ===================
 #if 0
-	Bord zoneBeheersing[2];
+	Bitboard zoneBeheersing[2];
 	zoneBeheersing[WIT] = ZoneBeheersing<WIT>(pos, ai);
 	zoneBeheersing[ZWART] = ZoneBeheersing<ZWART>(pos, ai);
 
@@ -1243,7 +1243,7 @@ Waarde Evaluatie::evaluatie(const Stelling& pos, Waarde alfa, Waarde beta)
 	//	ai.aanval[WIT][ALLE_STUKKEN] & ~ai.aanval[ZWART][ALLE_STUKKEN] & ~pos.stukken()));
 
 	// beheersing flank koning
-	Bord bb_flank = ai.aanval[WIT][STUKKEN_ZONDER_KONING] & bb_koning_flankaanval[ZWART][lijn(pos.koning(ZWART))]
+	Bitboard bb_flank = ai.aanval[WIT][STUKKEN_ZONDER_KONING] & bb_koning_flankaanval[ZWART][lijn(pos.koning(ZWART))]
 		& ~ai.aanval[ZWART][KONING] & ~ai.aanval[ZWART][PION];
 	bb_flank = (bb_flank >> 4) | (bb_flank & ai.dubbelAanval[WIT]);
 	evalScore += popcount(bb_flank) * maak_score(18, 0);
@@ -1262,7 +1262,7 @@ Waarde Evaluatie::evaluatie(const Stelling& pos, Waarde alfa, Waarde beta)
 #if 0
 	// beheersing aanvalsvelden
 	const Score Score_Aanvalsvelden = maak_score(20, 0);
-	Bord bb_centrum_pivot = bb_centrum_pivot_W[lijn(pos.koning(WIT))] | bb_centrum_pivot_Z[lijn(pos.koning(ZWART))];
+	Bitboard bb_centrum_pivot = bb_centrum_pivot_W[lijn(pos.koning(WIT))] | bb_centrum_pivot_Z[lijn(pos.koning(ZWART))];
 	evalScore += Score_Aanvalsvelden * popcount(bb_centrum_pivot & ai.aanval[WIT][STUKKEN_ZONDER_KONING]);
 	evalScore -= Score_Aanvalsvelden * popcount(bb_centrum_pivot & ai.aanval[ZWART][STUKKEN_ZONDER_KONING]);
 #endif
@@ -1270,8 +1270,8 @@ Waarde Evaluatie::evaluatie(const Stelling& pos, Waarde alfa, Waarde beta)
 #if 0
 	const Score Score_L_KVleugel = maak_score(35, 0);
 	const Score Score_Pion_KVleugel = maak_score(8, 0);
-	const Bord KVleugel = 0xF0F0F0F0F0F0F0F0;
-	const Bord DVleugel = 0x0F0F0F0F0F0F0F0F;
+	const Bitboard KVleugel = 0xF0F0F0F0F0F0F0F0;
+	const Bitboard DVleugel = 0x0F0F0F0F0F0F0F0F;
 
 	if (pos.stukken(WIT, KONING) & DVleugel)
 	{
@@ -1281,7 +1281,7 @@ Waarde Evaluatie::evaluatie(const Stelling& pos, Waarde alfa, Waarde beta)
 				evalScore += Score_L_KVleugel;
 			if (pos.stukken(ZWART, LOPER) & ~DonkereVelden)
 				evalScore -= Score_L_KVleugel;
-			Bord DP = pos.stukken(WIT, DAME, PAARD) & DVleugel;
+			Bitboard DP = pos.stukken(WIT, DAME, PAARD) & DVleugel;
 			if (DP)
 			{
 				evalScore += Score_L_KVleugel;
@@ -1305,7 +1305,7 @@ Waarde Evaluatie::evaluatie(const Stelling& pos, Waarde alfa, Waarde beta)
 			evalScore += Score_L_KVleugel;
 		if (pos.stukken(ZWART, LOPER) & DonkereVelden)
 			evalScore -= Score_L_KVleugel;
-		Bord DP = pos.stukken(WIT, DAME, PAARD) & KVleugel;
+		Bitboard DP = pos.stukken(WIT, DAME, PAARD) & KVleugel;
 		if (DP)
 		{
 			evalScore += Score_L_KVleugel;
@@ -1334,23 +1334,23 @@ Waarde Evaluatie::evaluatie(const Stelling& pos, Waarde alfa, Waarde beta)
 	if (pos.niet_pion_materiaal(WIT) + pos.niet_pion_materiaal(ZWART) <= 4 * MATL_LOPER)
 		score += Score_PionLijnBreedte[pionTuple->pion_bereik(WIT)] - Score_PionLijnBreedte[pionTuple->pion_bereik(ZWART)];
 
-	EvalWaarde mg = (106 * mg_waarde(score) - 6 * eg_waarde(score)) / 100;
-	EvalWaarde eg = (13 * mg_waarde(score) + 87 * eg_waarde(score)) / 100;
+	EvalValue mg = (106 * mg_waarde(score) - 6 * eg_waarde(score)) / 100;
+	EvalValue eg = (13 * mg_waarde(score) + 87 * eg_waarde(score)) / 100;
 
-	SchaalFactor sf = bereken_schaalfactor(pos, materiaalTuple, materiaalTuple->waarde + eg);
-	SchaalFactor conversie = materiaalTuple->conversie;
+	ScaleFactor sf = bereken_schaalfactor(pos, materiaalTuple, materiaalTuple->waarde + eg);
+	ScaleFactor conversie = materiaalTuple->conversie;
 
 	eg += Initiatief(pos, pionTuple, materiaalTuple->waarde + eg);
 
 	if (materiaalTuple->conversie_is_geschat && !pos.stukken(DAME) && !(pionTuple->vrijpionnen(WIT) | pionTuple->vrijpionnen(ZWART)))
-		conversie = SchaalFactor(conversie * 115 / 128); // ongeveer 0.9
+		conversie = ScaleFactor(conversie * 115 / 128); // ongeveer 0.9
 	if (pionTuple->conversie_moeilijk)
-		conversie = SchaalFactor(conversie * 115 / 128); // ongeveer 0.9
+		conversie = ScaleFactor(conversie * 115 / 128); // ongeveer 0.9
 
-	SchaalFactor evalFactor = sf == NORMAAL_FACTOR ? conversie : SchaalFactor(std::min((int)conversie, (int)2 * sf));
+	ScaleFactor evalFactor = sf == NORMAAL_FACTOR ? conversie : ScaleFactor(std::min((int)conversie, (int)2 * sf));
 
 	int fase = materiaalTuple->partij_fase();
-	EvalWaarde v = (mg * conversie / MAX_FACTOR * fase + eg * evalFactor / MAX_FACTOR * int(MIDDENSPEL_FASE - fase)) / int(MIDDENSPEL_FASE);
+	EvalValue v = (mg * conversie / MAX_FACTOR * fase + eg * evalFactor / MAX_FACTOR * int(MIDDENSPEL_FASE - fase)) / int(MIDDENSPEL_FASE);
 	st->evalPositioneel = v;
 	st->evalFactor = evalFactor;
 	v += materiaalTuple->waarde * evalFactor / MAX_FACTOR;
@@ -1370,9 +1370,9 @@ Waarde Evaluatie::evaluatie(const Stelling& pos, Waarde alfa, Waarde beta)
 
 		int contemptScore = 4 * Threads.stukContempt * contempt_aantal * evalFactor / MAX_FACTOR;
 		if (Threads.contemptKleur == WIT)
-			v += EvalWaarde(contemptScore);
+			v += EvalValue(contemptScore);
 		else
-			v -= EvalWaarde(contemptScore);
+			v -= EvalValue(contemptScore);
 	}
 #endif
 
@@ -1382,7 +1382,7 @@ Waarde Evaluatie::evaluatie(const Stelling& pos, Waarde alfa, Waarde beta)
 	// tot hier is de score in 1/1600 pion (EvalWaarde)
 	// uiteindelijk resultaat in 1/200 pion (Value)
 	//Waarde result = ValueFromEval(v) + Waarde((unsigned int)WAARDE_TEMPO * (unsigned int)evalFactor / MAX_FACTOR);
-	Waarde result = ValueFromEval(v) + WAARDE_TEMPO;
+	Value result = ValueFromEval(v) + WAARDE_TEMPO;
 
 	// 50 zet regel
 	if (pos.vijftig_zetten_teller() > Threads.vijftigZettenAfstand)
@@ -1416,15 +1416,15 @@ Waarde Evaluatie::evaluatie(const Stelling& pos, Waarde alfa, Waarde beta)
 	return result;
 }
 
-Waarde Evaluatie::evaluatie_na_nullzet(Waarde eval)
+Value Evaluation::evaluatie_na_nullzet(Value eval)
 {
-	Waarde result = -eval + 2 * WAARDE_TEMPO;
+	Value result = -eval + 2 * WAARDE_TEMPO;
 
 	return result;
 }
 
 
-void Evaluatie::initialisatie()
+void Evaluation::initialisatie()
 {
 	// Mobiliteit multiplier
 	const int MobiMultConst[64] = {
@@ -1581,7 +1581,7 @@ void Evaluatie::initialisatie()
 #endif
 
 #if 0
-	for (Lijn lijn = LIJN_A; lijn <= LIJN_H; ++lijn)
+	for (File lijn = LIJN_A; lijn <= LIJN_H; ++lijn)
 	{
 		bb_centrum_pivot_W[lijn] = bb4(SQ_D4, SQ_D5, SQ_E4, SQ_E5)
 			| (lijn >= LIJN_E ? bb3(SQ_F4, SQ_E3, SQ_F3) : bb3(SQ_C4, SQ_D3, SQ_C3));
@@ -1591,10 +1591,10 @@ void Evaluatie::initialisatie()
 #endif
 }
 
-void Evaluatie::init_tune()
+void Evaluation::init_tune()
 {
-	Evaluatie::initialisatie();
-	Pionnen::initialisatie();
+	Evaluation::initialisatie();
+	Pawns::initialisatie();
 	PST::initialisatie();
-	Zoeken::initialisatie();
+	Search::initialisatie();
 }

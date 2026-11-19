@@ -18,7 +18,7 @@
 
 using namespace std;
 
-extern void benchmark(const Stelling& pos, istream& is);
+extern void benchmark(const Position& pos, istream& is);
 #ifdef USE_LICENSE
 extern bool LICENTIE_OK;
 #endif
@@ -27,9 +27,9 @@ namespace
 {
 	const char* StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
-	void position(Stelling& pos, istringstream& is)
+	void position(Position& pos, istringstream& is)
 	{
-		Zet zet;
+		Move zet;
 		string token, fen;
 
 		is >> token;
@@ -94,9 +94,9 @@ namespace
 	}
 
 
-	void go(Stelling& pos, istringstream& is)
+	void go(Position& pos, istringstream& is)
 	{
-		TijdLimiet tijdLimiet;
+		TimeLimit tijdLimiet;
 		string woord;
 
 		tijdLimiet.startTijd = nu();
@@ -153,9 +153,9 @@ std::string trim(const std::string& str, const std::string& whitespace = " \t")
 }
 
 
-void toon_evaluatie(const Stelling& pos)
+void toon_evaluatie(const Position& pos)
 {
-	Waarde v = Evaluatie::evaluatie(pos, GEEN_WAARDE, GEEN_WAARDE);
+	Value v = Evaluation::evaluatie(pos, GEEN_WAARDE, GEEN_WAARDE);
 	v = pos.aan_zet() == WIT ? v : -v;
 
 	sync_cout << std::showpos << std::fixed << std::setprecision(2)
@@ -165,11 +165,11 @@ void toon_evaluatie(const Stelling& pos)
 
 void UCI::hoofdLus(int argc, char* argv[])
 {
-	Stelling pos;
+	Position pos;
 	string woord, cmd;
 
 	pos.set(StartFEN, false, Threads.main());
-	Zoeken::wis_alles();
+	Search::wis_alles();
 
 #ifdef TRACE_TM
 	open_tracefile();
@@ -192,16 +192,16 @@ void UCI::hoofdLus(int argc, char* argv[])
 
 		if (woord == "quit"
 			|| woord == "stop"
-			|| (woord == "ponderhit" && Zoeken::Signalen.stopBijPonderhit))
+			|| (woord == "ponderhit" && Search::Signalen.stopBijPonderhit))
 		{
-			Zoeken::Signalen.stopAnalyse = true;
+			Search::Signalen.stopAnalyse = true;
 			Threads.main()->maak_wakker(false);
 			//Threads.main()->wacht_op_einde_zoeken();
 		}
 		else if (woord == "ponderhit")
 		{
-			Zoeken::Klok.ponder = 0;
-			Zoeken::pas_tijd_aan_na_ponderhit();
+			Search::Klok.ponder = 0;
+			Search::pas_tijd_aan_na_ponderhit();
 		}
 
 		else if (woord == "uci")
@@ -211,14 +211,14 @@ void UCI::hoofdLus(int argc, char* argv[])
 
 		else if (woord == "ucinewgame")
 		{
-			Zoeken::Signalen.stopAnalyse = true;
+			Search::Signalen.stopAnalyse = true;
 			Threads.main()->maak_wakker(false);
 			Threads.main()->wacht_op_einde_zoeken();
-			Zoeken::wis_alles();
+			Search::wis_alles();
 		}
 		else if (woord == "isready")
 			sync_cout << "readyok" << sync_endl;
-		else if (Zoeken::Running)
+		else if (Search::Running)
 			sync_cout << "info string Search running, command ignored" << sync_endl;
 		else
 		{
@@ -249,7 +249,7 @@ void UCI::hoofdLus(int argc, char* argv[])
 }
 
 
-string UCI::waarde(Waarde v)
+string UCI::waarde(Value v)
 {
 	stringstream ss;
 
@@ -262,18 +262,18 @@ string UCI::waarde(Waarde v)
 		ss << "cp " << v / 2;
 #else
 		int vv;
-		if (abs(v) >= Waarde(400))
+		if (abs(v) >= Value(400))
 			vv = 16 * v;
-		else if (v <= Waarde(-200))
-			vv = 14 * v - Waarde(800);
-		else if (v <= Waarde(-100))
-			vv = 16 * v - Waarde(400);
-		else if (v <= Waarde(100))
+		else if (v <= Value(-200))
+			vv = 14 * v - Value(800);
+		else if (v <= Value(-100))
+			vv = 16 * v - Value(400);
+		else if (v <= Value(100))
 			vv = 20 * v;
-		else if (v <= Waarde(200))
-			vv = 16 * v + Waarde(400);
+		else if (v <= Value(200))
+			vv = 16 * v + Value(400);
 		else
-			vv = 14 * v + Waarde(800);
+			vv = 14 * v + Value(800);
 
 		ss << "cp " << vv * 100 / (16 * WAARDE_PION);
 #endif
@@ -285,18 +285,18 @@ string UCI::waarde(Waarde v)
 }
 
 
-std::string UCI::veld(Veld veld)
+std::string UCI::veld(Square veld)
 {
 	return std::string{ char('a' + lijn(veld)), char('1' + rij(veld)) };
 }
 
 
-string UCI::zet(Zet zet, const Stelling& pos)
+string UCI::zet(Move zet, const Position& pos)
 {
 	char sZet[6];
 
-	Veld van = van_veld(zet);
-	Veld naar = naar_veld(zet);
+	Square van = van_veld(zet);
+	Square naar = naar_veld(zet);
 
 	if (zet == GEEN_ZET || zet == NULL_ZET)
 		return "0000";
@@ -309,7 +309,7 @@ string UCI::zet(Zet zet, const Stelling& pos)
 	sZet[1] = '1' + rij(van);
 	sZet[2] = 'a' + lijn(naar);
 	sZet[3] = '1' + rij(naar);
-	if (zet < Zet(PROMOTIE_P))
+	if (zet < Move(PROMOTIE_P))
 		return string(sZet, 4);
 
 	sZet[4] = "   nbrq"[promotie_stuk(zet)];
@@ -317,7 +317,7 @@ string UCI::zet(Zet zet, const Stelling& pos)
 }
 
 
-Zet UCI::zet_van_string(const Stelling& pos, string& str)
+Move UCI::zet_van_string(const Position& pos, string& str)
 {
 	if (pos.is_chess960())
 	{
@@ -331,7 +331,7 @@ Zet UCI::zet_van_string(const Stelling& pos, string& str)
 	if (str.length() == 5)
 		str[4] = char(tolower(str[4]));
 
-	for (const auto& zet : LegaleZettenLijst(pos))
+	for (const auto& zet : LegalMoveList(pos))
 		if (str == UCI::zet(zet, pos))
 			return zet;
 

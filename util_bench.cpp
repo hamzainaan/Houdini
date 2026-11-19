@@ -15,11 +15,11 @@
 
 using namespace std;
 
-void benchmark(const Stelling& current, istream& is)
+void benchmark(const Position& current, istream& is)
 {
 	string woord;
 	vector<string> stellingen;
-	TijdLimiet tijdLimiet;
+	TimeLimit tijdLimiet;
 
 	string ttSize = (is >> woord) ? woord : "16";
 	string threads = (is >> woord) ? woord : "1";
@@ -30,7 +30,7 @@ void benchmark(const Stelling& current, istream& is)
 
 	UciOpties["Hash"] = ttSize;
 	UciOpties["Threads"] = threads;
-	Zoeken::wis_alles();
+	Search::wis_alles();
 
 	if (limitType == "time")
 		tijdLimiet.movetime = limit;
@@ -68,8 +68,8 @@ void benchmark(const Stelling& current, istream& is)
 	}
 
 	uint64_t knopen = 0;
-	Tijdstip verstreken = nu();
-	Stelling pos;
+	TimePoint verstreken = nu();
+	Position pos;
 
 	cerr << stellingen.size() << " bench positions" << endl;
 	ofstream bad_file, ok_file;
@@ -101,7 +101,7 @@ void benchmark(const Stelling& current, istream& is)
 		}
 		if (filter)
 		{
-			ofstream* outfile = abs(Threads.main()->vorigeRootScore) > Waarde(2 * filter) ? &bad_file : &ok_file;
+			ofstream* outfile = abs(Threads.main()->vorigeRootScore) > Value(2 * filter) ? &bad_file : &ok_file;
 			*outfile << stellingen[i] << " " << UCI::waarde(Threads.main()->vorigeRootScore) << endl;
 		}
 	}
@@ -111,7 +111,7 @@ void benchmark(const Stelling& current, istream& is)
 		ok_file.close();
 	}
 
-	verstreken = std::max(nu() - verstreken, Tijdstip(1));
+	verstreken = std::max(nu() - verstreken, TimePoint(1));
 
 	dbg_print();
 

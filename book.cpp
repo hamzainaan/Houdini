@@ -9,7 +9,7 @@ using namespace std;
 
 namespace
 {
-	struct PolyglotTupel
+	struct PolyglotTuple
 	{
 		uint64_t sleutel;
 		uint16_t zet;
@@ -19,12 +19,12 @@ namespace
 
 	const union
 	{
-		Sleutel64 Random64[781];
+		Key64 Random64[781];
 		struct {
-			Sleutel64 psq[12][64];
-			Sleutel64 rokade[4];
-			Sleutel64 enpassant[8];
-			Sleutel64 aan_zet;
+			Key64 psq[12][64];
+			Key64 rokade[4];
+			Key64 enpassant[8];
+			Key64 aan_zet;
 		} Zobrist;
 	} PolyglotSleutels =
 	{ {
@@ -230,15 +230,15 @@ namespace
 	const int PolyglotIndex[STUK_N] = { 0, 11, 1, 3, 5, 7, 9, 0, 0, 10, 0, 2, 4, 6, 8, 0 };
 
 
-	Sleutel64 polyglot_sleutel(const Stelling& pos)
+	Key64 polyglot_sleutel(const Position& pos)
 	{
-		Sleutel64 sleutel = 0;
+		Key64 sleutel = 0;
 
-		Bord b = pos.stukken();
+		Bitboard b = pos.stukken();
 		while (b)
 		{
-			Veld veld = pop_lsb(&b);
-			Stuk stuk = pos.stuk_op_veld(veld);
+			Square veld = pop_lsb(&b);
+			Piece stuk = pos.stuk_op_veld(veld);
 			sleutel ^= PolyglotSleutels.Zobrist.psq[PolyglotIndex[stuk]][veld];
 		}
 
@@ -257,16 +257,16 @@ namespace
 
 }
 
-PolyglotBoek::PolyglotBoek() {}
+PolyglotBook::PolyglotBook() {}
 
-PolyglotBoek::~PolyglotBoek()
+PolyglotBook::~PolyglotBook()
 {
 	if (is_open()) 
 		close();
 }
 
 
-bool PolyglotBoek::lees_tupel(PolyglotTupel* tupel)
+bool PolyglotBook::lees_tupel(PolyglotTuple* tupel)
 {
 	char buffer[16];
 	char* b = (char *)tupel;
@@ -296,7 +296,7 @@ bool PolyglotBoek::lees_tupel(PolyglotTupel* tupel)
 	return good();
 }
 
-bool PolyglotBoek::open(const char* bookPath)
+bool PolyglotBook::open(const char* bookPath)
 {
 	if (is_open())
 		close();
@@ -313,15 +313,15 @@ bool PolyglotBoek::open(const char* bookPath)
 // bit  6-11: van veld
 // bit 12-14: promotiestuk (PAARD = 1 tot DAME = 4)
 // rokade: K slaat T
-Zet PolyglotBoek::zet_van_polyglot(const Stelling& pos, Zet pg_zet)
+Move PolyglotBook::zet_van_polyglot(const Position& pos, Move pg_zet)
 {
-	Veld naar = naar_veld(pg_zet);
-	Veld van = van_veld(pg_zet);
-	Kleur aan_zet = pos.aan_zet();
+	Square naar = naar_veld(pg_zet);
+	Square van = van_veld(pg_zet);
+	Color aan_zet = pos.aan_zet();
 	int promotie = zet_type(pg_zet);
 
 	if (promotie)
-		return maak_zet(ZetType(PROMOTIE_P + ((promotie - 1) << 12)), van, naar);
+		return maak_zet(MoveType(PROMOTIE_P + ((promotie - 1) << 12)), van, naar);
 	if (van == pos.koning(aan_zet) && pos.stuk_op_veld(naar) == maak_stuk(aan_zet, TOREN))
 		return maak_zet(ROKADE, van, relatief_veld(pos.aan_zet(), naar > van ? SQ_G1 : SQ_C1));
 	if (pos.stuk_op_veld(van) == maak_stuk(aan_zet, PION) && naar == pos.enpassant_veld())
@@ -331,10 +331,10 @@ Zet PolyglotBoek::zet_van_polyglot(const Stelling& pos, Zet pg_zet)
 }
 
 
-bool PolyglotBoek::geeft_zetherhaling(Stelling& pos, Zet pg_zet)
+bool PolyglotBook::geeft_zetherhaling(Position& pos, Move pg_zet)
 {
-	Zet zet = zet_van_polyglot(pos, pg_zet);
-	if (zet >= Zet(ROKADE))
+	Move zet = zet_van_polyglot(pos, pg_zet);
+	if (zet >= Move(ROKADE))
 		return false;
 
 	pos.speel_zet(zet);
@@ -345,13 +345,13 @@ bool PolyglotBoek::geeft_zetherhaling(Stelling& pos, Zet pg_zet)
 }
 
 
-void PolyglotBoek::nieuwe_partij()
+void PolyglotBook::nieuwe_partij()
 {
 	gemisteProbes = 0;
 }
 
 
-Zet PolyglotBoek::probe(Stelling& pos, const string& bookPath, bool besteVariant)
+Move PolyglotBook::probe(Position& pos, const string& bookPath, bool besteVariant)
 {
 	if (boekBestand != bookPath)
 	{
@@ -363,7 +363,7 @@ Zet PolyglotBoek::probe(Stelling& pos, const string& bookPath, bool besteVariant
 
 	if (gemisteProbes)
 	{
-		Bord gewijzigdeStukken = vorigeStukken ^ pos.stukken();
+		Bitboard gewijzigdeStukken = vorigeStukken ^ pos.stukken();
 
 		if (popcount(gewijzigdeStukken) > 4  // twee rokades verplaatsen 4 stukken
 			|| popcount(pos.stukken()) > popcount(vorigeStukken)  // stukken toegevoegd
@@ -376,32 +376,32 @@ Zet PolyglotBoek::probe(Stelling& pos, const string& bookPath, bool besteVariant
 	if (gemisteProbes > 2)
 		return GEEN_ZET;
 
-	PolyglotTupel tupel;
+	PolyglotTuple tupel;
 	unsigned best = 0;
 	unsigned sum = 0;
-	Zet zet = GEEN_ZET;
-	Sleutel64 sleutel = polyglot_sleutel(pos);
+	Move zet = GEEN_ZET;
+	Key64 sleutel = polyglot_sleutel(pos);
 
-	seekg(vind_tupel(sleutel) * sizeof(PolyglotTupel), ios_base::beg);
+	seekg(vind_tupel(sleutel) * sizeof(PolyglotTuple), ios_base::beg);
 
 	while (lees_tupel(&tupel) && tupel.sleutel == sleutel)
 	{
 		if (besteVariant)
 		{
-			if ((zet == GEEN_ZET || tupel.gewicht > best) && !geeft_zetherhaling(pos, Zet(tupel.zet)))
+			if ((zet == GEEN_ZET || tupel.gewicht > best) && !geeft_zetherhaling(pos, Move(tupel.zet)))
 			{
 				best = tupel.gewicht;
-				zet = Zet(tupel.zet);
+				zet = Move(tupel.zet);
 			}
 		}
 		else
 		{
 			sum += tupel.gewicht;
 			if (zet == GEEN_ZET || (sum && rng.rand<unsigned>() % sum < tupel.gewicht))
-				if (geeft_zetherhaling(pos, Zet(tupel.zet)))
+				if (geeft_zetherhaling(pos, Move(tupel.zet)))
 					sum -= tupel.gewicht;
 				else
-					zet = Zet(tupel.zet);
+					zet = Move(tupel.zet);
 		}
 	}
 
@@ -416,18 +416,18 @@ Zet PolyglotBoek::probe(Stelling& pos, const string& bookPath, bool besteVariant
 }
 
 
-size_t PolyglotBoek::vind_tupel(Sleutel64 sleutel)
+size_t PolyglotBook::vind_tupel(Key64 sleutel)
 {
 	seekg(0, ios::end);
 
-	size_t low = 0, mid, high = (size_t)tellg() / sizeof(PolyglotTupel) - 1;
-	PolyglotTupel tupel;
+	size_t low = 0, mid, high = (size_t)tellg() / sizeof(PolyglotTuple) - 1;
+	PolyglotTuple tupel;
 
 	while (low < high)
 	{
 		mid = (low + high) / 2;
 
-		seekg(mid * sizeof(PolyglotTupel), ios_base::beg);
+		seekg(mid * sizeof(PolyglotTuple), ios_base::beg);
 		if (!lees_tupel(&tupel))
 			break;
 

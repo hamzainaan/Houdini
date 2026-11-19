@@ -7,9 +7,9 @@
 #include "bitboard.h"
 #include "move_hash.h"
 
-TranspositieTabel HoofdHash;
+TranspositionTable HoofdHash;
 
-void TranspositieTabel::verander_grootte(size_t mbSize) 
+void TranspositionTable::verander_grootte(size_t mbSize) 
 {
 	bool large_pages;
 	size_t nieuwClusterAantal = size_t(1) << msb((mbSize * 1024 * 1024) / sizeof(Cluster));
@@ -38,19 +38,19 @@ void TranspositieTabel::verander_grootte(size_t mbSize)
 }
 
 
-void TranspositieTabel::wis() 
+void TranspositionTable::wis() 
 {
 	std::memset(tabel, 0, clusterAantal * sizeof(Cluster));
 }
 
-bool TranspositieTabel::is_entry_in_use(const Sleutel64 sleutel, Diepte d) const
+bool TranspositionTable::is_entry_in_use(const Key64 sleutel, Depth d) const
 {
 	TTTuple* tt = zoek_bestaand(sleutel);
 	int dd = d / PLY;
 	return tt && (tt->vlaggen8 & IN_GEBRUIK) && (dd >= tt->diepte8);
 }
 
-void TranspositieTabel::mark_entry_in_use(const Sleutel64 sleutel, Diepte diepte, uint8_t waarde)
+void TranspositionTable::mark_entry_in_use(const Key64 sleutel, Depth diepte, uint8_t waarde)
 {
 	uint16_t sleutel16 = sleutel >> 48;
 	TTTuple* tt = zoek_vervang(sleutel);
@@ -61,7 +61,7 @@ void TranspositieTabel::mark_entry_in_use(const Sleutel64 sleutel, Diepte diepte
 }
 
 
-TTTuple* TranspositieTabel::zoek_bestaand(const Sleutel64 sleutel) const
+TTTuple* TranspositionTable::zoek_bestaand(const Key64 sleutel) const
 {
 	TTTuple* const ttt = tuple(sleutel);
 	uint16_t sleutel16 = sleutel >> 48;
@@ -80,7 +80,7 @@ TTTuple* TranspositieTabel::zoek_bestaand(const Sleutel64 sleutel) const
 }
 
 
-TTTuple * TranspositieTabel::zoek_vervang(const Sleutel64 sleutel) const
+TTTuple * TranspositionTable::zoek_vervang(const Key64 sleutel) const
 {
 	TTTuple* const ttt = tuple(sleutel);
 	uint16_t sleutel16 = sleutel >> 48;
@@ -120,7 +120,7 @@ string GetUserFolder()
 static char hash_file_ID[17]  = "HOUDINI_HASH_500";
 //static char learn_file_ID[17] = "HOUDINI_LEARN500";
 
-bool TranspositieTabel::save_to_file(string uci_hash_file) 
+bool TranspositionTable::save_to_file(string uci_hash_file) 
 {
 	string file_name;
 	if (uci_hash_file == "" || uci_hash_file == "<empty>")
@@ -160,7 +160,7 @@ bool TranspositieTabel::save_to_file(string uci_hash_file)
 	return result;
 }
 
-bool TranspositieTabel::load_from_file(string uci_hash_file) 
+bool TranspositionTable::load_from_file(string uci_hash_file) 
 {
 	char ID[17];
 	uint64_t hash_grootte, blok_grootte;
@@ -214,7 +214,7 @@ bool TranspositieTabel::load_from_file(string uci_hash_file)
 }
 
 
-int TranspositieTabel::bereken_hashfull() const
+int TranspositionTable::bereken_hashfull() const
 {
 	const int i_max = 999 / ClusterGrootte + 1;
 	int cnt = 0;

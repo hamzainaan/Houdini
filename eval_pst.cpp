@@ -90,9 +90,9 @@ namespace PST
 	void initialisatie()
 	{
 #if !defined(USE_LICENSE) && !defined(IMPORT_TABELLEN)
-		for (StukType stuk = KONING; stuk <= DAME; ++stuk)
+		for (PieceType stuk = KONING; stuk <= DAME; ++stuk)
 		{
-			for (Veld s = SQ_A1; s <= SQ_H8; ++s)
+			for (Square s = SQ_A1; s <= SQ_H8; ++s)
 			{
 				Score waarde = PST[stuk][s];
 				if (stuk == PION) waarde = score_muldiv(waarde, 128, 256);
@@ -147,9 +147,9 @@ namespace PST
 			{ 0,  0, -4,  8, -8, -2 }
 		};
 
-		for (StukType stuk = KONING; stuk <= DAME; ++stuk)
+		for (PieceType stuk = KONING; stuk <= DAME; ++stuk)
 		{
-			for (Veld s = SQ_A1; s <= SQ_H8; ++s)
+			for (Square s = SQ_A1; s <= SQ_H8; ++s)
 			{
 				int mg = (PstMult[stuk][0] * PstRankQuad[s] + PstMult[stuk][1] * PstFileQuad[s]) / 2 + PstMult[stuk][2] * PstRank[s];
 				int eg = (PstMult[stuk][3] * PstRankQuad[s] + PstMult[stuk][4] * PstFileQuad[s]) / 2 + PstMult[stuk][5] * PstRank[s];
@@ -159,7 +159,7 @@ namespace PST
 			}
 		}
 #if 0
-		for (Veld s = SQ_A1; s <= SQ_H8; ++s)
+		for (Square s = SQ_A1; s <= SQ_H8; ++s)
 		{
 			int mg = (TUNE_1 * PstRankQuad[s] + TUNE_2 * PstFileQuad[s]) / 2 + TUNE_3 * PstRank[s];
 			int eg = (TUNE_4 * PstRankQuad[s] + TUNE_5 * PstFileQuad[s]) / 2 + TUNE_6 * PstRank[s];

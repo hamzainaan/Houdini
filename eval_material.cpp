@@ -14,8 +14,8 @@ namespace
 	static const double BalanceFactorOld[5] = { 0.1, 0.1, 0.1, 0.2, 0.5 };
 	static const double BalanceFactor[4] = { 0.05, 0.08, 0.15, 0.3 };
 
-	EvalWaarde imbalanceH(int WPion, int WP, int WL, int WLL, int WLD, int WT, int WD,
-		int ZPion, int ZP, int ZL, int ZLL, int ZLD, int ZT, int ZD, SchaalFactor &conversion)
+	EvalValue imbalanceH(int WPion, int WP, int WL, int WLL, int WLD, int WT, int WD,
+		int ZPion, int ZP, int ZL, int ZLL, int ZLD, int ZT, int ZD, ScaleFactor &conversion)
 	{
 		int HScore = 0;
 		int WLP = (WLL && WLD);
@@ -89,8 +89,8 @@ namespace
 				conversie = conversie * BalanceFactorOld[matDifference];
 		}
 
-		conversion = SchaalFactor(std::lround(conversie * MAX_FACTOR));
-		return EvalWaarde(ScoreMultiply(HScore));
+		conversion = ScaleFactor(std::lround(conversie * MAX_FACTOR));
+		return EvalValue(ScoreMultiply(HScore));
 	}
 
 	/*
@@ -216,29 +216,29 @@ namespace
 
 } // namespace
 
-namespace Materiaal
+namespace Material
 {
-	Waarde Tuple::waarde_uit_functie(const Stelling& pos) const
+	Value Tuple::waarde_uit_functie(const Position& pos) const
 	{
 		return (*Threads.endgames.waarde_functies[waardeFunctieIndex])(pos);
 	}
 
-	SchaalFactor Tuple::schaalfactor_uit_functie(const Stelling & pos, Kleur kleur) const
+	ScaleFactor Tuple::schaalfactor_uit_functie(const Position & pos, Color kleur) const
 	{
 		if (schaalFunctieIndex[kleur] >= 0)
 		{
-			SchaalFactor sf = (*Threads.endgames.factor_functies[schaalFunctieIndex[kleur]])(pos);
+			ScaleFactor sf = (*Threads.endgames.factor_functies[schaalFunctieIndex[kleur]])(pos);
 			if (sf != GEEN_FACTOR)
 				return sf;
 		}
-		return SchaalFactor(factor[kleur]);
+		return ScaleFactor(factor[kleur]);
 	}
 
-	Tuple* probe(const Stelling& pos)
+	Tuple* probe(const Position& pos)
 	{
 		// index in materialTable is de sleutel met kleur lopers (want conversie-factoren hangen af van kleur lopers)
 		// index in endgames is sleutel zonder kleur lopers (want de routines maken dit onderscheid zelf)
-		Sleutel64 sleutel = pos.materiaal_sleutel() ^ pos.loperkleur_sleutel();
+		Key64 sleutel = pos.materiaal_sleutel() ^ pos.loperkleur_sleutel();
 		Tuple* e = pos.ti()->materiaalTabel[sleutel];
 
 		if (e->sleutel64 == sleutel)
@@ -263,14 +263,14 @@ namespace Materiaal
 		if (e->waardeFunctieIndex >= 0)
 			return e;
 
-		for (Kleur kleur = WIT; kleur <= ZWART; ++kleur)
+		for (Color kleur = WIT; kleur <= ZWART; ++kleur)
 			if (!meer_dan_een(pos.stukken(~kleur)) && pos.niet_pion_materiaal(kleur) >= MATL_TOREN)
 			{
 				e->waardeFunctieIndex = kleur == WIT ? 0 : 1;  // endgameValue_KXK
 				return e;
 			}
 
-		Kleur sterkeZijde;
+		Color sterkeZijde;
 		int sf = Threads.endgames.probe_schaalfactor(pos.materiaal_sleutel(), sterkeZijde);
 
 		if (sf >= 0)
@@ -279,7 +279,7 @@ namespace Materiaal
 			return e;
 		}
 
-		for (Kleur kleur = WIT; kleur <= ZWART; ++kleur)
+		for (Color kleur = WIT; kleur <= ZWART; ++kleur)
 		{
 			if (pos.niet_pion_materiaal(kleur) == MATL_LOPER && pos.aantal(kleur, LOPER) == 1 && pos.aantal(kleur, PION) >= 1)
 				e->schaalFunctieIndex[kleur] = kleur == WIT ? 0 : 1;  // endgameScaleFactor_KBPsK
@@ -289,8 +289,8 @@ namespace Materiaal
 				e->schaalFunctieIndex[kleur] = kleur == WIT ? 2 : 3;  // endgameScaleFactor_KQKRPs
 		}
 
-		MateriaalWaarde npm_w = pos.niet_pion_materiaal(WIT);
-		MateriaalWaarde npm_b = pos.niet_pion_materiaal(ZWART);
+		MaterialValue npm_w = pos.niet_pion_materiaal(WIT);
+		MaterialValue npm_b = pos.niet_pion_materiaal(ZWART);
 
 		if (npm_w + npm_b == MATL_0 && pos.stukken(PION)) // pionneneindspel, maar niet KPK
 		{
@@ -313,11 +313,11 @@ namespace Materiaal
 
 		if (!pos.aantal(WIT, PION) && npm_w - npm_b <= MATL_LOPER)
 			e->factor[WIT] = uint8_t(npm_w < MATL_TOREN ? REMISE_FACTOR :
-				npm_b <= MATL_LOPER ? SchaalFactor(6) : SchaalFactor(22));
+				npm_b <= MATL_LOPER ? ScaleFactor(6) : ScaleFactor(22));
 
 		if (!pos.aantal(ZWART, PION) && npm_b - npm_w <= MATL_LOPER)
 			e->factor[ZWART] = uint8_t(npm_b <  MATL_TOREN ? REMISE_FACTOR :
-				npm_w <= MATL_LOPER ? SchaalFactor(6) : SchaalFactor(22));
+				npm_w <= MATL_LOPER ? ScaleFactor(6) : ScaleFactor(22));
 
 		if (pos.aantal(WIT, PION) == 1 && npm_w - npm_b <= MATL_LOPER)
 			e->factor[WIT] = (uint8_t)EEN_PION_FACTOR;

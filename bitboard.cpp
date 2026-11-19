@@ -11,12 +11,12 @@ uint8_t PopCnt16[1 << 16];
 
 int8_t VeldAfstand[VELD_N][VELD_N];
 
-Bord TorenMask[VELD_N];
-Bord LoperMask[VELD_N];
-Bord* LoperAanvalTabel[64];
-Bord* TorenAanvalTabel[64];
+Bitboard TorenMask[VELD_N];
+Bitboard LoperMask[VELD_N];
+Bitboard* LoperAanvalTabel[64];
+Bitboard* TorenAanvalTabel[64];
 
-const Bord LoperMagics[64] =
+const Bitboard LoperMagics[64] =
 {
 	0x007bfeffbfeffbffull, 0x003effbfeffbfe08ull, 0x0000401020200000ull,
 	0x0000200810000000ull, 0x0000110080000000ull, 0x0000080100800000ull,
@@ -42,7 +42,7 @@ const Bord LoperMagics[64] =
 	0x007ffdff7fdff7fdull
 };
 
-const Bord TorenMagics[64] =
+const Bitboard TorenMagics[64] =
 {
 	0x00a801f7fbfeffffull, 0x00180012000bffffull, 0x0040080010004004ull,
 	0x0040040008004002ull, 0x0040020004004001ull, 0x0020008020010202ull,
@@ -69,23 +69,23 @@ const Bord TorenMagics[64] =
 };
 
 
-Bord bbVeld[VELD_N];
-Bord bbAangrenzendeLijnen[LIJN_N];
-Bord bbRijenVoorwaarts[KLEUR_N][RIJ_N];
-Bord bbTussen[VELD_N][VELD_N];
-Bord bbVerbinding[VELD_N][VELD_N];
-Bord bbVoorwaarts[KLEUR_N][VELD_N];
-Bord VrijpionMask[KLEUR_N][VELD_N];
-Bord PionAanvalBereik[KLEUR_N][VELD_N];
-Bord PionAanval[KLEUR_N][VELD_N];
-Bord LegeAanval[STUKTYPE_N][VELD_N];
-Bord KoningZone[VELD_N];
+Bitboard bbVeld[VELD_N];
+Bitboard bbAangrenzendeLijnen[LIJN_N];
+Bitboard bbRijenVoorwaarts[KLEUR_N][RIJ_N];
+Bitboard bbTussen[VELD_N][VELD_N];
+Bitboard bbVerbinding[VELD_N][VELD_N];
+Bitboard bbVoorwaarts[KLEUR_N][VELD_N];
+Bitboard VrijpionMask[KLEUR_N][VELD_N];
+Bitboard PionAanvalBereik[KLEUR_N][VELD_N];
+Bitboard PionAanval[KLEUR_N][VELD_N];
+Bitboard LegeAanval[STUKTYPE_N][VELD_N];
+Bitboard KoningZone[VELD_N];
 
 namespace
 {
-	Bord MagicAanvalT[102400];
+	Bitboard MagicAanvalT[102400];
 #ifdef USE_PEXT
-	Bord MagicAanvalL[5248];
+	Bitboard MagicAanvalL[5248];
 #endif
 
 	static const int Local_BishopMagicIndex[64] =
@@ -160,9 +160,9 @@ const uint64_t DeBruijn64 = 0x3F79D71B4CB0A89ULL;
 const uint32_t DeBruijn32 = 0x783A9B23;
 
 int MSBTable[256];
-Veld BSFTable[VELD_N];
+Square BSFTable[VELD_N];
 
-unsigned bsf_index(Bord b)
+unsigned bsf_index(Bitboard b)
 {
 	b ^= b - 1;
 #if defined(IS_64BIT)
@@ -172,13 +172,13 @@ unsigned bsf_index(Bord b)
 #endif
 }
 
-Veld lsb(Bord b)
+Square lsb(Bitboard b)
 {
   assert(b);
   return BSFTable[bsf_index(b)];
 }
 
-Veld msb(Bord b)
+Square msb(Bitboard b)
 {
   assert(b);
   unsigned b32;
@@ -204,7 +204,7 @@ Veld msb(Bord b)
       result += 8;
   }
 
-  return Veld(result + MSBTable[b32]);
+  return Square(result + MSBTable[b32]);
 }
 
 #endif // NO_BSF
@@ -218,56 +218,56 @@ void Bitboards::initialisatie()
 		PopCnt16[i] = (uint8_t)popcount16(i);
 #endif
 
-	for (Veld veld = SQ_A1; veld <= SQ_H8; ++veld)
+	for (Square veld = SQ_A1; veld <= SQ_H8; ++veld)
 		bbVeld[veld] = 1ULL << veld;
 
 #ifdef NO_BSF
-	for (Veld veld = SQ_A1; veld <= SQ_H8; ++veld)
+	for (Square veld = SQ_A1; veld <= SQ_H8; ++veld)
 		BSFTable[bsf_index(bbVeld[s])] = veld;
-	for (Bord b = 2; b < 256; ++b)
+	for (Bitboard b = 2; b < 256; ++b)
 		MSBTable[b] = MSBTable[b - 1] + !meer_dan_een(b);
 #endif
 
-	for (Lijn lijn = LIJN_A; lijn <= LIJN_H; ++lijn)
+	for (File lijn = LIJN_A; lijn <= LIJN_H; ++lijn)
 		bbAangrenzendeLijnen[lijn] = (lijn > LIJN_A ? bbLijn[lijn - 1] : 0) | (lijn < LIJN_H ? bbLijn[lijn + 1] : 0);
 
-	for (Rij rij = RIJ_1; rij < RIJ_8; ++rij)
+	for (Rank rij = RIJ_1; rij < RIJ_8; ++rij)
 		bbRijenVoorwaarts[WIT][rij] = ~(bbRijenVoorwaarts[ZWART][rij + 1] = bbRijenVoorwaarts[ZWART][rij] | bbRij[rij]);
 
-	for (Kleur kleur = WIT; kleur <= ZWART; ++kleur)
-		for (Veld veld = SQ_A1; veld <= SQ_H8; ++veld)
+	for (Color kleur = WIT; kleur <= ZWART; ++kleur)
+		for (Square veld = SQ_A1; veld <= SQ_H8; ++veld)
 		{
 			bbVoorwaarts[kleur][veld] = bbRijenVoorwaarts[kleur][rij(veld)] & bbLijn[lijn(veld)];
 			PionAanvalBereik[kleur][veld] = bbRijenVoorwaarts[kleur][rij(veld)] & bbAangrenzendeLijnen[lijn(veld)];
 			VrijpionMask[kleur][veld] = bbVoorwaarts[kleur][veld] | PionAanvalBereik[kleur][veld];
 		}
 
-	for (Veld veld1 = SQ_A1; veld1 <= SQ_H8; ++veld1)
-		for (Veld veld2 = SQ_A1; veld2 <= SQ_H8; ++veld2)
+	for (Square veld1 = SQ_A1; veld1 <= SQ_H8; ++veld1)
+		for (Square veld2 = SQ_A1; veld2 <= SQ_H8; ++veld2)
 			VeldAfstand[veld1][veld2] = std::max(lijn_afstand(veld1, veld2), rij_afstand(veld1, veld2));
 
-	for (Veld veld = SQ_A1; veld <= SQ_H8; ++veld)
+	for (Square veld = SQ_A1; veld <= SQ_H8; ++veld)
 	{
 		PionAanval[WIT][veld] = pion_aanval<WIT>(bbVeld[veld]);
 		PionAanval[ZWART][veld] = pion_aanval<ZWART>(bbVeld[veld]);
 	}
 
-	for (StukType stuk = KONING; stuk <= PAARD; ++(++stuk))
-		for (Veld veld = SQ_A1; veld <= SQ_H8; ++veld)
+	for (PieceType stuk = KONING; stuk <= PAARD; ++(++stuk))
+		for (Square veld = SQ_A1; veld <= SQ_H8; ++veld)
 		{
-			Bord b = 0;
+			Bitboard b = 0;
 			for (int i = 0; i < 8; ++i)
 			{
-				Veld naar = veld + Veld(KP_delta[stuk][i]);
+				Square naar = veld + Square(KP_delta[stuk][i]);
 				if (naar >= SQ_A1 && naar <= SQ_H8 && afstand(veld, naar) < 3)
 					b |= naar;
 			}
 			LegeAanval[stuk][veld] = b;
 		}
 
-	for (Veld veld = SQ_A1; veld <= SQ_H8; ++veld)
+	for (Square veld = SQ_A1; veld <= SQ_H8; ++veld)
 	{
-		Bord b = LegeAanval[KONING][veld];
+		Bitboard b = LegeAanval[KONING][veld];
 		if (lijn(veld) == LIJN_A)
 			b |= b << 1;
 		else if (lijn(veld) == LIJN_H)
@@ -281,14 +281,14 @@ void Bitboards::initialisatie()
 
 	init_magic_sliders();
 
-	for (Veld veld1 = SQ_A1; veld1 <= SQ_H8; ++veld1)
+	for (Square veld1 = SQ_A1; veld1 <= SQ_H8; ++veld1)
 	{
 		LegeAanval[LOPER][veld1] = aanval_bb_loper(veld1, 0);
 		LegeAanval[TOREN][veld1] = aanval_bb_toren(veld1, 0);
 		LegeAanval[DAME][veld1] = LegeAanval[LOPER][veld1] | LegeAanval[TOREN][veld1];
 
-		for (StukType stuk = LOPER; stuk <= TOREN; ++stuk)
-			for (Veld veld2 = SQ_A1; veld2 <= SQ_H8; ++veld2)
+		for (PieceType stuk = LOPER; stuk <= TOREN; ++stuk)
+			for (Square veld2 = SQ_A1; veld2 <= SQ_H8; ++veld2)
 			{
 				if (!(LegeAanval[stuk][veld1] & veld2))
 					continue;
@@ -302,10 +302,10 @@ void Bitboards::initialisatie()
 
 namespace
 {
-	Bord sliding_attacks(int veld, Bord block, const int deltas[4][2],
+	Bitboard sliding_attacks(int veld, Bitboard block, const int deltas[4][2],
 		int fmin, int fmax, int rmin, int rmax)
 	{
-		Bord result = 0;
+		Bitboard result = 0;
 		int rk = veld / 8, fl = veld % 8, r, f;
 
 		for (int richting = 0; richting < 4; richting++)
@@ -326,14 +326,14 @@ namespace
 
 
 #ifdef USE_PEXT
-	void init_magic_bb_pext(Bord *aanval, Bord* veldIndex[], Bord *mask, const int deltas[4][2])
+	void init_magic_bb_pext(Bitboard *aanval, Bitboard* veldIndex[], Bitboard *mask, const int deltas[4][2])
 	{
 		for (int veld = 0; veld < 64; veld++)
 		{
 			veldIndex[veld] = aanval;
 			mask[veld] = sliding_attacks(veld, 0, deltas, 1, 6, 1, 6);
 
-			Bord b = 0;
+			Bitboard b = 0;
 			do  // loop over complete set of mask[veld], see http://chessprogramming.wikispaces.com/Traversing+Subsets+of+a+Set
 			{
 				veldIndex[veld][pext(b, mask[veld])] = sliding_attacks(veld, b, deltas, 0, 7, 0, 7);
@@ -343,8 +343,8 @@ namespace
 		}
 	}
 #else
-	void init_magic_bb(Bord *aanval, const int attackIndex[], Bord* veldIndex[], Bord *mask,
-		int shift, const Bord mult[], const int deltas[4][2])
+	void init_magic_bb(Bitboard *aanval, const int attackIndex[], Bitboard* veldIndex[], Bitboard *mask,
+		int shift, const Bitboard mult[], const int deltas[4][2])
 	{
 		for (int veld = 0; veld < 64; veld++)
 		{
@@ -352,7 +352,7 @@ namespace
 			veldIndex[veld] = aanval + index;
 			mask[veld] = sliding_attacks(veld, 0, deltas, 1, 6, 1, 6);
 
-			Bord b = 0;
+			Bitboard b = 0;
 			do  // loop over complete set of mask[veld], see http://chessprogramming.wikispaces.com/Traversing+Subsets+of+a+Set
 			{
 				int offset = (unsigned int)((b * mult[veld]) >> shift);

@@ -11,27 +11,27 @@
 
 namespace
 {
-	struct PolyglotTupel;
+	struct PolyglotTuple;
 }
 
-class PolyglotBoek : private std::ifstream
+class PolyglotBook : private std::ifstream
 {
 public:
-	PolyglotBoek();
-	~PolyglotBoek();
-	Zet probe(Stelling& pos, const std::string& bookPath, bool besteVariant);
+	PolyglotBook();
+	~PolyglotBook();
+	Move probe(Position& pos, const std::string& bookPath, bool besteVariant);
 	void nieuwe_partij();
 
 private:
 	std::string boekBestand;
-	Bord vorigeStukken;
+	Bitboard vorigeStukken;
 	int gemisteProbes;
 
 	bool open(const char* bookPath);
-	size_t vind_tupel(Sleutel64 sleutel);
-	Zet zet_van_polyglot(const Stelling& pos, Zet pg_zet);
-	bool geeft_zetherhaling(Stelling & pos, Zet pg_zet);
-	bool lees_tupel(PolyglotTupel* tupel);
+	size_t vind_tupel(Key64 sleutel);
+	Move zet_van_polyglot(const Position& pos, Move pg_zet);
+	bool geeft_zetherhaling(Position & pos, Move pg_zet);
+	bool lees_tupel(PolyglotTuple* tupel);
 };
 
 #endif // #ifndef BOOK_H_INCLUDED

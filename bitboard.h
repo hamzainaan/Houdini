@@ -14,7 +14,7 @@
 
 namespace Bitbases
 {
-	bool probe(Veld wksq, Veld wpsq, Veld bksq, Kleur us);
+	bool probe(Square wksq, Square wpsq, Square bksq, Color us);
 }
 
 namespace Bitboards
@@ -22,41 +22,41 @@ namespace Bitboards
 	void initialisatie();
 }
 
-const Bord DonkereVelden = 0xAA55AA55AA55AA55ULL;
+const Bitboard DonkereVelden = 0xAA55AA55AA55AA55ULL;
 
-const Bord FileABB = 0x0101010101010101ULL;
-const Bord FileBBB = FileABB << 1;
-const Bord FileCBB = FileABB << 2;
-const Bord FileDBB = FileABB << 3;
-const Bord FileEBB = FileABB << 4;
-const Bord FileFBB = FileABB << 5;
-const Bord FileGBB = FileABB << 6;
-const Bord FileHBB = FileABB << 7;
+const Bitboard FileABB = 0x0101010101010101ULL;
+const Bitboard FileBBB = FileABB << 1;
+const Bitboard FileCBB = FileABB << 2;
+const Bitboard FileDBB = FileABB << 3;
+const Bitboard FileEBB = FileABB << 4;
+const Bitboard FileFBB = FileABB << 5;
+const Bitboard FileGBB = FileABB << 6;
+const Bitboard FileHBB = FileABB << 7;
 
-const Bord Rank1BB = 0xFF;
-const Bord Rank2BB = Rank1BB << 8;
-const Bord Rank3BB = Rank1BB << 16;
-const Bord Rank4BB = Rank1BB << 24;
-const Bord Rank5BB = Rank1BB << 32;
-const Bord Rank6BB = Rank1BB << 40;
-const Bord Rank7BB = Rank1BB << 48;
-const Bord Rank8BB = Rank1BB << 56;
+const Bitboard Rank1BB = 0xFF;
+const Bitboard Rank2BB = Rank1BB << 8;
+const Bitboard Rank3BB = Rank1BB << 16;
+const Bitboard Rank4BB = Rank1BB << 24;
+const Bitboard Rank5BB = Rank1BB << 32;
+const Bitboard Rank6BB = Rank1BB << 40;
+const Bitboard Rank7BB = Rank1BB << 48;
+const Bitboard Rank8BB = Rank1BB << 56;
 
 extern int8_t VeldAfstand[VELD_N][VELD_N];
 
-extern Bord bbVeld[VELD_N];
-const Bord bbLijn[LIJN_N] = { FileABB , FileBBB, FileCBB, FileDBB, FileEBB, FileFBB, FileGBB, FileHBB };
-const Bord bbRij[RIJ_N] = { Rank1BB, Rank2BB, Rank3BB, Rank4BB, Rank5BB, Rank6BB, Rank7BB, Rank8BB };
-extern Bord bbAangrenzendeLijnen[LIJN_N];
-extern Bord bbRijenVoorwaarts[KLEUR_N][RIJ_N];
-extern Bord bbTussen[VELD_N][VELD_N];
-extern Bord bbVerbinding[VELD_N][VELD_N];
-extern Bord bbVoorwaarts[KLEUR_N][VELD_N];
-extern Bord VrijpionMask[KLEUR_N][VELD_N];
-extern Bord PionAanvalBereik[KLEUR_N][VELD_N];
-extern Bord PionAanval[KLEUR_N][VELD_N];
-extern Bord LegeAanval[STUKTYPE_N][VELD_N];
-extern Bord KoningZone[VELD_N];
+extern Bitboard bbVeld[VELD_N];
+const Bitboard bbLijn[LIJN_N] = { FileABB , FileBBB, FileCBB, FileDBB, FileEBB, FileFBB, FileGBB, FileHBB };
+const Bitboard bbRij[RIJ_N] = { Rank1BB, Rank2BB, Rank3BB, Rank4BB, Rank5BB, Rank6BB, Rank7BB, Rank8BB };
+extern Bitboard bbAangrenzendeLijnen[LIJN_N];
+extern Bitboard bbRijenVoorwaarts[KLEUR_N][RIJ_N];
+extern Bitboard bbTussen[VELD_N][VELD_N];
+extern Bitboard bbVerbinding[VELD_N][VELD_N];
+extern Bitboard bbVoorwaarts[KLEUR_N][VELD_N];
+extern Bitboard VrijpionMask[KLEUR_N][VELD_N];
+extern Bitboard PionAanvalBereik[KLEUR_N][VELD_N];
+extern Bitboard PionAanval[KLEUR_N][VELD_N];
+extern Bitboard LegeAanval[STUKTYPE_N][VELD_N];
+extern Bitboard KoningZone[VELD_N];
 
 
 #define USE_BB_SHIFT
@@ -66,32 +66,32 @@ extern Bord KoningZone[VELD_N];
   #define bb(veld) bbVeld[veld]
 #endif
 
-inline Bord operator&(Bord b, Veld veld)
+inline Bitboard operator&(Bitboard b, Square veld)
 {
 	return b & bb(veld);
 }
 
-inline Bord operator|(Bord b, Veld veld)
+inline Bitboard operator|(Bitboard b, Square veld)
 {
 	return b | bb(veld);
 }
 
-inline Bord operator^(Bord b, Veld veld)
+inline Bitboard operator^(Bitboard b, Square veld)
 {
 	return b ^ bb(veld);
 }
 
-inline Bord& operator|=(Bord& b, Veld veld)
+inline Bitboard& operator|=(Bitboard& b, Square veld)
 {
 	return b |= bb(veld);
 }
 
-inline Bord& operator^=(Bord& b, Veld veld)
+inline Bitboard& operator^=(Bitboard& b, Square veld)
 {
 	return b ^= bb(veld);
 }
 
-inline bool meer_dan_een(Bord b)
+inline bool meer_dan_een(Bitboard b)
 {
 #ifdef USE_PEXT
 	return blsr_u64(b);
@@ -102,28 +102,28 @@ inline bool meer_dan_een(Bord b)
 
 #undef bb
 
-inline Bord bb_rij(Veld veld)
+inline Bitboard bb_rij(Square veld)
 {
 	return bbRij[rij(veld)];
 }
 
-inline Bord bb_lijn(Veld veld)
+inline Bitboard bb_lijn(Square veld)
 {
 	return bbLijn[lijn(veld)];
 }
 
-inline Bord bb_lijn(Lijn lijn)
+inline Bitboard bb_lijn(File lijn)
 {
 	return bbLijn[lijn];
 }
 
-inline Bord bb(Veld s) { return (1ULL << s); }
-inline Bord bb2(Veld s1, Veld s2) { return (1ULL << s1) | (1ULL << s2); }
-inline Bord bb3(Veld s1, Veld s2, Veld s3) { return (1ULL << s1) | (1ULL << s2) | (1ULL << s3); }
-inline Bord bb4(Veld s1, Veld s2, Veld s3, Veld s4) { return (1ULL << s1) | (1ULL << s2) | (1ULL << s3) | (1ULL << s4); }
+inline Bitboard bb(Square s) { return (1ULL << s); }
+inline Bitboard bb2(Square s1, Square s2) { return (1ULL << s1) | (1ULL << s2); }
+inline Bitboard bb3(Square s1, Square s2, Square s3) { return (1ULL << s1) | (1ULL << s2) | (1ULL << s3); }
+inline Bitboard bb4(Square s1, Square s2, Square s3, Square s4) { return (1ULL << s1) | (1ULL << s2) | (1ULL << s3) | (1ULL << s4); }
 
-template<Veld Delta>
-inline Bord shift_bb(Bord b) {
+template<Square Delta>
+inline Bitboard shift_bb(Bitboard b) {
 	return  Delta == BOVEN ? b << 8
 		: Delta == ONDER ? b >> 8
 		: Delta == RECHTSBOVEN ? (b & ~FileHBB) << 9
@@ -133,59 +133,59 @@ inline Bord shift_bb(Bord b) {
 		: 0;
 }
 
-inline Bord bb_aangrenzende_lijnen(Lijn f)
+inline Bitboard bb_aangrenzende_lijnen(File f)
 {
 	return bbAangrenzendeLijnen[f];
 }
 
-inline Bord bb_tussen(Veld veld1, Veld veld2)
+inline Bitboard bb_tussen(Square veld1, Square veld2)
 {
 	return bbTussen[veld1][veld2];
 }
 
-inline Bord bb_rijen_voorwaarts(Kleur kleur, Rij r)
+inline Bitboard bb_rijen_voorwaarts(Color kleur, Rank r)
 {
 	return bbRijenVoorwaarts[kleur][r];
 }
 
-inline Bord bb_rijen_voorwaarts(Kleur kleur, Veld veld)
+inline Bitboard bb_rijen_voorwaarts(Color kleur, Square veld)
 {
 	return bbRijenVoorwaarts[kleur][rij(veld)];
 }
 
-inline Bord bb_voorwaarts(Kleur kleur, Veld veld)
+inline Bitboard bb_voorwaarts(Color kleur, Square veld)
 {
 	return bbVoorwaarts[kleur][veld];
 }
 
-inline Bord pion_aanval_bereik(Kleur kleur, Veld veld)
+inline Bitboard pion_aanval_bereik(Color kleur, Square veld)
 {
 	return PionAanvalBereik[kleur][veld];
 }
 
-inline Bord vrijpion_mask(Kleur kleur, Veld veld)
+inline Bitboard vrijpion_mask(Color kleur, Square veld)
 {
 	return VrijpionMask[kleur][veld];
 }
 
-inline bool op_een_lijn(Veld veld1, Veld veld2, Veld veld3)
+inline bool op_een_lijn(Square veld1, Square veld2, Square veld3)
 {
 	return bbVerbinding[veld1][veld2] & veld3;
 }
 
-inline int afstand(Veld x, Veld y) { return VeldAfstand[x][y]; }
-inline int lijn_afstand(Veld x, Veld y) { return abs(lijn(x) - lijn(y)); }
-inline int rij_afstand(Veld x, Veld y) { return abs(rij(x) - rij(y)); }
+inline int afstand(Square x, Square y) { return VeldAfstand[x][y]; }
+inline int lijn_afstand(Square x, Square y) { return abs(lijn(x) - lijn(y)); }
+inline int rij_afstand(Square x, Square y) { return abs(rij(x) - rij(y)); }
 
-extern Bord* LoperAanvalTabel[64];
-extern Bord LoperMask[64];
-extern const Bord LoperMagics[64];
+extern Bitboard* LoperAanvalTabel[64];
+extern Bitboard LoperMask[64];
+extern const Bitboard LoperMagics[64];
 
-extern Bord* TorenAanvalTabel[64];
-extern Bord TorenMask[64];
-extern const Bord TorenMagics[64];
+extern Bitboard* TorenAanvalTabel[64];
+extern Bitboard TorenMask[64];
+extern const Bitboard TorenMagics[64];
 
-inline Bord aanval_bb_loper(Veld veld, Bord bezet)
+inline Bitboard aanval_bb_loper(Square veld, Bitboard bezet)
 {
 #ifdef USE_PEXT
 	return LoperAanvalTabel[veld][pext(bezet, LoperMask[veld])];
@@ -194,7 +194,7 @@ inline Bord aanval_bb_loper(Veld veld, Bord bezet)
 #endif
 }
 
-inline Bord aanval_bb_toren(Veld veld, Bord bezet)
+inline Bitboard aanval_bb_toren(Square veld, Bitboard bezet)
 {
 #ifdef USE_PEXT
 	return TorenAanvalTabel[veld][pext(bezet, TorenMask[veld])];
@@ -204,7 +204,7 @@ inline Bord aanval_bb_toren(Veld veld, Bord bezet)
 }
 
 
-inline Bord aanval_bb(StukType stukT, Veld veld, Bord bezet)
+inline Bitboard aanval_bb(PieceType stukT, Square veld, Bitboard bezet)
 {
 	assert(stukT != PION);
 
@@ -217,8 +217,8 @@ inline Bord aanval_bb(StukType stukT, Veld veld, Bord bezet)
 	}
 }
 
-template<Kleur kleur>
-inline Bord pion_aanval(Bord bb)
+template<Color kleur>
+inline Bitboard pion_aanval(Bitboard bb)
 {
 	if (kleur == WIT)
 		return shift_bb<LINKSBOVEN>(bb) | shift_bb<RECHTSBOVEN>(bb);
@@ -226,8 +226,8 @@ inline Bord pion_aanval(Bord bb)
 		return shift_bb<LINKSONDER>(bb) | shift_bb<RECHTSONDER>(bb);
 }
 
-template<Kleur kleur>
-inline Bord shift_up(Bord bb)
+template<Color kleur>
+inline Bitboard shift_up(Bitboard bb)
 {
 	if (kleur == WIT)
 		return shift_bb<BOVEN>(bb);
@@ -235,8 +235,8 @@ inline Bord shift_up(Bord bb)
 		return shift_bb<ONDER>(bb);
 }
 
-template<Kleur kleur>
-inline Bord shift_down(Bord bb)
+template<Color kleur>
+inline Bitboard shift_down(Bitboard bb)
 {
 	if (kleur == WIT)
 		return shift_bb<ONDER>(bb);
@@ -244,8 +244,8 @@ inline Bord shift_down(Bord bb)
 		return shift_bb<BOVEN>(bb);
 }
 
-template<Kleur kleur>
-inline Bord shift_upleft(Bord bb)
+template<Color kleur>
+inline Bitboard shift_upleft(Bitboard bb)
 {
 	if (kleur == WIT)
 		return shift_bb<LINKSBOVEN>(bb);
@@ -253,8 +253,8 @@ inline Bord shift_upleft(Bord bb)
 		return shift_bb<LINKSONDER>(bb);
 }
 
-template<Kleur kleur>
-inline Bord shift_upright(Bord bb)
+template<Color kleur>
+inline Bitboard shift_upright(Bitboard bb)
 {
 	if (kleur == WIT)
 		return shift_bb<RECHTSBOVEN>(bb);
@@ -267,12 +267,12 @@ inline Bord shift_upright(Bord bb)
 #  include <nmmintrin.h> // voor _mm_popcnt_u64()
 #endif
 
-inline int popcount(Bord b)
+inline int popcount(Bitboard b)
 {
 #ifndef USE_POPCNT
 
 	extern uint8_t PopCnt16[1 << 16];
-	union { Bord bb; uint16_t u[4]; } v = { b };
+	union { Bitboard bb; uint16_t u[4]; } v = { b };
 	return PopCnt16[v.u[0]] + PopCnt16[v.u[1]] + PopCnt16[v.u[2]] + PopCnt16[v.u[3]];
 
 #elif defined(_MSC_VER) || defined(__INTEL_COMPILER)
@@ -299,51 +299,51 @@ inline int popcount(Bord b)
 
 #if defined(__GNUC__)
 
-inline Veld lsb(Bord b)
+inline Square lsb(Bitboard b)
 {
   assert(b);
-  return Veld(__builtin_ctzll(b));
+  return Square(__builtin_ctzll(b));
 }
 
-inline Veld msb(Bord b)
+inline Square msb(Bitboard b)
 {
   assert(b);
-  return Veld(63 ^ __builtin_clzll(b));
+  return Square(63 ^ __builtin_clzll(b));
 }
 
 #elif defined(_WIN64) && defined(_MSC_VER)
 
 #include <intrin.h> // voor _BitScanForward64()
 
-inline Veld lsb(Bord b)
+inline Square lsb(Bitboard b)
 {
   assert(b);
   unsigned long idx;
   _BitScanForward64(&idx, b);
-  return (Veld) idx;
+  return (Square) idx;
 }
 
-inline Veld msb(Bord b)
+inline Square msb(Bitboard b)
 {
   assert(b);
   unsigned long idx;
   _BitScanReverse64(&idx, b);
-  return (Veld) idx;
+  return (Square) idx;
 }
 
 #else
 
 #define NO_BSF
 
-Veld lsb(Bord b);
-Veld msb(Bord b);
+Square lsb(Bitboard b);
+Square msb(Bitboard b);
 
 #endif
 
 
-inline Veld pop_lsb(Bord* b)
+inline Square pop_lsb(Bitboard* b)
 {
-	const Veld veld = lsb(*b);
+	const Square veld = lsb(*b);
 #ifdef USE_PEXT
 	*b = blsr_u64(*b);
 #else
@@ -352,7 +352,7 @@ inline Veld pop_lsb(Bord* b)
 	return veld;
 }
 
-inline Veld voorste_veld(Kleur kleur, Bord b) { return kleur == WIT ? msb(b) : lsb(b); }
-inline Veld achterste_veld(Kleur kleur, Bord b) { return kleur == WIT ? lsb(b) : msb(b); }
+inline Square voorste_veld(Color kleur, Bitboard b) { return kleur == WIT ? msb(b) : lsb(b); }
+inline Square achterste_veld(Color kleur, Bitboard b) { return kleur == WIT ? lsb(b) : msb(b); }
 
 #endif // #ifndef BITBOARD_H

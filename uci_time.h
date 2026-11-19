@@ -8,9 +8,9 @@
 #include "util_tools.h"
 
 
-struct TijdLimiet
+struct TimeLimit
 {
-	TijdLimiet()
+	TimeLimit()
 	{
 		nodes = time[WIT] = time[ZWART] = inc[WIT] = inc[ZWART] =
 			movestogo = depth = movetime = mate = infinite = ponder = 0;
@@ -21,28 +21,28 @@ struct TijdLimiet
 		return !(mate | movetime | depth | nodes | infinite);
 	}
 
-	Tijdstip startTijd;
+	TimePoint startTijd;
 	int time[KLEUR_N], inc[KLEUR_N], movestogo, depth, movetime, mate, infinite, ponder;
 	uint64_t nodes;
-	MaxZettenLijst zoekZetten;
+	MaxMoveList zoekZetten;
 };
 
 
-class Tijdsbeheer 
+class TimeManagement 
 {
 public:
-	void initialisatie(TijdLimiet& tijdLimiet, Kleur ik, int ply);
+	void initialisatie(TimeLimit& tijdLimiet, Color ik, int ply);
 	int64_t optimum() const { return optimaleTijd; }
 	int64_t maximum() const { return maximumTijd; }
 	int64_t verstreken() const;
 	void aanpassing_na_ponderhit();
 
 private:
-	Tijdstip startTijd;
+	TimePoint startTijd;
 	int64_t optimaleTijd;
 	int64_t maximumTijd;
 };
 
-extern Tijdsbeheer Tijdscontrole;
+extern TimeManagement Tijdscontrole;
 
 #endif // #ifndef UCI_TIME_H

@@ -45,22 +45,22 @@ void test_large_pages();
 
 struct NumaInfo
 {
-	CounterZetHistoriek counterZetStatistieken;
+	CounterMoveHistory counterZetStatistieken;
 };
 
 struct ThreadInfo
 {
-	Stelling rootStelling;
-	StellingInfo stellingInfo[1024];
-	ZetEx zettenLijst[8192];
-	ZetWaardeStatistiek history;
-	ZetWaardeStatistiek evasionHistory;
-	MaxWinstStats maxWinstTabel;
-	CounterZetStats counterZetten;
-	CounterFollowUpZetStats counterfollowupZetten;
-	ZetWaardeStatistiek slagGeschiedenis;
-	Materiaal::Tabel materiaalTabel;
-	Pionnen::Tabel pionnenTabel;
+	Position rootStelling;
+	PositionInfo stellingInfo[1024];
+	MoveEx zettenLijst[8192];
+	MoveValueStats history;
+	MoveValueStats evasionHistory;
+	MaxGainStats maxWinstTabel;
+	CounterMoveStats counterZetten;
+	CounterFollowUpMoveStats counterfollowupZetten;
+	MoveValueStats slagGeschiedenis;
+	Material::Table materiaalTabel;
+	Pawns::Table pionnenTabel;
 };
 
 class Thread
@@ -82,10 +82,10 @@ public:
 
 	ThreadInfo* ti;
 	NumaInfo* ni;
-	Stelling* rootStelling;
+	Position* rootStelling;
 
-	RootZetten rootZetten;
-	Diepte afgewerkteDiepte, vorigeTactischeDiepte;
+	RootMoves rootZetten;
+	Depth afgewerkteDiepte, vorigeTactischeDiepte;
 	bool tactischeModus, tactischeModusGebruikt;
 	int actievePV;
 };
@@ -97,10 +97,10 @@ struct MainThread : public Thread
 
 	bool snelleZetToegelaten, snelleZetGespeeld, snelleZetEvaluatieBezig, snelleZetEvaluatieAfgebroken, failedLow;
 	int besteZetVerandert;
-	Waarde vorigeRootScore;
+	Value vorigeRootScore;
 	int interruptTeller;
 	//bool snelleZetGetest;
-	Diepte vorigeRootDiepte;
+	Depth vorigeRootDiepte;
 };
 
 
@@ -110,11 +110,11 @@ struct ThreadPool
 	void exit();
 
 	int threadCount;
-	Tijdstip programmaStart;
+	TimePoint programmaStart;
 	int totaleAnalyseTijd;
 	Thread* threads[MAX_THREADS];
 	MainThread* main() { return static_cast<MainThread*>(threads[0]); }
-	void begin_zoek_opdracht(Stelling&, const TijdLimiet&);
+	void begin_zoek_opdracht(Position&, const TimeLimit&);
 	void verander_thread_aantal();
 	uint64_t bezochte_knopen();
 	uint64_t tb_hits();
@@ -122,13 +122,13 @@ struct ThreadPool
 
 	int activeThreadCount; // kan verschillend zijn, bij SpeelSterkte < 100 wordt maar 1 thread gebruikt
 	int geknoeiMetExe;
-	Kleur contemptKleur;
+	Color contemptKleur;
 	int stukContempt;
-	Waarde rootContemptWaarde;
-	Eindspelen endgames;
-	Stelling* rootStelling;
-	RootZetten rootZetten;
-	StellingInfo* rootStellingInfo;
+	Value rootContemptWaarde;
+	Endgames endgames;
+	Position* rootStelling;
+	RootMoves rootZetten;
+	PositionInfo* rootStellingInfo;
 	bool analyseModus;
 	int tactischeModusIndex;
 	int vijftigZettenAfstand;

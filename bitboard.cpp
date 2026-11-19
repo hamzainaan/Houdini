@@ -334,7 +334,7 @@ namespace
 			mask[square] = sliding_attacks(square, 0, deltas, 1, 6, 1, 6);
 
 			Bitboard b = 0;
-			do  // loop over complete set of mask[veld], see http://chessprogramming.wikispaces.com/Traversing+Subsets+of+a+Set
+			do  // loop over complete set of mask[square], see http://chessprogramming.wikispaces.com/Traversing+Subsets+of+a+Set
 			{
 				squareIndex[square][pext(b, mask[square])] = sliding_attacks(square, b, deltas, 0, 7, 0, 7);
 				b = (b - mask[square]) & mask[square];
@@ -353,7 +353,7 @@ namespace
 			mask[square] = sliding_attacks(square, 0, deltas, 1, 6, 1, 6);
 
 			Bitboard b = 0;
-			do  // loop over complete set of mask[veld], see http://chessprogramming.wikispaces.com/Traversing+Subsets+of+a+Set
+			do  // loop over complete set of mask[square], see http://chessprogramming.wikispaces.com/Traversing+Subsets+of+a+Set
 			{
 				int offset = (unsigned int)((b * mult[square]) >> shift);
 				squareIndex[square][offset] = sliding_attacks(square, b, deltas, 0, 7, 0, 7);

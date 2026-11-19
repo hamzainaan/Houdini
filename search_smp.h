@@ -99,7 +99,7 @@ struct MainThread : public Thread
 	int bestMoveChanges;
 	Value previousRootScore;
 	int interruptCounter;
-	//bool snelleZetGetest;
+	//bool quickMoveTested;
 	Depth previousRootDepth;
 };
 
@@ -120,7 +120,7 @@ struct ThreadPool
 	uint64_t tb_hits();
 	void clear_counter_move_history();
 
-	int activeThreadCount; // kan verschillend zijn, bij SpeelSterkte < 100 wordt maar 1 thread gebruikt
+	int activeThreadCount; // can be different, with PlayStrength < 100 only 1 thread is used
 	int tamperedWithExe;
 	Color contemptColor;
 	int pieceContempt;

@@ -32,8 +32,8 @@ struct AttackInfo
 	int KAttackScore[COLOR_N];
 	bool strongThreat[COLOR_N];
 	Bitboard KZone[COLOR_N];
-	//Bord KZoneExtra[KLEUR_N];
-	//int mobiliteit[KLEUR_N];
+	//Bitboard KZoneExtra[COLOR_N];
+	//int mobility[COLOR_N];
 };
 
 
@@ -41,7 +41,7 @@ const int POSTPONED_COUNT = 7;
 
 struct PositionInfo 
 {
-	// tot sleutel wordt gekopieerd bij speel_zet
+	// up to key is copied in do_move
 	Key64 pawnKey;
 	Key64 materialKey, bishopColorKey;
 	MaterialValue nonPawnMaterial[COLOR_N];
@@ -68,7 +68,7 @@ struct PositionInfo
 	uint8_t evalFactor, lmr_reduction;
 	bool doNoEarlyPruning, moveRepetition;
 
-	// zet_keuze
+	// move_selection
 	MoveEx *mp_currentMove, *mp_endList, *mp_endBadCapture;
 	PickMoveStage mp_stage;
 	Move mp_ttMove, mp_counterMove;
@@ -158,7 +158,7 @@ public:
 	void undo_null_move();
 
 	const SeeValue* see_values() const;
-	//SeeWaarde see(Zet zet) const;
+	//SeeValue see(Move move) const;
 	bool see_test(Move move, SeeValue v) const;
 
 	Key64 key() const;
@@ -487,7 +487,7 @@ inline bool Position::is_capture(Move move) const
 
 	assert(is_ok(move));
 	return (!empty_square(to_square(move)) && move_type(move) != CASTLING) || move_type(move) == ENPASSANT;
-	//return leeg_veld(naar_veld(zet)) ? zet_type(zet) == ENPASSANT : zet_type(zet) != ROKADE;
+	//return empty_square(to_square(move)) ? move_type(move) == ENPASSANT : move_type(move) != CASTLING;
 }
 
 inline bool Position::material_or_castling_changed() const

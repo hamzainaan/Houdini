@@ -60,12 +60,12 @@ namespace Pawns
 		uint8_t halfOpenFiles[COLOR_N];
 		uint8_t pawnRange[COLOR_N];
 		int asymmetry;
-		uint8_t pawnsOnColor[COLOR_N][COLOR_N]; // [kleur][kleur veld]
+		uint8_t pawnsOnColor[COLOR_N][COLOR_N]; // [color][color square]
 		int averageFile, nPawns;
 		bool conversion_difficult;
 		int safety[COLOR_N];
 		int file_width;
-		//int open_lijnen;
+		//int open_files;
 		char padding[20]; // Align to 128 bytes
 	};
 	static_assert(offsetof(struct Tuple, halfOpenFiles) == 72, "offset wrong");

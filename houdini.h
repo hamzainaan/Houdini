@@ -65,8 +65,8 @@ void trace_tm_msg(int MoveNumber, int elapsed, int optimum, const char *MSG);
 //#define USE_LICENSE
 //#define CHESSBASE
 //#define AQUARIUM
-//#define IMPORT_TABELLEN
-//#define EXPORT_TABELLEN
+//#define IMPORT_TABLES
+//#define EXPORT_TABLES
 
 typedef uint64_t Key64;
 typedef uint64_t Bitboard;
@@ -141,7 +141,7 @@ enum EvalValue : int
 };
 
 enum MaterialValue : int
-{  // eenheid = 8 cp
+{  // unit = 8 cp
 	MATL_0 = 0,
 	MATL_KNIGHT = 41,
 	MATL_BISHOP = 42,
@@ -159,14 +159,14 @@ enum SeeValue : int
 	SEE_QUEEN = 950
 };
 
-enum Value : int  // in 1/200 pion
+enum Value : int  // in 1/200 pawn
 {
 	VALUE_0 = 0,
 	VALUE_1 = 1,
 	DRAW_VALUE = 0,
 	WIN_VALUE = 15000,
 	EGTB_WIN_VALUE = 28000,
-	LONGEST_MATE_VALUE = 29800,   // geen 30000 omdat cutechess-cli dat dan als een matscore interpreteert
+	LONGEST_MATE_VALUE = 29800,   // not 30000 because cutechess-cli then interprets that as a mate score
 	MATE_VALUE = 32700,
 	HIGHEST_VALUE = 32750,
 	NO_VALUE = 32750,
@@ -259,11 +259,11 @@ enum Rank
 enum PickMoveStage
 {
 	NORMAL_SEARCH, GOOD_CAPTURES_GEN, GOOD_CAPTURES, KILLERS, KILLERS1, BxN_CAPTURES_GEN, BxN_CAPTURES,
-		/*RUSTIGE_ZETTEN_GEN,*/ QUIET_MOVES, BAD_CAPTURES, POSTPONED_MOVES,
+		/*QUIET_MOVES_GEN,*/ QUIET_MOVES, BAD_CAPTURES, POSTPONED_MOVES,
 	EVADE_CHECK, EVASIONS_GEN, EVASIONS_LOOP,
 	QSEARCH_WITH_CHECKS, QSEARCH_1, QSEARCH_1_CAPTURES, QSEARCH_CHECKS,
 	QSEARCH_WITHOUT_CHECKS, QSEARCH_2, QSEARCH_2_CAPTURES,
-	//QSEARCH_MET_DAMESCHAAK, QSEARCH_3, QSEARCH_3_SLAGZETTEN, QSEARCH_DAMESCHAAKZETTEN,
+	//QSEARCH_WITH_QUEEN_CHECKS, QSEARCH_3, QSEARCH_3_CAPTURES, QSEARCH_QUEEN_CHECKS,
 	PROBCUT, PROBCUT_GEN, PROBCUT_CAPTURES,
 	RECAPTURE_GEN, RECAPTURE_MOVES
 };
@@ -463,7 +463,7 @@ inline PieceType piece_of_move(Move move)
 
 inline Move make_move(PieceType piece, Square from, Square to)
 {
-	//return Zet(naar + (van << 6) + (stuk << 12));
+	//return Move(to + (from << 6) + (piece << 12));
 	return Move(to + (from << 6));
 }
 

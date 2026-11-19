@@ -284,7 +284,7 @@ void do_decompress(Bytef *in, Bytef *out, char *ACTIVATIONKEY, char *HARDWAREKEY
 
 	in_len -= (uint8_t)(stream1[in_len - 1]);
 
-	// te traag --> debug poging aan de gang -> verstoor de werking
+	// too slow --> debugging attempt in progress -> disrupt the operation
 	if (now() >= Threads.programStart + 999)
 		in_len--;
 
@@ -294,7 +294,7 @@ void do_decompress(Bytef *in, Bytef *out, char *ACTIVATIONKEY, char *HARDWAREKEY
 	else
 	{
 		in_len -= 4;
-		// debugger actief -> verstoor de werking
+		// debugger active -> disrupt the operation
 		if (IsDebuggerPresent())
 			in_len--;
 		z_error = uncompress(out, &out_len, (const Bytef *)stream1 + 4, in_len);
@@ -335,7 +335,7 @@ void read_license_tables()
 	if (!LICENSE_OK)
 		return;
 
-//#define LEES_IMPORT
+//#define READ_IMPORT
 #ifdef READ_IMPORT
 	FILE *f = fopen("R:\\Schaak\\h6-pst-import.dat", "rb");
 	int in_len = (int)fread(Stat_Stream + 12, 1, sizeof(Stat_Stream) - 12, f);
@@ -353,7 +353,7 @@ void read_license_tables()
 	*((int *)(Lmat_Stream + 8)) = in_len;
 #endif
 
-	Eval_Stream[128] = 10; // anders wordt array weggecompileerd
+	Eval_Stream[128] = 10; // otherwise the array is compiled away
 	Pawn_Stream[880] = 56;
 
 	do_decompress((Bytef *)Stat_Stream + 8, (Bytef *)PST::psq, ACTIVATIONKEY, HARDWAREKEY, sizeof(PST::psq));

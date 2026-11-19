@@ -28,7 +28,7 @@ namespace Zobrist
 Key64 Position::exclusion_key(Move move) const
 { 
 	return Zobrist::psq[W_KING][from_square(move)] ^ Zobrist::psq[B_KING][to_square(move)];
-	//return zet;
+	//return move;
 }
 
 Key64 Position::draw50_key() const
@@ -153,7 +153,7 @@ Position& Position::set(const string& fenStr, bool isChess960, Thread* th)
 
 	ss >> std::noskipws;
 
-	// stukken
+	// pieces
 	while ((ss >> token) && !isspace(token))
 	{
 		if (isdigit(token))
@@ -170,12 +170,12 @@ Position& Position::set(const string& fenStr, bool isChess960, Thread* th)
 	}
 	pieceBB[ALL_PIECES] = colorBB[WHITE] | colorBB[BLACK];
 
-	// kleur
+	// color
 	ss >> token;
 	sideToMove = (token == 'w' ? WHITE : BLACK);
 	ss >> token;
 
-	// rokade
+	// castling
 	while ((ss >> token) && !isspace(token))
 	{
 		Square rsq;
@@ -211,7 +211,7 @@ Position& Position::set(const string& fenStr, bool isChess960, Thread* th)
 	else
 		st->enpassantSquare = SQ_NONE;
 
-	// zetaantal
+	// move count
 	ss >> std::skipws >> st->draw50Moves >> gamePly;
 
 	gamePly = std::max(2 * (gamePly - 1), 0) + (sideToMove == BLACK);
@@ -245,7 +245,7 @@ void Position::copy_position(const Position* pos, Thread* th, PositionInfo* copy
 			st++;
 			origSt++;
 		}
-		// copy last 5 StellingInfo records
+		// copy last 5 PositionInfo records
 		while (origSt <= copyState)
 		{
 			*st = *origSt;
@@ -460,7 +460,7 @@ bool Position::valid_move(const Move move) const
 	Square to = to_square(move);
 	PieceType piece = piece_type(moved_piece(move));
 
-	// rokade 0,8%  enpassant 0,03%  promotie 0,6%
+	// castling 0,8%  enpassant 0,03%  promotion 0,6%
 	if (move >= Move(CASTLING))
 	{
 		if (move >= Move(PROMOTION_N))
@@ -468,14 +468,14 @@ bool Position::valid_move(const Move move) const
 			if (piece != PAWN)
 				return false;
 		}
-		else if (move < Move(ENPASSANT)) // rokade
+		else if (move < Move(ENPASSANT)) // castling
 			return LegalMoveListContainsCastling(*this, move);
 		else  // en-passant
 			return LegalMoveListContainsMove(*this, move);
 	}
 	else
 	{
-		//if (stuk != stuk_van_zet(zet))
+		//if (piece != piece_of_move(move))
 		//	return false;
 	}
 
@@ -496,7 +496,7 @@ bool Position::valid_move(const Move move) const
 			return false;
 	}
 	else if (!(attack_from(piece, from) & to))
-	//else if (bb_tussen(van, naar) & stukken())
+	//else if (bb_between(from, to) & pieces())
 		return false;
 
 	if (check_givers())
@@ -538,7 +538,7 @@ bool Position::gives_check(Move move) const
 	if (move >= Move(PROMOTION_N))
 		return attack_bb(promotion_piece(move), to, pieces() ^ from) & squareK;
 
-	if (move < Move(ENPASSANT))  // rokade
+	if (move < Move(ENPASSANT))  // castling
 	{
 		Square fromR = castling_rook_square(to);
 		Square toR = relative_square(sideToMove, fromR > from ? SQ_F1 : SQ_D1);
@@ -842,8 +842,8 @@ void Position::do_null_move()
 
 	st->enpassantSquare = SQ_NONE;
 	st->checkGivers = 0;
-	st->capturedPiece = NO_PIECE; // niet echt nodig, overal waar geslagenStuk gebruikt wordt 
-								  // is er een bescherming tegen voorafgaande null move
+	st->capturedPiece = NO_PIECE; // not really needed, everywhere where capturedPiece is used 
+								  // is there a protection against a preceding null move
 	st->previousMove = NULL_MOVE;
 	st->counterMoveValues = nullptr;
 	st->evalPositional = (st - 1)->evalPositional;
@@ -892,123 +892,123 @@ const SeeValue* Position::see_values() const
 	return SeeValueSimple;
 }
 
-// see_sign geeft >= 0 (geen exacte waarde) of < 0 (wel een exacte waarde!)
+// see_sign returns >= 0 (no exact value) or < 0 (an exact value!)
 /*
-SeeWaarde Stelling::see(Zet zet) const
+SeeValue Position::see(Move move) const
 {
-	SeeWaarde waarde, best, slechtst;
-	const SeeWaarde* see_waarde = see_waarden();
+	SeeValue value, best, worst;
+	const SeeValue* see_value = see_values();
 
-	assert(is_ok(zet));
+	assert(is_ok(move));
 
-	Veld van = van_veld(zet);
-	Veld naar = naar_veld(zet);
-	waarde = see_waarde[stuk_op_veld(naar)];
-	if (see_waarde[stuk_op_veld(van)] <= waarde)
+	Square from = from_square(move);
+	Square to = to_square(move);
+	value = see_value[piece_on_square(to)];
+	if (see_value[piece_on_square(from)] <= value)
 		return SEE_0;
 
-	if (zet_type(zet) == ROKADE || zet_type(zet) == ENPASSANT)
+	if (move_type(move) == CASTLING || move_type(move) == ENPASSANT)
 		return SEE_0;
 
-	best = waarde;
-	waarde -= see_waarde[stuk_op_veld(van)];
-	slechtst = waarde;
+	best = value;
+	value -= see_value[piece_on_square(from)];
+	worst = value;
 
-	const Kleur ik = stuk_kleur(stuk_op_veld(van));
-	Bord bezet = stukken() ^ van;
-	Bord aanvallers = aanvallers_naar(naar, bezet) & bezet;
+	const Color us = piece_color(piece_on_square(from));
+	Bitboard occupied = pieces() ^ from;
+	Bitboard attackers = attackers_to(to, occupied) & occupied;
 
 	do {
-		Bord mijnAanvallers = aanvallers & stukken(~ik);
-		if (!mijnAanvallers)
+		Bitboard ourAttackers = attackers & pieces(~us);
+		if (!ourAttackers)
 			return best;
 		//if (usePins) 
 		//{
-		// Bord pinned = stmAttackers & st->xRay[~stm];
+		// Bitboard pinned = stmAttackers & st->xRay[~stm];
 		// while (pinned) {
-		//  Square veld = pop_lsb(&pinned);
-		//  if (occupied & st->pinner[veld]) {
-		//	  stmAttackers ^= veld;
+		//  Square square = pop_lsb(&pinned);
+		//  if (occupied & st->pinner[square]) {
+		//	  stmAttackers ^= square;
 		//	  if (!stmAttackers)
 		//		  return best;
 		//  }
 		// }
 		//}
 
-		Bord bb;
-		StukType jouwstuk;
-		if ((bb = mijnAanvallers & stukken(PION)))
-			jouwstuk = PION;
-		else if ((bb = mijnAanvallers & stukken(PAARD)))
-			jouwstuk = PAARD;
-		else if ((bb = mijnAanvallers & stukken(LOPER)))
-			jouwstuk = LOPER;
-		else if ((bb = mijnAanvallers & stukken(TOREN)))
-			jouwstuk = TOREN;
-		else if ((bb = mijnAanvallers & stukken(DAME)))
-			jouwstuk = DAME;
+		Bitboard bb;
+		PieceType theirPiece;
+		if ((bb = ourAttackers & pieces(PAWN)))
+			theirPiece = PAWN;
+		else if ((bb = ourAttackers & pieces(KNIGHT)))
+			theirPiece = KNIGHT;
+		else if ((bb = ourAttackers & pieces(BISHOP)))
+			theirPiece = BISHOP;
+		else if ((bb = ourAttackers & pieces(ROOK)))
+			theirPiece = ROOK;
+		else if ((bb = ourAttackers & pieces(QUEEN)))
+			theirPiece = QUEEN;
 		else
-			return aanvallers & stukken(ik) ? best : slechtst;
+			return attackers & pieces(us) ? best : worst;
 
-		waarde += see_waarde[jouwstuk];
-		best = std::min(best, waarde);
-		if (slechtst >= best)
-			return slechtst;
+		value += see_value[theirPiece];
+		best = std::min(best, value);
+		if (worst >= best)
+			return worst;
 
-		bezet ^= (bb & -bb);
-		if (!(jouwstuk & 1)) // PION, LOPER, DAME
-			aanvallers |= aanval_bb_loper(naar, bezet) & (stukken(LOPER) | stukken(DAME));
-		if (jouwstuk >= TOREN)
-			aanvallers |= aanval_bb_toren(naar, bezet) & (stukken(TOREN) | stukken(DAME));
-		aanvallers &= bezet;
+		occupied ^= (bb & -bb);
+		if (!(theirPiece & 1)) // PAWN, BISHOP, QUEEN
+			attackers |= attack_bb_bishop(to, occupied) & (pieces(BISHOP) | pieces(QUEEN));
+		if (theirPiece >= ROOK)
+			attackers |= attack_bb_rook(to, occupied) & (pieces(ROOK) | pieces(QUEEN));
+		attackers &= occupied;
 
-		mijnAanvallers = aanvallers & stukken(ik);
-		if (!mijnAanvallers)
-			return slechtst;
+		ourAttackers = attackers & pieces(us);
+		if (!ourAttackers)
+			return worst;
 		//if (usePins)
 		//{
-		// Bord pinned = stmAttackers & st->xRay[stm];
+		// Bitboard pinned = stmAttackers & st->xRay[stm];
 		// while (pinned) {
-		//  Square veld = pop_lsb(&pinned);
-		//  if (occupied & st->pinner[veld]) {
-		//	  stmAttackers ^= veld;
+		//  Square square = pop_lsb(&pinned);
+		//  if (occupied & st->pinner[square]) {
+		//	  stmAttackers ^= square;
 		//	  if (!stmAttackers)
 		//		  return worst;
 		//  }
 		// }
 		//}
 
-		if ((bb = mijnAanvallers & stukken(PION)))
-			jouwstuk = PION;
-		else if ((bb = mijnAanvallers & stukken(PAARD)))
-			jouwstuk = PAARD;
-		else if ((bb = mijnAanvallers & stukken(LOPER)))
-			jouwstuk = LOPER;
-		else if ((bb = mijnAanvallers & stukken(TOREN)))
-			jouwstuk = TOREN;
-		else if ((bb = mijnAanvallers & stukken(DAME)))
-			jouwstuk = DAME;
+		if ((bb = ourAttackers & pieces(PAWN)))
+			theirPiece = PAWN;
+		else if ((bb = ourAttackers & pieces(KNIGHT)))
+			theirPiece = KNIGHT;
+		else if ((bb = ourAttackers & pieces(BISHOP)))
+			theirPiece = BISHOP;
+		else if ((bb = ourAttackers & pieces(ROOK)))
+			theirPiece = ROOK;
+		else if ((bb = ourAttackers & pieces(QUEEN)))
+			theirPiece = QUEEN;
 		else
-			return aanvallers & stukken(~ik) ? slechtst : best;
+			return attackers & pieces(~us) ? worst : best;
 
-		waarde -= see_waarde[jouwstuk];
-		slechtst = std::max(slechtst, waarde);
-		if (slechtst >= best)
+		value -= see_value[theirPiece];
+		worst = std::max(worst, value);
+		if (worst >= best)
 			return best;
-		if (slechtst >= 0)
+		if (worst >= 0)
 			return SEE_0;
 
-		bezet ^= (bb & -bb);
-		if (!(jouwstuk & 1)) // PION, LOPER, DAME
-			aanvallers |= aanval_bb_loper(naar, bezet) & (stukken(LOPER) | stukken(DAME));
-		if (jouwstuk >= TOREN)
-			aanvallers |= aanval_bb_toren(naar, bezet) & (stukken(TOREN) | stukken(DAME));
-		aanvallers &= bezet;
+		occupied ^= (bb & -bb);
+		if (!(theirPiece & 1)) // PAWN, BISHOP, QUEEN
+			attackers |= attack_bb_bishop(to, occupied) & (pieces(BISHOP) | pieces(QUEEN));
+		if (theirPiece >= ROOK)
+			attackers |= attack_bb_rook(to, occupied) & (pieces(ROOK) | pieces(QUEEN));
+		attackers &= occupied;
 	} while (true);
 }
 */
 
-// Test of see(zet) >= value
+// Test if see(move) >= value
 //template <bool UsePins>
 bool Position::see_test(Move move, SeeValue bound) const
 {
@@ -1074,7 +1074,7 @@ bool Position::see_test(Move move, SeeValue bound) const
 		if (value < 0) 
 			return false;
 		occupied ^= (bb & -bb);
-		if (!(capturePiece & 1)) // PION, LOPER, DAME
+		if (!(capturePiece & 1)) // PAWN, BISHOP, QUEEN
 			attackers |= attack_bb_bishop(to, occupied) & (pieces(BISHOP) | pieces(QUEEN));
 		if (capturePiece >= ROOK)
 			attackers |= attack_bb_rook(to, occupied) & (pieces(ROOK) | pieces(QUEEN));
@@ -1114,7 +1114,7 @@ bool Position::see_test(Move move, SeeValue bound) const
 		if (value >= 0)
 			return true;
 		occupied ^= (bb & -bb);
-		if (!(capturePiece & 1)) // PION, LOPER, DAME
+		if (!(capturePiece & 1)) // PAWN, BISHOP, QUEEN
 			attackers |= attack_bb_bishop(to, occupied) & (pieces(BISHOP) | pieces(QUEEN));
 		if (capturePiece >= ROOK)
 			attackers |= attack_bb_rook(to, occupied) & (pieces(ROOK) | pieces(QUEEN));
@@ -1328,8 +1328,8 @@ Square Position::compute_threat() const
 			return msb(b);
 		break;
 	case W_BISHOP:
-		// bij L en T eventueel testen dat de dreiging al niet eerder bestond
-		// (vorigeZet in dezelfde richting als dreiging)
+		// for B and R possibly test that the threat did not already exist earlier
+		// (previousMove in the same direction as threat)
 		if (Bitboard b = attack_bb_bishop(to, pieces()) & pieces(BLACK, ROOK, QUEEN))
 			return lsb(b);
 		break;

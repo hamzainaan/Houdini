@@ -64,7 +64,7 @@ namespace
 	Score Score_K_Pawn_distance[17][8];
 	EvalValue Score_PawnShield[8];
 	EvalValue Score_PawnStorming[8];
-	EvalValue Score_StormHalfOpenFile[8];  // Score_PionBestorming + 1/8
+	EvalValue Score_StormHalfOpenFile[8];  // Score_PawnStorming + 1/8
 	EvalValue Score_AttackFiles[8];
 
 	static const Bitboard AttackFiles[FILE_N] =
@@ -85,7 +85,7 @@ namespace
 		const Color Them = Us == WHITE ? BLACK : WHITE;
 		EvalValue result = EVAL_0;
 
-		// pionnenschild voor koning
+		// pawn shield in front of king
 		Bitboard UsPawns = pos.pieces(Us, PAWN);
 		Bitboard files_around_K = AttackFiles[file_of(squareK)];
 
@@ -99,9 +99,9 @@ namespace
 			result += v;
 		}
 
-		// bestorming, het veld voor de koning telt niet mee (hier dient de aanvallende pion als schild!)
+		// storming, the square in front of the king does not count (here the attacking pawn serves as a shield!)
 		Bitboard bb_storm = pos.pieces(Them, PAWN) & files_around_K;
-		//Bord bb_storm = pos.stukken(JIJ, PION) & lijnen_rond_K & ~shift_up<Us>(pos.stukken(Us, KONING));
+		//Bitboard bb_storm = pos.pieces(Them, PAWN) & files_around_K & ~shift_up<Us>(pos.pieces(Us, KING));
 		while (bb_storm)
 		{
 			Square square = pop_lsb(&bb_storm);
@@ -110,7 +110,7 @@ namespace
 			else
 				result += Score_StormHalfOpenFile[relative_rank(Them, square)];
 		}
-		// aantal halfopen lijnen voor aanval
+		// number of half-open files for attack
 		result += Score_AttackFiles[popcount(files_around_K & e->halfOpenFiles[Them])];
 
 		return result;
@@ -139,104 +139,104 @@ namespace
 		Bitboard NeighborSquares = ((bb_ourPawn << 1) & NOT_FILE_A) | ((bb_ourPawn >> 1) & NOT_FILE_H);
 		Bitboard IsolatedFiles = ~((bb_pawn_files[Us] << 1) & NOT_FILE_A | (bb_pawn_files[Us] >> 1) & NOT_FILE_H);
 
-		// pionaanval op rij 5 of 6
+		// pawn attack on rank 5 or 6
 		result = make_score(89, 78) * popcount(bb_ourPawn & RANK56 & e->pawnAttack[Them]);
 
-		// KwetsbaarVoorToren = aangevallen door vijandelijke toren op de 8ste rij
+		// VulnerableToRook = attacked by enemy rook on the 8th rank
 		Bitboard VulnerableToRook = Us == WHITE ? ~FileBehind(bb_theirPawn | (bb_ourPawn >> 8)) : ~FileInFront(bb_theirPawn | (bb_ourPawn << 8));
 
-		// dubbelpionnen (voorste op de lijn)
+		// doubled pawns (frontmost on the file)
 		Bitboard bb_doubled_pawns = Us == WHITE ? bb_ourPawn & ~FileBehind(bb_ourPawn >> 8) & FileInFront(bb_ourPawn << 8) :
 			bb_ourPawn & ~FileInFront(bb_ourPawn << 8) & FileBehind(bb_ourPawn >> 8);
 
-		result += (popcount(bb_ourPawn) - popcount(bb_pawn_files[Us] & 0xFF)) * make_score(-42, -65);    // dubbelpionnen
-		result += popcount(bb_doubled_pawns & ~e->pawnAttack[Us]) * make_score(-36, -50); // niet gedekte dubbelpionnen
+		result += (popcount(bb_ourPawn) - popcount(bb_pawn_files[Us] & 0xFF)) * make_score(-42, -65);    // doubled pawns
+		result += popcount(bb_doubled_pawns & ~e->pawnAttack[Us]) * make_score(-36, -50); // undefended doubled pawns
 
 		if (bb_ourPawn & IsolatedFiles)
 		{
-			result += popcount(bb_ourPawn & IsolatedFiles & ~bb_pawn_files[Them] & NOT_FILE_AH) * make_score(-121, -136);  // geisoleerde pion op halfopen lijn, niet aan de rand
-			result += popcount(bb_ourPawn & IsolatedFiles & ~bb_pawn_files[Them] & FILE_AH) * make_score(-75, -87);  // geisoleerde randpion op halfopen lijn
-			result += popcount(bb_ourPawn & IsolatedFiles & bb_pawn_files[Them] & NOT_FILE_AH) * make_score(-34, -40);  // geisoleerde pion niet op halfopen lijn, niet aan de rand
-			result += popcount(bb_ourPawn & IsolatedFiles & bb_pawn_files[Them] & FILE_AH) * make_score(-31, -26);  // geisoleerde randpion niet op halfopen lijn
+			result += popcount(bb_ourPawn & IsolatedFiles & ~bb_pawn_files[Them] & NOT_FILE_AH) * make_score(-121, -136);  // isolated pawn on half-open file, not on the edge
+			result += popcount(bb_ourPawn & IsolatedFiles & ~bb_pawn_files[Them] & FILE_AH) * make_score(-75, -87);  // isolated edge pawn on half-open file
+			result += popcount(bb_ourPawn & IsolatedFiles & bb_pawn_files[Them] & NOT_FILE_AH) * make_score(-34, -40);  // isolated pawn not on half-open file, not on the edge
+			result += popcount(bb_ourPawn & IsolatedFiles & bb_pawn_files[Them] & FILE_AH) * make_score(-31, -26);  // isolated edge pawn not on half-open file
 		}
 
 		if (bb_doubled_pawns & IsolatedFiles)
 		{
-			result += popcount(bb_doubled_pawns & IsolatedFiles & ~bb_pawn_files[Them] & NOT_FILE_AH) * make_score(-24, -47);  // geisoleerde dubbelpion op halfopen lijn, niet aan de rand
-			result += popcount(bb_doubled_pawns & IsolatedFiles & ~bb_pawn_files[Them] & FILE_AH) * make_score(-18, -42);  // geisoleerde dubbelpion op halfopen lijn, aan de rand
-			result += popcount(bb_doubled_pawns & IsolatedFiles & bb_pawn_files[Them] & NOT_FILE_AH) * make_score(-14, -8);  // geisoleerde dubbelpion niet op halfopen lijn, niet aan de rand
-			result += popcount(bb_doubled_pawns & IsolatedFiles & bb_pawn_files[Them] & FILE_AH) * make_score(-10, -5);  // geisoleerde dubbelpion niet op halfopen lijn, aan de rand
+			result += popcount(bb_doubled_pawns & IsolatedFiles & ~bb_pawn_files[Them] & NOT_FILE_AH) * make_score(-24, -47);  // isolated doubled pawn on half-open file, not on the edge
+			result += popcount(bb_doubled_pawns & IsolatedFiles & ~bb_pawn_files[Them] & FILE_AH) * make_score(-18, -42);  // isolated doubled pawn on half-open file, on the edge
+			result += popcount(bb_doubled_pawns & IsolatedFiles & bb_pawn_files[Them] & NOT_FILE_AH) * make_score(-14, -8);  // isolated doubled pawn not on half-open file, not on the edge
+			result += popcount(bb_doubled_pawns & IsolatedFiles & bb_pawn_files[Them] & FILE_AH) * make_score(-10, -5);  // isolated doubled pawn not on half-open file, on the edge
 		}
 
-		result += popcount(e->pawnAttack[Us] & CENTER_BOX) * make_score(9, 11);  // controle van centrum
-		result += popcount(e->pawnAttack[Us] & BOARD_EDGE) * make_score(6, 8);  // controle van rest van het bord
+		result += popcount(e->pawnAttack[Us] & CENTER_BOX) * make_score(9, 11);  // control of the center
+		result += popcount(e->pawnAttack[Us] & BOARD_EDGE) * make_score(6, 8);  // control of the rest of the board
 
-		result += popcount(bb_ourPawn & NeighborSquares & e->pawnAttack[Us]) * make_score(2, -5);  // pion ernaast en verdedigd
-		result += popcount(bb_ourPawn & e->pawnAttack[Us]) * make_score(48, 26);  // pion verdedigd
-		result += popcount(bb_ourPawn & NeighborSquares) * make_score(22, 23);  // pion ernaast
+		result += popcount(bb_ourPawn & NeighborSquares & e->pawnAttack[Us]) * make_score(2, -5);  // pawn next to it and defended
+		result += popcount(bb_ourPawn & e->pawnAttack[Us]) * make_score(48, 26);  // pawn defended
+		result += popcount(bb_ourPawn & NeighborSquares) * make_score(22, 23);  // pawn next to it
 
 
-		// het volgende lijkt heel bizar - houdt er ook geen rekening mee of de hangende pion gedekt is of niet
-		// de versie hieronder rekent trouwens enkel randpionnen in (door de vermoedelijk ontbrekende code)
+		// the following looks very bizarre - it also does not take into account whether the hanging pawn is protected or not
+		// by the way, the version below only counts edge pawns (due to the presumably missing code)
 		/*
-		Bord bb_hangend = RIJEN_1_TOT_4[Us] & bb_mijnPion & BuurVelden & ~bb_pionlijnen[JIJ];// hangende pionnen op halfopen lijnen op rij 1 tot 4
-		while (bb_hangend)
+		Bitboard bb_hanging = RANKS_1_TO_4[Us] & bb_ourPawn & NeighborSquares & ~bb_pawn_files[Them];// hanging pawns on half-open files on rank 1 to 4
+		while (bb_hanging)
 		{
-			Square veld = pop_lsb(&bb_hangend);
+			Square square = pop_lsb(&bb_hanging);
 
-			Bord bb_hangende_pion = bbVeld[veld];
-			Bord buren = (bb_hangende_pion >> 1) & NIET_LIJN_H | (bb_hangende_pion << 1) & NIET_LIJN_A;
-			// hier ontbreekt de volgende lijn ?!?
-			//buren &= bb_mijnPion;
-			if (buren && !meer_dan_een(buren))  // enkel als popcount == 1, dus een pion naast één enkele andere pion
+			Bitboard bb_hanging_pawn = bbSquare[square];
+			Bitboard neighbors = (bb_hanging_pawn >> 1) & NOT_FILE_H | (bb_hanging_pawn << 1) & NOT_FILE_A;
+			// the next file is missing here ?!?
+			//neighbors &= bb_ourPawn;
+			if (neighbors && !more_than_one(neighbors))  // only if popcount == 1, so a pawn next to one single other pawn
 			{
-				Bord blokkade = Us == WHITE ? bb_jouwPion & (buren << 16) : bb_jouwPion & (buren >> 16);
-				if (!blokkade || meer_dan_een(blokkade))  // 0 of 2 pionnen die opmars hangende pion stoppen
-					result -= maak_score(1, 50);
-				else // 1 pion stopt opmars hangende pion
-					result += maak_score(-1, -25);
+				Bitboard blockade = Us == WHITE ? bb_theirPawn & (neighbors << 16) : bb_theirPawn & (neighbors >> 16);
+				if (!blockade || more_than_one(blockade))  // 0 or 2 pawns that stop the advance of the hanging pawn
+					result -= make_score(1, 50);
+				else // 1 pawn stops the advance of the hanging pawn
+					result += make_score(-1, -25);
 			}
 		}
 		*/
 
-		// misschien toevoegen: een pion die een vijandelijke pion aanvalt (= door een vijandelijke pion aangevallen wordt) is niet achtergebleven
+		// maybe add: a pawn that attacks an enemy pawn (= is attacked by an enemy pawn) is not backward
 		Bitboard bb_phalanx = e->pawnAttack[Us] | NeighborSquares;
 		Bitboard bb_backward = bb_ourPawn & e->safeFromPawn[Us] & ~IsolatedFiles;
-		Bitboard bb_chain = e->pawnAttack[Us] | NeighborSquares & ~bb_doubled_pawns;  // laatste conditie is gek - voorste dubbelpion is achtergebleven zelfs als er een buur is?
-		// misschien omdat pion niet langs achter kan gedekt worden, en de pion pushen na ruil een geïsoleerde dubbelpion oplevert
+		Bitboard bb_chain = e->pawnAttack[Us] | NeighborSquares & ~bb_doubled_pawns;  // last condition is weird - frontmost doubled pawn is backward even if there is a neighbor?
+		// maybe because the pawn cannot be protected from behind, and pushing the pawn after an exchange yields an isolated doubled pawn
 		Bitboard bb_truly_backward = bb_backward & ~bb_chain;
 		Bitboard bb_squares_in_front_of_backward = shift_bb<Up>(bb_truly_backward);
 
-		result += popcount(bb_squares_in_front_of_backward & VulnerableToRook & e->pawnAttack[Them]) * make_score(-55, -86);   // achtergebleven halfopen lijn, pionaanval stopt opmars
-		result += popcount(bb_squares_in_front_of_backward & (pos.pieces(PAWN) | e->pawnAttack[Them]) & NOT_FILE_AH) * make_score(-30, -32);  // achtergebleven, pion of pionaanval, niet aan de rand
-		result += popcount(bb_squares_in_front_of_backward & (pos.pieces(PAWN) | e->pawnAttack[Them]) & FILE_AH) * make_score(-26, -25);  // achtergebleven, pion of pionaanval, aan de rand
+		result += popcount(bb_squares_in_front_of_backward & VulnerableToRook & e->pawnAttack[Them]) * make_score(-55, -86);   // backward on half-open file, pawn attack stops the advance
+		result += popcount(bb_squares_in_front_of_backward & (pos.pieces(PAWN) | e->pawnAttack[Them]) & NOT_FILE_AH) * make_score(-30, -32);  // backward, pawn or pawn attack, not on the edge
+		result += popcount(bb_squares_in_front_of_backward & (pos.pieces(PAWN) | e->pawnAttack[Them]) & FILE_AH) * make_score(-26, -25);  // backward, pawn or pawn attack, on the edge
 
 		Bitboard bb_begin_blocked = e->pawnAttack[Them] & shift_bb<Up>(bb_ourPawn & SecondRank);
-		result += popcount(bb_begin_blocked) * make_score(-11, -12); // geblokkeerde pionnen op beginpositie
+		result += popcount(bb_begin_blocked) * make_score(-11, -12); // blocked pawns on starting position
 
 
-		// vrijpionnen
+		// passed pawns
 		// ===========
 		Bitboard bb_passed_pawns = bb_ourPawn & e->safeFromPawn[Them] & VulnerableToRook;
 		Bitboard bb_protected_passed_pawn = bb_passed_pawns & bb_phalanx;
 		while (bb_protected_passed_pawn)
 		{
 			Square square = pop_lsb(&bb_protected_passed_pawn);
-			result += 4 * PassedPawnValues[relative_rank(Us, square)] / 16; // gedekte vrijpion
+			result += 4 * PassedPawnValues[relative_rank(Us, square)] / 16; // protected passed pawn
 		}
 
 		e->passedPawns[Us] = bb_passed_pawns;
 		if (more_than_one(bb_passed_pawns))
 			result += make_score(33, 128);
 
-		// potentiele vrijpionnen
-		// voorste pionnen in falanx op halfopen lijn
+		// potential passed pawns
+		// front pawns in phalanx on half-open file
 		Bitboard front_pawns = Us == WHITE ? bb_ourPawn & ~FileBehind(bb_ourPawn >> 8) : bb_ourPawn & ~FileInFront(bb_ourPawn << 8);
 		Bitboard bb_potential = front_pawns & bb_phalanx & VulnerableToRook & ~bb_passed_pawns;
 		while (bb_potential)
 		{
 			Square square = pop_lsb(&bb_potential);
-			Bitboard bb_active = front_pawns; // toevoegen: & ~bb_echt_achtergebleven  // achtergebleven pionnen kunnen potentiële vrijpion niet helpen
+			Bitboard bb_active = front_pawns; // add: & ~bb_truly_backward  // backward pawns cannot help a potential passed pawn
 			if (file_of(square) != FILE_A)
 			{
 				Square square_left = Square(square - 1);
@@ -252,19 +252,19 @@ namespace
 
 			if (popcount(bb_adjacent_files(file_of(square)) & ~bb_ranks_forward(Us, rank_of(square)) & bb_active) >= 
 				popcount(bb_adjacent_files(file_of(square)) & bb_ranks_forward(Us, rank_of(square)) & bb_theirPawn))
-				result += 11 * PassedPawnValues[relative_rank(Us, square)] / 16;  // potentiele vrijpionnen
+				result += 11 * PassedPawnValues[relative_rank(Us, square)] / 16;  // potential passed pawns
 		}
 
 		/* contempt stuff
-		if (UCI_Contempt > 0 && __popcnt(WPion | ZPion) > 14)
-		pionScore[Root_Kleur] -= SCORE32(UCI_Contempt, 0);
+		if (UCI_Contempt > 0 && __popcnt(WPawn | BPawn) > 14)
+		pawnScore[Root_Color] -= SCORE32(UCI_Contempt, 0);
 
-		geblokkeerde_pionnen = __popcnt(ZPion & (WPion << 8)) - 1;
-		if (geblokkeerde_pionnen > 0)
-		pionScore[Root_Kleur] -= SCORE32(5 * UCI_Contempt * geblokkeerde_pionnen, 0);
+		blocked_pawns = __popcnt(BPawn & (WPawn << 8)) - 1;
+		if (blocked_pawns > 0)
+		pawnScore[Root_Color] -= SCORE32(5 * UCI_Contempt * blocked_pawns, 0);
 		*/
 
-		//entry->conversie_is_geschat = 1;
+		//entry->conversion_is_estimated = 1;
 
 		return result;
 	}
@@ -272,30 +272,30 @@ namespace
 
 #define V(x) EvalValue(x)
 	// Weakness of our pawn shelter in front of the king by [distance from edge][rank]
-	//    rij=0 is zonder pion
-	//     rij      2      3      4      5       6       7
+	//    rank=0 is without pawn
+	//     rank      2      3      4      5       6       7
 	const EvalValue ShelterWeakness[][RANK_N] = {
-		{ V( 97), V(21), V(26), V(51), V(87), V( 89), V( 99) },    // h/a-lijn
-		{ V(120), V( 0), V(28), V(76), V(88), V(103), V(104) },    // g/b-lijn
-		{ V(101), V( 7), V(54), V(78), V(77), V( 92), V(101) },    // f/c-lijn
-		{ V( 80), V(11), V(44), V(68), V(87), V( 90), V(119) } };  // e/d-lijn
+		{ V( 97), V(21), V(26), V(51), V(87), V( 89), V( 99) },    // h/a-file
+		{ V(120), V( 0), V(28), V(76), V(88), V(103), V(104) },    // g/b-file
+		{ V(101), V( 7), V(54), V(78), V(77), V( 92), V(101) },    // f/c-file
+		{ V( 80), V(11), V(44), V(68), V(87), V( 90), V(119) } };  // e/d-file
 
 	// Danger of enemy pawns moving toward our king by [type][distance from edge][rank]
-	// type= { GeenEigenPion, KanBewegen, AfgestoptDoorPion, AfgestoptDoorKoning };
+	// type= { NoOwnPawn, CanMove, StoppedByPawn, StoppedByKing };
 	const EvalValue StormDanger[][4][RANK_N] = {
-		{ { V( 0),  V(67), V(134), V(38), V(32) },     // halfopen lijn
+		{ { V( 0),  V(67), V(134), V(38), V(32) },     // half-open file
 		  { V( 0),  V(57), V(139), V(37), V(22) },
 		  { V( 0),  V(43), V(115), V(43), V(27) },
 		  { V( 0),  V(68), V(124), V(57), V(32) } },
-		{ { V(20),  V(43), V(100), V(56), V(20) },     // beweeglijke pion, Rij=0 is geen pion
+		{ { V(20),  V(43), V(100), V(56), V(20) },     // mobile pawn, Rank=0 is no pawn
 		  { V(23),  V(20), V( 98), V(40), V(15) },
 		  { V(23),  V(39), V(103), V(36), V(18) },
 		  { V(28),  V(19), V(108), V(42), V(26) } },
-		{ { V( 0),  V( 0), V( 75), V(14), V( 2) },     // vastgelopen pion
+		{ { V( 0),  V( 0), V( 75), V(14), V( 2) },     // stuck pawn
 		  { V( 0),  V( 0), V(150), V(30), V( 4) },
 		  { V( 0),  V( 0), V(160), V(22), V( 5) },
 		  { V( 0),  V( 0), V(166), V(24), V(13) } },
-		{ { V( 0),  V(-283), V(-281), V(57), V(31) },   // Kh2/h3 voor een vijandelijke pion!
+		{ { V( 0),  V(-283), V(-281), V(57), V(31) },   // Kh2/h3 in front of an enemy pawn!
 		  { V( 0),  V(58), V(141), V(39), V(18) },
 		  { V( 0),  V(65), V(142), V(48), V(32) },
 		  { V( 0),  V(60), V(126), V(51), V(19) } } };
@@ -379,7 +379,7 @@ namespace
 
 			Bitboard neighborPawns = ourPawns & bb_adjacent_files(f);
 			Bitboard doubledPawns = ourPawns & bb_forward(Us, square);
-			//bool dubbelPion = mijnPionnen & veld_achter(IK, veld);
+			//bool doubledPawn = ourPawns & square_behind(Us, square);
 			bool closedFile = theirPawns & bb_forward(Us, square);
 			Bitboard stoppers = theirPawns & passed_pawn_mask(Us, square);
 			Bitboard attackers = theirPawns & PawnAttack[Us][square];
@@ -390,7 +390,7 @@ namespace
 			bool isolani = !neighborPawns;
 			bool backward;
 
-			// aanvaller 6.5%, isolani 15.9%, keten 60.9%, stoppers 95.5%, dubbelPionnen 5.8 %
+			// attacker 6.5%, isolani 15.9%, chain 60.9%, stoppers 95.5%, doubledPawns 5.8 %
 
 			if ((isolani | chain) 
 				|| attackers
@@ -408,33 +408,33 @@ namespace
 			{
 				e->passedPawns[Us] |= square;
 				if (chain)
-					score += PassedPawnValues4[relative_rank(Us, square)]; // gedekte vrijpion
+					score += PassedPawnValues4[relative_rank(Us, square)]; // protected passed pawn
 			}
 			else if (!(stoppers ^ attackers ^ attackersPush)
 				&& !doubledPawns
 				&& popcount(supported) >= popcount(attackers)
 				&& popcount(phalanx) >= popcount(attackersPush))
 			{
-				score += PassedPawnValues8[relative_rank(Us, square)]; // kandidaat vrijpion
+				score += PassedPawnValues8[relative_rank(Us, square)]; // candidate passed pawn
 			}
 
-			if (chain) // 60.9 %, geslotenLijn 79.2 %, falanks 73.6 %, rijverdeling 62% 24% 11% 3% 0.3%
+			if (chain) // 60.9 %, closedFile 79.2 %, phalanx 73.6 %, rank distribution 62% 24% 11% 3% 0.3%
 				score += ChainScore[closedFile][phalanx != 0][popcount(supported)][relative_rank(Us, square)];
 
-			else if (isolani) // 15.8 % waarvan 42% randpion, 58% gesloten lijn
+			else if (isolani) // 15.8 % of which 42% edge pawn, 58% closed file
 				score -= IsolaniScore[closedFile][f];
-				//score -= Isolani[geslotenLijn];
+				//score -= Isolani[closedFile];
 
-			else if (backward) // 3.1 % waarvan 56% gesloten lijn
+			else if (backward) // 3.1 % of which 56% closed file
 				score -= BackwardScore[closedFile];
 
-			else  // 20% niet ondersteund, geslotenLijn 70%
+			else  // 20% not supported, closedFile 70%
 				score -= UnsupportedScore[closedFile];
 
-			if (doubledPawns) // 5.8 % waarvan 6% randpion
+			if (doubledPawns) // 5.8 % of which 6% edge pawn
 				score -= DoubledPawnScoreDistance[f][rank_distance(square, frontmost_square(Us, doubledPawns))];
-			//if (dubbelPion && ~ondersteund)
-			//	score -= DubbelPion;
+			//if (doubledPawn && ~supported)
+			//	score -= DoubledPawn;
 
 			if (attackers) // 6.5 %
 				score += PawnAttackerScore[relative_rank(Us, square)];
@@ -453,7 +453,7 @@ namespace
 
 		const Score Score_Second_Rank_Fixed = make_score(11, 12);
 		Bitboard bb_begin_blocked = e->pawnAttack[Them] & shift_up<Us>(ourPawns & SecondRank);
-		score -= Score_Second_Rank_Fixed * popcount(bb_begin_blocked); // geblokkeerde pionnen op beginpositie
+		score -= Score_Second_Rank_Fixed * popcount(bb_begin_blocked); // blocked pawns on starting position
 
 		return score;
 	}
@@ -474,12 +474,12 @@ namespace Pawns
 		{
 			Score_PawnShield[n] = EvalValue(8 * PawnShield_Constants[n]);
 			Score_PawnStorming[n] = EvalValue(8 * PawnStorm_Constants[n]);
-			Score_StormHalfOpenFile[n] = EvalValue(9 * PawnStorm_Constants[n]);  // Score_PionBestorming + 1/8
+			Score_StormHalfOpenFile[n] = EvalValue(9 * PawnStorm_Constants[n]);  // Score_PawnStorming + 1/8
 			Score_AttackFiles[n] = n * Score_PawnStorming[0];
 		}
 
 		const Score Score_Not_Supported = make_score(53, 17);
-		//const Score Score_Apex = maak_score(52, 25);
+		//const Score Score_Apex = make_score(52, 25);
 
 		for (int closedFile = 0; closedFile <= 1; ++closedFile)
 			for (int phalanx = 0; phalanx <= 1; ++phalanx)
@@ -489,7 +489,7 @@ namespace Pawns
 						int v = (phalanx ? phalanxSeed[rank] : Seed[rank]) >> closedFile;
 						v += (point == 2 ? 13 : 0);
 						ChainScore[closedFile][phalanx][point][rank] = pawn_make_score(3 * v / 2, v)
-							//+ (punt == 2 ? Score_Apex : SCORE_ZERO)
+							//+ (point == 2 ? Score_Apex : SCORE_ZERO)
 							- (point == 0 ? Score_Not_Supported : SCORE_ZERO);
 					}
 	}
@@ -507,7 +507,7 @@ namespace Pawns
 
 		Bitboard bb_pawn_files[2];
 
-		// bereken pionstelling
+		// compute pawn structure
 		// ====================
 		Bitboard WPawn = pos.pieces(WHITE, PAWN);
 		Bitboard BPawn = pos.pieces(BLACK, PAWN);
@@ -525,7 +525,7 @@ namespace Pawns
 		e->halfOpenFiles[BLACK] = (int)~bb_pawn_files[BLACK] & 0xFF;
 
 		e->asymmetry = popcount(e->halfOpenFiles[WHITE] ^ e->halfOpenFiles[BLACK]);
-		//e->open_lijnen = popcount(e->halfOpenLijnen[WIT] & e->halfOpenLijnen[ZWART]);
+		//e->open_files = popcount(e->halfOpenFiles[WHITE] & e->halfOpenFiles[BLACK]);
 
 #if 0
 		e->score = evaluation<WHITE>(pos, e, bb_pawn_files);
@@ -538,15 +538,15 @@ namespace Pawns
 		int files = (bb_pawn_files[WHITE] | bb_pawn_files[BLACK]) & 0xFF;
 		if (files)
 			files = msb(files) - lsb(files);
-		// waarde tussen 0 en 4
+		// value between 0 and 4
 		e->file_width = std::max(files - 3, 0);
 
-		// geen enkele open lijn -> conversie moeilijk
-		// centrale lijn(en) open, geen halfopen lijnen -> conversie moeilijk
+		// not a single open file -> conversion difficult
+		// central file(s) open, no half-open files -> conversion difficult
 		e->conversion_difficult = !(e->halfOpenFiles[WHITE] & e->halfOpenFiles[BLACK])
 			|| ((e->halfOpenFiles[WHITE] & e->halfOpenFiles[BLACK] & 0x3c) && !e->asymmetry);
 
-		// bereken de gemiddelde lijn van pionnen
+		// compute the average file of the pawns
 		Bitboard bb_pawns = pos.pieces(PAWN);
 		e->nPawns = popcount(bb_pawns);
 		if (bb_pawns)
@@ -628,12 +628,12 @@ namespace Pawns
 		Bitboard attacking_pawns = AttackFiles[file_of(squareK)] & pos.pieces(Them, PAWN);
 
 		safety[Us] = safe_bonus / 220 * 8
-			- 16 * popcount(attacking_pawns & THIRD_FOURTH_RANK)    // vijandelijke pionnen op onze 3de rij
-			- 8 * popcount(attacking_pawns & FIFTH_RANK);         // vijandelijke pionnen op onze 5de rij
+			- 16 * popcount(attacking_pawns & THIRD_FOURTH_RANK)    // enemy pawns on our 3rd rank
+			- 8 * popcount(attacking_pawns & FIFTH_RANK);         // enemy pawns on our 5th rank
 
 		Score result = make_score(safe_bonus, 0);
 
-		// K op eerste rij achter 3 pionnen -> malus voor mat achter de paaltjes
+		// K on first rank behind 3 pawns -> penalty for back-rank mate
 		Bitboard bb_King = pos.pieces(Us, KING);
 		const Bitboard FIRST_RANK = Us == WHITE ? Rank1BB : Rank8BB;
 
@@ -644,7 +644,7 @@ namespace Pawns
 				result += make_score(-63, -173);
 		}
 
-		// koning voor vijandelijke pion?
+		// king in front of enemy pawn?
 		if (pos.pieces(Them, PAWN) & shift_down<Us>(bb_King))
 			result += make_score(0, 27);
 

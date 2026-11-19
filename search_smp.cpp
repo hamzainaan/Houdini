@@ -73,7 +73,7 @@ void Thread::wait_for_search_finished()
 }
 
 
-// wacht tot condition waar is
+// wait until condition is true
 void Thread::wait(std::atomic_bool& condition)
 {
 	std::unique_lock<Mutex> lk(mutex);
@@ -251,7 +251,7 @@ void ThreadPool::clear_counter_move_history()
 #endif
 	{
 		GlobalData->counterMoveStatistics.clear();
-		//GlobalData->counterZetStatistieken.fill(SorteerWaarde(-5000));
+		//GlobalData->counterMoveStatistics.fill(SortValue(-5000));
 	}
 }
 
@@ -360,7 +360,7 @@ void ThreadPool::initialize_Numa()
 	for (int i = 0; i < ThreadCount; i++)
 	{
 		numa_node_for_thread[i] = (HT_mul * (NUMA_highest_node + 1) * i / logicalProcessorCount + NUMA_offset) % (NUMA_highest_node + 1);
-		//sync_cout << "info string thread " << i << " on node " << numa_node_voor_thread[i] << sync_endl;
+		//sync_cout << "info string thread " << i << " on node " << numa_node_for_thread[i] << sync_endl;
 	}
 }
 

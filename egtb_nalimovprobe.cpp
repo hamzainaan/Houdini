@@ -21,7 +21,7 @@ typedef uint8_t piece;
 #define L_pageL 65536
 #define L_tbbe_ssL   ((L_pageL - 4) / 2)
 #define L_bev_broken (L_tbbe_ssL + 1)     // illegal or busted
-#define L_bev_mi1    L_tbbe_ssL           // mate in 1 zet
+#define L_bev_mi1    L_tbbe_ssL           // mate in 1 move
 
 typedef INDEX (*PfnCalcIndex) (square*, square*, square, int Inverse);
 

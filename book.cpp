@@ -226,7 +226,7 @@ namespace
 		0xF8D626AAAF278509ULL
 	} };
 
-	// mapping van de PolyGlot stukken: ZPion = 0, WPion = 1, ZP = 2, ... ZK = 10, WK = 11
+	// mapping of the PolyGlot pieces: BPawn = 0, WPawn = 1, BN = 2, ... BK = 10, WK = 11
 	const int PolyglotIndex[PIECE_N] = { 0, 11, 1, 3, 5, 7, 9, 0, 0, 10, 0, 2, 4, 6, 8, 0 };
 
 
@@ -272,7 +272,7 @@ bool PolyglotBook::read_tuple(PolyglotTuple* tuple)
 	char* b = (char *)tuple;
 
 	read(buffer, 16);
-	// polyglot stockeert waarden in big-endian, 64/16/16/32 bits
+	// polyglot stores values in big-endian, 64/16/16/32 bits
 	b[0] = buffer[7];
 	b[1] = buffer[6];
 	b[2] = buffer[5];
@@ -309,10 +309,10 @@ bool PolyglotBook::open(const char* bookPath)
 }
 
 
-// bit  0- 5: naar veld
-// bit  6-11: van veld
-// bit 12-14: promotiestuk (PAARD = 1 tot DAME = 4)
-// rokade: K slaat T
+// bit  0- 5: to square
+// bit  6-11: from square
+// bit 12-14: promotion piece (KNIGHT = 1 to QUEEN = 4)
+// castling: K takes R
 Move PolyglotBook::move_from_polyglot(const Position& pos, Move pg_move)
 {
 	Square to = to_square(pg_move);
@@ -365,9 +365,9 @@ Move PolyglotBook::probe(Position& pos, const string& bookPath, bool bestVariati
 	{
 		Bitboard changedPieces = previousPieces ^ pos.pieces();
 
-		if (popcount(changedPieces) > 4  // twee rokades verplaatsen 4 stukken
-			|| popcount(pos.pieces()) > popcount(previousPieces)  // stukken toegevoegd
-			|| popcount(pos.pieces()) < popcount(previousPieces) - 2)  // meer dan 2 stukken verdwenen
+		if (popcount(changedPieces) > 4  // two castlings move 4 pieces
+			|| popcount(pos.pieces()) > popcount(previousPieces)  // pieces added
+			|| popcount(pos.pieces()) < popcount(previousPieces) - 2)  // more than 2 pieces disappeared
 			missedProbes = 0;
 	}
 

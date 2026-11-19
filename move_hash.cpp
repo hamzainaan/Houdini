@@ -26,7 +26,7 @@ void TranspositionTable::change_size(size_t mbSize)
 	if (!table)
 	{
 		std::cerr << "ERROR: Unable to allocate the requested hash size " << mbSize << " MB" << std::endl;
-		// probeer opnieuw met 1 MB
+		// try again with 1 MB
 		newClusterCount = 32768;
 		table = (Cluster*)alloc_large_page_mem(newClusterCount * sizeof(Cluster), &large_pages, true, -1);
 	}
@@ -65,7 +65,7 @@ TTTuple* TranspositionTable::find_existing(const Key64 key) const
 {
 	TTTuple* const ttt = tuple(key);
 	uint16_t key16 = key >> 48;
-	//sleutel16 = std::max(sleutel16, (uint16_t)1);
+	//key16 = std::max(key16, (uint16_t)1);
 
 	for (int i = 0; i < ClusterSize; ++i)
 		if (ttt[i].key16 == key16)

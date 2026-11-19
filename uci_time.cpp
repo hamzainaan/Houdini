@@ -66,31 +66,31 @@ void TimeManagement::initialize(TimeLimit& timeLimit, Color us, int ply)
 		optimalTime = std::min(optimalTime, maximumTime);
 	}
 
-	//	startTijd = tijdLimiet.startTijd;
+	//	startTime = timeLimit.startTime;
 
-	//	const int64_t MinimumTijd = 1;
-	//	int ZetOverhead = UciOpties["Move Overhead"];
-	//	int tijd_voor_speler = tijdLimiet.time[ik];
-	//	int tijd_increment = tijdLimiet.inc[ik];
+	//	const int64_t MinimumTime = 1;
+	//	int MoveOverhead = UciOptions["Move Overhead"];
+	//	int time_for_player = timeLimit.time[us];
+	//	int time_increment = timeLimit.inc[us];
 
-	//	tijd_voor_speler = std::max(tijd_voor_speler - 250, 9 * tijd_voor_speler / 10);
+	//	time_for_player = std::max(time_for_player - 250, 9 * time_for_player / 10);
 
-	//	int n_max = tijdLimiet.movestogo ? std::min(tijdLimiet.movestogo, 60) : 60;
-	//	int totale_tijd = tijd_voor_speler + (n_max - 1) * (tijd_increment - ZetOverhead);
+	//	int n_max = timeLimit.movestogo ? std::min(timeLimit.movestogo, 60) : 60;
+	//	int total_time = time_for_player + (n_max - 1) * (time_increment - MoveOverhead);
 
-	//	optimaleTijd = (280 + n_max * std::min(ply, 80) / 16) * totale_tijd / n_max / 256 - ZetOverhead;
-	//	maximumTijd = std::min(6 * optimaleTijd, (int64_t)totale_tijd * (n_max + 2) / (3 * n_max));
+	//	optimalTime = (280 + n_max * std::min(ply, 80) / 16) * total_time / n_max / 256 - MoveOverhead;
+	//	maximumTime = std::min(6 * optimalTime, (int64_t)total_time * (n_max + 2) / (3 * n_max));
 
-	//	optimaleTijd = std::max(optimaleTijd, MinimumTijd);
-	//	maximumTijd = std::max(maximumTijd, MinimumTijd);
+	//	optimalTime = std::max(optimalTime, MinimumTime);
+	//	maximumTime = std::max(maximumTime, MinimumTime);
 
-	//	if (UciOpties["Ponder"])
-	//		optimaleTijd += optimaleTijd / 4;
+	//	if (UciOptions["Ponder"])
+	//		optimalTime += optimalTime / 4;
 
-	//	int64_t max_tijd = std::max(1, tijd_voor_speler - ZetOverhead);
-	//	maximumTijd = std::min(maximumTijd, max_tijd);
-	//	optimaleTijd = std::min(optimaleTijd, max_tijd);
-	//	optimaleTijd = std::min(optimaleTijd, maximumTijd);
+	//	int64_t max_time = std::max(1, time_for_player - MoveOverhead);
+	//	maximumTime = std::min(maximumTime, max_time);
+	//	optimalTime = std::min(optimalTime, max_time);
+	//	optimalTime = std::min(optimalTime, maximumTime);
 }
 
 int64_t TimeManagement::elapsed() const

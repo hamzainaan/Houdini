@@ -95,7 +95,7 @@ public:
 
 	inline TTTuple* tuple(const Key64 key) const
 	{
-		//return &tabel[(size_t)key & (clusterAantal - 1)].entry[0];
+		//return &table[(size_t)key & (clusterCount - 1)].entry[0];
 		return (TTTuple*)((char *)table + (key & clusterMask));
 	}
 	inline void prefetch_tuple(const Key64 key) const

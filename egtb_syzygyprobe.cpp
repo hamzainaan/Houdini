@@ -82,10 +82,10 @@ Value Syzygy_probe_dtz(Position& pos, Value alpha, Value beta)
 
 	int move50 = pos.fifty_moves_counter();
 
-	if (v > 0 && (!EGTB::UseRule50 || move50 + v <= 100))  // gewonnen
+	if (v > 0 && (!EGTB::UseRule50 || move50 + v <= 100))  // won
 		return std::max(Value(LONGEST_MATE_VALUE - (pos.info()->ply + v)), EGTB_WIN_VALUE + VALUE_1);
-	else if (v < 0 && (!EGTB::UseRule50 || move50 - v <= 100))  // verloren
+	else if (v < 0 && (!EGTB::UseRule50 || move50 - v <= 100))  // lost
 		return std::min(Value(-LONGEST_MATE_VALUE + (pos.info()->ply - v)), -EGTB_WIN_VALUE - VALUE_1);
-	else // remise, of meer dan 50 zetten nodig om te winnen of te verliezen
+	else // draw, or more than 50 moves needed to win or to lose
 		return DRAW_VALUE;
 }

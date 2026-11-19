@@ -111,7 +111,7 @@ namespace
 	};
 
 	/*
-	static const Bord opgesloten_loper_b4_d2[2][64] =
+	static const Bitboard trapped_bishop_b4_d2[2][64] =
 	{
 		{
 			bb2(SQ_B4, SQ_C3), 0, bb2(SQ_B4, SQ_C3), 0, 0, bb2(SQ_G4, SQ_F3), 0, bb2(SQ_G4, SQ_F3),
@@ -134,7 +134,7 @@ namespace
 			bb2(SQ_B5, SQ_C6), 0, bb2(SQ_B5, SQ_C6), 0, 0, bb2(SQ_G5, SQ_F6), 0, bb2(SQ_G5, SQ_F6)
 		}
 	};
-	static const Bord opgesloten_loper_b4_d2_extra[64] =
+	static const Bitboard trapped_bishop_b4_d2_extra[64] =
 	{
 		bb2(SQ_D2, SQ_E3), 0, bb2(SQ_D2, SQ_E3), 0, 0, bb2(SQ_E2, SQ_D3), 0, bb2(SQ_E2, SQ_D3),
 		0, bb2(SQ_D2, SQ_E3), 0, 0, 0, 0, bb2(SQ_E2, SQ_D3), 0,
@@ -146,7 +146,7 @@ namespace
 		bb2(SQ_D7, SQ_E6), 0, bb2(SQ_D7, SQ_E6), 0, 0, bb2(SQ_E7, SQ_D6), 0, bb2(SQ_E7, SQ_D6)
 	};
 
-	static const Bord opgesloten_toren[64] =
+	static const Bitboard trapped_rook[64] =
 	{
 		0, bb2(SQ_A1, SQ_A2), bb4(SQ_A1, SQ_A2, SQ_B1, SQ_B2), 0, 0, bb4(SQ_H1, SQ_H2, SQ_G1, SQ_G2), bb2(SQ_H1, SQ_H2), 0,
 		0, 0, 0, 0, 0, 0, 0, 0,
@@ -230,7 +230,7 @@ namespace
 	Score Score_PassedPawn_Our_K[6][8];
 	Score Score_PassedPawn_Their_K[6][8];
 
-	//Bord bb_centrum_pivot_W[LIJN_N], bb_centrum_pivot_Z[LIJN_N];
+	//Bitboard bb_center_pivot_W[FILE_N], bb_center_pivot_B[FILE_N];
 	
 	Bitboard bb_king_flank_attack[COLOR_N][FILE_N] = {
 		{
@@ -255,7 +255,7 @@ namespace
 		}
 	};
 
-	//Bord bb_koning_flank[LIJN_N] = {
+	//Bitboard bb_king_flank[FILE_N] = {
 	//	FileABB | FileBBB | FileCBB | FileDBB,
 	//	FileABB | FileBBB | FileCBB | FileDBB,
 	//	FileABB | FileBBB | FileCBB | FileDBB,
@@ -266,10 +266,10 @@ namespace
 	//	FileEBB | FileFBB | FileGBB | FileHBB
 	//};
 
-	//static const int P_GEMIDDELD_MOBILITEIT = 8;
-	//static const int L_GEMIDDELD_MOBILITEIT = 6;
-	//static const int T_GEMIDDELD_MOBILITEIT = 7;
-	//static const int D_GEMIDDELD_MOBILITEIT = 11;
+	//static const int N_AVERAGE_MOBILITY = 8;
+	//static const int B_AVERAGE_MOBILITY = 6;
+	//static const int R_AVERAGE_MOBILITY = 7;
+	//static const int Q_AVERAGE_MOBILITY = 11;
 
 	const Bitboard ThreeFiles = FileABB | FileBBB | FileCBB;
 
@@ -328,7 +328,7 @@ bool at_least_two_mobile_pieces(const Position& pos)
 	Bitboard attack = pos.attack_from<KING>(pos.king(Us));
 	if (attack & safe)
 	{
-		// koning die aangevallen stuk verdedigt is niet mobiel
+		// king that defends an attacked piece is not mobile
 		if (!(attack & pos.pieces(Us) & theirAttack))
 			mobile = true;
 	}
@@ -426,13 +426,13 @@ inline Score Threats(const Position& pos, const AttackInfo& ai)
 	Bitboard BBN_Pawn_attacked_R = ai.attack[Us][ROOK] & pos.pieces(Them, BISHOP, KNIGHT, PAWN);
 	Bitboard BB_Pawn_attacked_N = ai.attack[Us][KNIGHT] & pos.pieces(Them, BISHOP, PAWN);
 
-	// zwarte stukken aangevallen door WPion, ZD aangevallend door WT, ZD of ZT aangevallend door WL of WP (waardevol aangevallen door minder waardevol)
+	// black pieces attacked by WPawn, BQ attacked by WR, BQ or BR attacked by WB or WN (valuable attacked by less valuable)
 	int threatsW = popcount((pos.pieces(Them) ^ pos.pieces(Them, PAWN)) & ai.attack[Us][PAWN]
 		| pos.pieces(Them, QUEEN) & ai.attack[Us][ROOK]
 		| pos.pieces(Them, QUEEN, ROOK) & (ai.attack[Us][BISHOP] | ai.attack[Us][KNIGHT]));
 	Score score = Score_Threats[threatsW];
 
-	// niet verdedigde zwarte stukken aangevallen door waardevoller stuk
+	// undefended black pieces attacked by a more valuable piece
 	threatsW += popcount(bb_not_defended_B & (ai.attack[Us][KING] | BN_Pawn_attacked_B | BB_Pawn_attacked_N | BBN_Pawn_attacked_R
 		| ai.attack[Us][QUEEN] & (pos.pieces(Them) ^ pos.pieces(Them, QUEEN))));
 	score += Score_Threats[threatsW];
@@ -451,7 +451,7 @@ Score sf_Threats(const Position& pos, AttackInfo& ai)
 	const Bitboard RANK7 = (Us == WHITE ? Rank7BB : Rank2BB);
 
 	const Score HangingPawnThreat = make_score(249, 182);
-	//const Score PionDreigingAvg = maak_score(650, 510);
+	//const Score PawnThreatAvg = make_score(650, 510);
 	const Score KingThreatSingle = make_score(24, 206);
 	const Score KingThreatMultiple = make_score(62, 458);
 	const Score HangingPieces = make_score(167, 74);
@@ -472,7 +472,7 @@ Score sf_Threats(const Position& pos, AttackInfo& ai)
 		if (safeThreats)
 		{
 			ai.strongThreat[Us] = true;
-			//score += PionDreigingAvg * popcount(veiligeDreigingen);
+			//score += PawnThreatAvg * popcount(safeThreats);
 		}
 
 		while (safeThreats)
@@ -481,7 +481,7 @@ Score sf_Threats(const Position& pos, AttackInfo& ai)
 
 	Bitboard supportedPieces = pos.pieces_except(Them, PAWN) & ai.attack[Them][PAWN] & ai.attack[Us][ALL_PIECES];
 	Bitboard weakPieces = pos.pieces(Them) & ~ai.attack[Them][PAWN] & ai.attack[Us][ALL_PIECES];
-	//zwakkeStukken |= ai.gepend[JIJ];
+	//weakPieces |= ai.pinned[Them];
 
 	if (supportedPieces | weakPieces)
 	{
@@ -509,7 +509,7 @@ Score sf_Threats(const Position& pos, AttackInfo& ai)
 
 	Bitboard b = pos.pieces(Us, PAWN) & ~RANK7;
 	b = shift_up<Us>(b | (shift_up<Us>(b & RANK2) & ~pos.pieces()));
-	//b = shift_up<IK>(b | (shift_up<IK>(b & RANK2) & ~pos.stukken() & ~ai.aanval[JIJ][PION]));
+	//b = shift_up<Us>(b | (shift_up<Us>(b & RANK2) & ~pos.pieces() & ~ai.attack[Them][PAWN]));
 
 	b &= ~pos.pieces()
 		& ~ai.attack[Them][PAWN]
@@ -545,7 +545,7 @@ inline Score PassedPawns(const Position& pos, const AttackInfo& ai, Bitboard bb_
 
 		if (pawn_rank > 1)
 		{
-			// afstand tot veld voor pion
+			// distance to the square in front of the pawn
 			Square square_in_front_of_pawn = passed_pawn + pawn_forward(Us);
 			int ourDistance = distance(square_in_front_of_pawn, pos.king(Us));
 			int theirDistance = distance(square_in_front_of_pawn, pos.king(Them));
@@ -553,7 +553,7 @@ inline Score PassedPawns(const Position& pos, const AttackInfo& ai, Bitboard bb_
 			score += score_muldiv(Score_PassedPawn_Our_K[pawn_rank][ourDistance], 3, 4);
 			score += score_muldiv(Score_PassedPawn_Their_K[pawn_rank][theirDistance], 3, 4);
 
-			// afstand tot promotieveld
+			// distance to promotion square
 			Square promotion_square = Square(make_square(file_of(passed_pawn), Rank(7 * Them)));
 			ourDistance = distance(promotion_square, pos.king(Us));
 			theirDistance = distance(promotion_square, pos.king(Them));
@@ -564,7 +564,7 @@ inline Score PassedPawns(const Position& pos, const AttackInfo& ai, Bitboard bb_
 			if (pawn_rank > 2)
 			{
 				Bitboard bb_behind_passed_pawn = bb_forward(Them, passed_pawn);
-				// toren achter pion
+				// rook behind pawn
 				if (bb_behind_passed_pawn & pos.pieces(Us, ROOK))
 					score += make_score(62, 274);
 				if (bb_behind_passed_pawn & pos.pieces(Them, ROOK))
@@ -573,11 +573,11 @@ inline Score PassedPawns(const Position& pos, const AttackInfo& ai, Bitboard bb_
 
 			if (!(pos.pieces() & square_in_front_of_pawn))
 			{
-				// vrijpion kan voorwaarts
+				// passed pawn can move forward
 				Bitboard passed_pawn_path = bb_forward(Us, passed_pawn);
 				Bitboard bb_advance_blocked = passed_pawn_path & (pos.pieces(Them) | ai.attack[Them][ALL_PIECES]);
 
-				// jouw T of D achter vrijpion -> hele vrijpion_pad is aangevallen
+				// their R or Q behind passed pawn -> whole passed_pawn_path is attacked
 				Bitboard attacked = pos.pieces(Them, ROOK, QUEEN) & bb_forward(Them, passed_pawn);
 				if (attacked)
 				{
@@ -590,7 +590,7 @@ inline Score PassedPawns(const Position& pos, const AttackInfo& ai, Bitboard bb_
 					score += Score_PassedPawn_free_passage[pawn_rank];
 				else if (bb_advance_blocked & ~ai.attack[Us][ALL_PIECES])
 					score += Score_PassedPawn_advance_blocked[pawn_rank];
-				else // pad is aangevallen, maar ook verdedigd
+				else // path is attacked, but also defended
 					score += Score_PassedPawn_advance_supported[pawn_rank];
 			}
 		}
@@ -608,13 +608,13 @@ inline Score KingAttack(const Position& pos, const AttackInfo& ai, int AttackSco
 
 	attackIndex += 16 * popcount(ai.attack[Them][KING] & ai.attack[Us][ALL_PIECES] & ~ai.attack[Them][PIECES_WITHOUT_KING]);
 
-	if (ai.pinned[Them]) // penningen of aftrekschaak
+	if (ai.pinned[Them]) // pins or discovered check
 		attackIndex += 12;
 
-	// niet verdedigde aangevallen velden 2 rijen voor de koning
+	// undefended attacked squares 2 ranks in front of the king
 	attackIndex += 11 * popcount(shift_down<Us>(ai.attack[Them][KING]) & ~ai.attack[Them][ALL_PIECES] & ai.attack[Us][ALL_PIECES] & ~pos.pieces(Us));
 
-	// veilige schaaks
+	// safe checks
 	const Square squareK = pos.king(Them);
 	Bitboard Check_OK = ~pos.pieces(Us);
 	
@@ -646,7 +646,7 @@ inline Score KingAttack(const Position& pos, const AttackInfo& ai, int AttackSco
 			attackIndex += 30;
 	}
 
-	// Dame schaaks / contact schaaks
+	// Queen checks / contact checks
 	Bitboard queen_check = (CheckSquares_B | CheckSquares_R) & ai.attack[Us][QUEEN];
 	if (queen_check)
 	{
@@ -716,7 +716,7 @@ inline Score StrongSquares(const Position& pos, const AttackInfo& ai, const Pawn
 		}
 	}
 
-	// P en L achter eigen pion
+	// N and B behind own pawn
 	score += Score_NB_behind_Pawn * popcount(pos.pieces(Us, KNIGHT) & pawn_attack<Them>(pos.pieces(Us, PAWN)));
 	score += Score_NB_behind_Pawn * popcount(pos.pieces(Us, KNIGHT, BISHOP) & shift_down<Us>(pos.pieces(Us, PAWN)));
 	score += Score_Supported_Pieces * popcount(pos.pieces_except(Us, PAWN) & ai.attack[Us][PAWN]);
@@ -778,10 +778,10 @@ inline void eval_init(const Position& pos, AttackInfo& ai, const Pawns::Tuple *p
 
 	ai.pinned[Us] = pos.info()->xRay[Us];
 	ai.KZone[Us] = KingZone[pos.king(Us)];
-	//ai.KZoneExtra[IK] = ai.KZone[IK] | shift_up<IK>(ai.KZone[IK]);
+	//ai.KZoneExtra[Us] = ai.KZone[Us] | shift_up<Us>(ai.KZone[Us]);
 
 	ai.KAttackScore[Us] = 0;
-	//ai.mobiliteit[IK] = 0;
+	//ai.mobility[Us] = 0;
 }
 
 
@@ -800,8 +800,8 @@ inline Score eval_Knights(const Position& pos, AttackInfo& ai)
 		Bitboard attack = pos.attack_from<KNIGHT>(square);
 		if (attack & ai.KZone[Them])
 			ai.KAttackScore[Us] += 3 * 8;
-		//else if (aanval & ai.KZoneExtra[JIJ])
-		//	ai.KAanvalScore[IK] += 8;
+		//else if (attack & ai.KZoneExtra[Them])
+		//	ai.KAttackScore[Us] += 8;
 		ai.attack[Us][KNIGHT] |= attack;
 		ai.doubleAttack[Us] |= ai.attack[Us][PIECES_WITHOUT_KING] & attack;
 		ai.attack[Us][PIECES_WITHOUT_KING] |= attack;
@@ -812,11 +812,11 @@ inline Score eval_Knights(const Position& pos, AttackInfo& ai)
 		else
 		{
 			attack &= ai.mobilityMask[Us];
-			// voorwaartse mobiliteit telt dubbel
+			// forward mobility counts double
 			mobility = popcount(attack) + popcount(attack & bb_ranks_forward(Us, square));
 		}
 		score += mobi_N[(mobility * MobiMult_N[relative_square(Us, square)] + 16) / 32];
-		//ai.mobiliteit[IK] += mobiliteit - P_GEMIDDELD_MOBILITEIT;
+		//ai.mobility[Us] += mobility - N_AVERAGE_MOBILITY;
 	} while (squares);
 
 	return score;
@@ -834,7 +834,7 @@ inline Score eval_Bishops(const Position& pos, AttackInfo& ai, const Pawns::Tupl
 
 	if (shift_up<Us>(pos.pieces(Us, KING)) & squares)
 		score += make_score(73, 0);
-		//score += maak_score(33, 0);
+		//score += make_score(33, 0);
 	if (Us == WHITE)
 	{
 		if (squares & bb2(SQ_A1, SQ_H1))
@@ -872,7 +872,7 @@ inline Score eval_Bishops(const Position& pos, AttackInfo& ai, const Pawns::Tupl
 
 		Bitboard attack = attack_bb_bishop(square, pos.pieces(PAWN));
 		score += mobi_B1[(popcount(attack) * MobiMult_B1[relative_square(Us, square)] + 16) / 32];
-		//score += mobi_L1[std::min((int)(popcount(aanval) * MobiMult_L1[relatief_veld(Us, veld)] + 16) / 32, 255)];
+		//score += mobi_B1[std::min((int)(popcount(attack) * MobiMult_B1[relative_square(Us, square)] + 16) / 32, 255)];
 
 		if (pos.pieces(PAWN) & trapped_bishop_b3_c2[Us][square])
 		{
@@ -904,12 +904,12 @@ inline Score eval_Bishops(const Position& pos, AttackInfo& ai, const Pawns::Tupl
 		}
 #endif
 
-		//aanval = pos.aanval_van<LOPER>(veld);
+		//attack = pos.attack_from<BISHOP>(square);
 		attack = attack_bb_bishop(square, pos.pieces() ^ pos.pieces(Us, QUEEN));
 		if (attack & ai.KZone[Them])
 			ai.KAttackScore[Us] += 8;
-		//else if (aanval & ai.KZoneExtra[JIJ])
-		//	ai.KAanvalScore[IK] += 4;
+		//else if (attack & ai.KZoneExtra[Them])
+		//	ai.KAttackScore[Us] += 4;
 		ai.attack[Us][BISHOP] |= attack;
 		ai.doubleAttack[Us] |= ai.attack[Us][PIECES_WITHOUT_KING] & attack;
 		ai.attack[Us][PIECES_WITHOUT_KING] |= attack;
@@ -919,20 +919,20 @@ inline Score eval_Bishops(const Position& pos, AttackInfo& ai, const Pawns::Tupl
 			attack &= bb_between(pos.king(Us), square);
 		unsigned int mobility = popcount(attack);
 		score += mobi_B2[(mobility * MobiMult_B2[relative_square(Us, square)] + 16) / 32];
-		//ai.mobiliteit[IK] += mobiliteit - L_GEMIDDELD_MOBILITEIT;
+		//ai.mobility[Us] += mobility - B_AVERAGE_MOBILITY;
 
 		Score pawnsOnColor = Score_PawnOnColorBishop[pawnTuple->pawns_on_color(Us, square)];
 		score += pawnsOnColor;
 		score += Score_PawnOtherColorBishop[pawnTuple->pawns_not_on_color(Us, square)];
 
-		// als ik loperpaar heb en jij hebt geen loper op dezelfde kleur
-		// na ruil van lopers blijf ik zitten met slechte loper
+		// if I have the bishop pair and you have no bishop on the same color
+		// after exchange of bishops I am left with a bad bishop
 		Bitboard squares_same_color = (DarkSquares & square) ? DarkSquares : ~DarkSquares;
 		if ((pos.pieces(Us, BISHOP) & ~squares_same_color) && !(squares_same_color & pos.pieces(Them, BISHOP)))
 			score += pawnsOnColor;
 
 		if (pos.pieces(Them, KNIGHT) & bb_B_dominates_N[Us][square])
-			// extra score voor vijandelijk Paard dat 3 rijen voor de loper staat (wordt gedomineerd door Loper)
+			// extra score for enemy Knight standing 3 ranks in front of the bishop (is dominated by Bishop)
 			score += make_score(20, 19);
 	} while (squares);
 
@@ -948,7 +948,7 @@ inline Score eval_Rooks(const Position& pos, AttackInfo& ai)
 	Bitboard squares = pos.pieces(Us, ROOK);
 	assert(squares);
 
-	// T opgesloten naast K
+	// R trapped next to K
 #if 1
 	if (pos.pieces(Us, KING) & (Us == WHITE ? bb2(SQ_F1, SQ_G1) : bb2(SQ_F8, SQ_G8)) && squares & (Us == WHITE ? 0xC0C0 : 0xC0C0000000000000))
 		score -= make_score(282, 101);
@@ -962,7 +962,7 @@ inline Score eval_Rooks(const Position& pos, AttackInfo& ai)
 		{
 			square = rearmost_square(Us, bbx);
 			Rank r = relative_rank(Us, square);
-			if (!pos.castling_possible(Us))  // test nodig voor Chess960
+			if (!pos.castling_possible(Us))  // test needed for Chess960
 				score -= make_score(110 * (6 - r), 0);
 			else
 				score -= make_score(100 + 20 * (6 - r), 0);
@@ -974,20 +974,20 @@ inline Score eval_Rooks(const Position& pos, AttackInfo& ai)
 	{
 		Square square = pop_lsb(&squares);
 
-		//Bord bb_penning_D = LegeAanval[TOREN][veld] & pos.stukken(JIJ, DAME);
-		//while (bb_penning_D)
+		//Bitboard bb_pin_Q = EmptyAttack[ROOK][square] & pos.pieces(Them, QUEEN);
+		//while (bb_pin_Q)
 		//{
-		//	Veld veld_D = pop_lsb(&bb_penning_D);
-		//	Bord b = bb_tussen(veld_D, veld) & pos.stukken();
-		//	if (b && !meer_dan_een(b))
-		//		score += Score_Toren_Penning[IK][pos.stuk_op_veld(lsb(b))];
+		//	Square square_Q = pop_lsb(&bb_pin_Q);
+		//	Bitboard b = bb_between(square_Q, square) & pos.pieces();
+		//	if (b && !more_than_one(b))
+		//		score += Score_Rook_Pin[Us][pos.piece_on_square(lsb(b))];
 		//}
 
 		Bitboard attack = attack_bb_rook(square, pos.pieces() ^ pos.pieces(Us, ROOK, QUEEN));
 		if (attack & ai.KZone[Them])
 			ai.KAttackScore[Us] += 8;
-		//else if (aanval & ai.KZoneExtra[JIJ])
-		//	ai.KAanvalScore[IK] += 4;
+		//else if (attack & ai.KZoneExtra[Them])
+		//	ai.KAttackScore[Us] += 4;
 		ai.attack[Us][ROOK] |= attack;
 		ai.doubleAttack[Us] |= ai.attack[Us][PIECES_WITHOUT_KING] & attack;
 		ai.attack[Us][PIECES_WITHOUT_KING] |= attack;
@@ -997,14 +997,14 @@ inline Score eval_Rooks(const Position& pos, AttackInfo& ai)
 			attack &= bb_between(pos.king(Us), square);
 		unsigned int mobility = popcount(attack);
 		score += mobi_R[(mobility * MobiMult_R[relative_square(Us, square)] + 16) / 32];
-		//ai.mobiliteit[IK] += mobiliteit - T_GEMIDDELD_MOBILITEIT;
+		//ai.mobility[Us] += mobility - R_AVERAGE_MOBILITY;
 
-		// koning op achtste rij, T op zevende
+		// king on eighth rank, R on seventh
 		const Bitboard EIGHTH_RANK = Us == WHITE ? Rank8BB : Rank1BB;
 		if (relative_rank(Us, square) == RANK_7 && pos.pieces(Them, KING) & EIGHTH_RANK)
 			score += make_score(64, 163);
 
-		// T op lijn K, als er geen eigen pionnen tussen staan
+		// R on file of K, if there are no own pawns in between
 		if (file_of(square) == file_of(pos.king(Them)) && !(pos.pieces(Us, PAWN) & bb_between(pos.king(Them), square)))
 			ai.KAttackScore[Us] += 2 * 8;
 
@@ -1012,13 +1012,13 @@ inline Score eval_Rooks(const Position& pos, AttackInfo& ai)
 		{
 			Bitboard pawn = pos.pieces(Them, PAWN) & bb_file(square);
 			if (!pawn)
-				// open lijn
+				// open file
 				score += make_score(185, 157);
 			else if (pawn & ai.attack[Them][PAWN])
-				// halfopen verdedigd door pion
+				// half-open defended by pawn
 				score += make_score(20, 44);
 			else
-				// halfopen lijn
+				// half-open file
 				score += make_score(112, 94);
 		}
 	} while (squares);
@@ -1042,14 +1042,14 @@ inline Score eval_Queens(const Position& pos, AttackInfo& ai)
 	do
 	{
 		Square square = pop_lsb(&squares);
-		//Bord aanval = pos.aanval_van<DAME>(veld);
+		//Bitboard attack = pos.attack_from<QUEEN>(square);
 		Bitboard attack = attack_bb_rook(square, pos.pieces() ^ pos.pieces(Us, QUEEN)) | attack_bb_bishop(square, pos.pieces() ^ pos.pieces(Us, QUEEN));
-		//Bord aanval = aanval_bb<TOREN>(veld, pos.stukken() ^ pos.stukken(IK, TOREN, DAME))
-		//	| aanval_bb<LOPER>(veld, pos.stukken());
+		//Bitboard attack = attack_bb<ROOK>(square, pos.pieces() ^ pos.pieces(Us, ROOK, QUEEN))
+		//	| attack_bb<BISHOP>(square, pos.pieces());
 		if (attack & ai.KZone[Them])
 			ai.KAttackScore[Us] += 8;
-		//else if (aanval & ai.KZoneExtra[JIJ])
-		//	ai.KAanvalScore[IK] += 4;
+		//else if (attack & ai.KZoneExtra[Them])
+		//	ai.KAttackScore[Us] += 4;
 		ai.attack[Us][QUEEN] |= attack;
 		ai.doubleAttack[Us] |= ai.attack[Us][PIECES_WITHOUT_KING] & attack;
 		ai.attack[Us][PIECES_WITHOUT_KING] |= attack;
@@ -1061,7 +1061,7 @@ inline Score eval_Queens(const Position& pos, AttackInfo& ai)
 		const Bitboard CENTER_BOX = 0x00003C3C3C3C0000;
 		unsigned int mobility = popcount(attack) + popcount(attack & CENTER_BOX);
 		score += mobi_Q[(mobility * MobiMult_Q[relative_square(Us, square)] + 32) / 64];
-		//ai.mobiliteit[IK] += mobiliteit - D_GEMIDDELD_MOBILITEIT;
+		//ai.mobility[Us] += mobility - Q_AVERAGE_MOBILITY;
 	} while (squares);
 
 	return score;
@@ -1087,7 +1087,7 @@ Value Evaluation::evaluation(const Position& pos, Value alpha, Value beta)
 	}
 
 	bool doLazyEval = beta < WIN_VALUE && (st - 1)->evalPositional != NO_EVAL && alpha > -WIN_VALUE
-		//&& st->geslagenStuk
+		//&& st->capturedPiece
 		&& pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK) > 2 * MATL_BISHOP
 		&& !(pos.pieces(WHITE, PAWN) & Rank7BB) && !(pos.pieces(BLACK, PAWN) & Rank2BB);
 
@@ -1096,7 +1096,7 @@ Value Evaluation::evaluation(const Position& pos, Value alpha, Value beta)
 		EvalValue v = (st - 1)->evalPositional;
 		int evalFactor = (st - 1)->evalFactor;
 #if 0
-		// laat meerdere lazyEvals achter elkaar toe
+		// allow multiple lazyEvals in a row
 		st->evalPositional = v;
 		st->evalFactor = evalFactor;
 #endif
@@ -1128,7 +1128,7 @@ Value Evaluation::evaluation(const Position& pos, Value alpha, Value beta)
 	kingSafety -= pawnTuple->king_safety<BLACK>(pos);
 
 
-	// evaluatie stukken begint hier
+	// evaluation of pieces starts here
 	// =============================
 	AttackInfo ai;
 	
@@ -1142,32 +1142,32 @@ Value Evaluation::evaluation(const Position& pos, Value alpha, Value beta)
 
 	Score evalScore = pos.psq_score();
 
-	// aftrekschaak
-	//const Score Score_Aftrekschaak = maak_score(250, 250);
-	//if (ai.gepend[ZWART] & pos.stukken(WIT, PAARD, LOPER, TOREN))
-	//	evalScore += Score_Aftrekschaak;
-	//if (ai.gepend[WIT] & pos.stukken(ZWART, PAARD, LOPER, TOREN))
-	//	evalScore -= Score_Aftrekschaak;
+	// discovered check
+	//const Score Score_DiscoveredCheck = make_score(250, 250);
+	//if (ai.pinned[BLACK] & pos.pieces(WHITE, KNIGHT, BISHOP, ROOK))
+	//	evalScore += Score_DiscoveredCheck;
+	//if (ai.pinned[WHITE] & pos.pieces(BLACK, KNIGHT, BISHOP, ROOK))
+	//	evalScore -= Score_DiscoveredCheck;
 
-	// paarden
+	// knights
 	if (pos.pieces(WHITE, KNIGHT))
 		evalScore += eval_Knights<WHITE>(pos, ai);
 	if (pos.pieces(BLACK, KNIGHT))
 		evalScore -= eval_Knights<BLACK>(pos, ai);
 
-	// lopers
+	// bishops
 	if (pos.pieces(WHITE, BISHOP))
 		evalScore += eval_Bishops<WHITE>(pos, ai, pawnTuple);
 	if (pos.pieces(BLACK, BISHOP))
 		evalScore -= eval_Bishops<BLACK>(pos, ai, pawnTuple);
 
-	// torens
+	// rooks
 	if (pos.pieces(WHITE, ROOK))
 		evalScore += eval_Rooks<WHITE>(pos, ai);
 	if (pos.pieces(BLACK, ROOK))
 		evalScore -= eval_Rooks<BLACK>(pos, ai);
 	
-	// dames
+	// queens
 	if (pos.pieces(WHITE, QUEEN))
 		evalScore += eval_Queens<WHITE>(pos, ai);
 	if (pos.pieces(BLACK, QUEEN))
@@ -1178,9 +1178,9 @@ Value Evaluation::evaluation(const Position& pos, Value alpha, Value beta)
 	ai.doubleAttack[BLACK] |= ai.attack[BLACK][PIECES_WITHOUT_KING] & ai.attack[BLACK][KING];
 	ai.attack[BLACK][ALL_PIECES] = ai.attack[BLACK][PIECES_WITHOUT_KING] | ai.attack[BLACK][KING];
 
-	//evalScore += maak_score(-12, 0) * (popcount<Full>(ai.attack[WHITE][ALLE_STUKKEN]) - popcount<Full>(ai.attack[BLACK][ALLE_STUKKEN]));
+	//evalScore += make_score(-12, 0) * (popcount<Full>(ai.attack[WHITE][ALL_PIECES]) - popcount<Full>(ai.attack[BLACK][ALL_PIECES]));
 
-	// score koningsaanval
+	// score king attack
 	// ===================
 #if 0
 	Bitboard zoneControl[2];
@@ -1192,7 +1192,7 @@ Value Evaluation::evaluation(const Position& pos, Value alpha, Value beta)
 
 	evalScore += KingAttack<WHITE>(pos, ai, ai.KAttackScore[WHITE] - pawnTuple->safety[BLACK] 
 		+ space_advantage / 2
-		//+ ruimte_voordeel * popcount(pos.stukken_uitgezonderd(WIT, PION)) / 8
+		//+ space_advantage * popcount(pos.pieces_except(WHITE, PAWN)) / 8
 		);
 
 	if (KingFlankFiles[file_of(pos.king(WHITE))] != KingFlankFiles[file_of(pos.king(BLACK))])
@@ -1201,14 +1201,14 @@ Value Evaluation::evaluation(const Position& pos, Value alpha, Value beta)
 
 	evalScore -= KingAttack<BLACK>(pos, ai, ai.KAttackScore[BLACK] - pawnTuple->safety[WHITE]
 		- space_advantage / 2
-		//- ruimte_voordeel * popcount(pos.stukken_uitgezonderd(ZWART, PION)) / 8
+		//- space_advantage * popcount(pos.pieces_except(BLACK, PAWN)) / 8
 		);
 #else
 	evalScore += KingAttack<WHITE>(pos, ai, ai.KAttackScore[WHITE] - pawnTuple->safety[BLACK]);
 	evalScore -= KingAttack<BLACK>(pos, ai, ai.KAttackScore[BLACK] - pawnTuple->safety[WHITE]);
 #endif
 
-	// dreigingen Wit
+	// threats White
 	// ==============
 	evalScore += sf_Threats<WHITE>(pos, ai);
 	evalScore -= sf_Threats<BLACK>(pos, ai);
@@ -1220,29 +1220,29 @@ Value Evaluation::evaluation(const Position& pos, Value alpha, Value beta)
 		evalScore -= Space<BLACK>(pos, ai);
 	}
 
-	// vrijpionnen
+	// passed pawns
 	// ===========
 	if (pawnTuple->passed_pawns(WHITE))
 		evalScore += PassedPawns<WHITE>(pos, ai, pawnTuple->passed_pawns(WHITE));
 	if (pawnTuple->passed_pawns(BLACK))
 		evalScore -= PassedPawns<BLACK>(pos, ai, pawnTuple->passed_pawns(BLACK));
 
-	// sterke velden voor P en L
+	// strong squares for N and B
 	// =========================
 	evalScore += StrongSquares<WHITE>(pos, ai, pawnTuple);
 	evalScore -= StrongSquares<BLACK>(pos, ai, pawnTuple);
 
-	// geblokkeerde pionnen
+	// blocked pawns
 	const Score Score_Blocked_Pawns = score_muldiv(make_score(43, 167), 128, 256);
 	evalScore -= Score_Blocked_Pawns * popcount(pos.pieces(WHITE, PAWN) & shift_down<WHITE>(pos.pieces()));
 	evalScore += Score_Blocked_Pawns * popcount(pos.pieces(BLACK, PAWN) & shift_down<BLACK>(pos.pieces()));
-	//const Score Score_Geremde_Pionnen = maak_score(21, 42);
-	//evalScore -= Score_Geremde_Pionnen * popcount(pos.stukken(WIT, PION) & shift_down<WIT>(
-	//	ai.aanval[ZWART][ALLE_STUKKEN] & ~ai.aanval[WIT][ALLE_STUKKEN] & ~pos.stukken()));
-	//evalScore += Score_Geremde_Pionnen * popcount(pos.stukken(ZWART, PION) & shift_down<ZWART>(
-	//	ai.aanval[WIT][ALLE_STUKKEN] & ~ai.aanval[ZWART][ALLE_STUKKEN] & ~pos.stukken()));
+	//const Score Score_Restrained_Pawns = make_score(21, 42);
+	//evalScore -= Score_Restrained_Pawns * popcount(pos.pieces(WHITE, PAWN) & shift_down<WHITE>(
+	//	ai.attack[BLACK][ALL_PIECES] & ~ai.attack[WHITE][ALL_PIECES] & ~pos.pieces()));
+	//evalScore += Score_Restrained_Pawns * popcount(pos.pieces(BLACK, PAWN) & shift_down<BLACK>(
+	//	ai.attack[WHITE][ALL_PIECES] & ~ai.attack[BLACK][ALL_PIECES] & ~pos.pieces()));
 
-	// beheersing flank koning
+	// control of king flank
 	Bitboard bb_flank = ai.attack[WHITE][PIECES_WITHOUT_KING] & bb_king_flank_attack[BLACK][file_of(pos.king(BLACK))]
 		& ~ai.attack[BLACK][KING] & ~ai.attack[BLACK][PAWN];
 	bb_flank = (bb_flank >> 4) | (bb_flank & ai.doubleAttack[WHITE]);
@@ -1253,14 +1253,14 @@ Value Evaluation::evaluation(const Position& pos, Value alpha, Value beta)
 	bb_flank = (bb_flank << 4) | (bb_flank & ai.doubleAttack[BLACK]);
 	evalScore -= popcount(bb_flank) * make_score(18, 0);
 
-	// flank zonder pion
-	//if (!(pos.stukken(PION) & bb_koning_flank[lijn(pos.koning(WIT))]))
-	//	evalScore -= maak_score(0, 250);
-	//if (!(pos.stukken(PION) & bb_koning_flank[lijn(pos.koning(ZWART))]))
-	//	evalScore += maak_score(0, 250);
+	// flank without pawn
+	//if (!(pos.pieces(PAWN) & bb_king_flank[file_of(pos.king(WHITE))]))
+	//	evalScore -= make_score(0, 250);
+	//if (!(pos.pieces(PAWN) & bb_king_flank[file_of(pos.king(BLACK))]))
+	//	evalScore += make_score(0, 250);
 
 #if 0
-	// beheersing aanvalsvelden
+	// control of attack squares
 	const Score Score_AttackSquares = make_score(20, 0);
 	Bitboard bb_center_pivot = bb_center_pivot_W[file_of(pos.king(WHITE))] | bb_center_pivot_B[file_of(pos.king(BLACK))];
 	evalScore += Score_AttackSquares * popcount(bb_center_pivot & ai.attack[WHITE][PIECES_WITHOUT_KING]);
@@ -1295,8 +1295,8 @@ Value Evaluation::evaluation(const Position& pos, Value alpha, Value beta)
 				if (more_than_one(QN))
 					evalScore -= Score_B_KingSide;
 			}
-			//evalScore += Score_Pion_KVleugel * popcount(pos.stukken(WIT, PION) & DVleugel);
-			//evalScore -= Score_Pion_KVleugel * popcount(pos.stukken(ZWART, PION) & DVleugel);
+			//evalScore += Score_Pawn_KingSide * popcount(pos.pieces(WHITE, PAWN) & QueenSide);
+			//evalScore -= Score_Pawn_KingSide * popcount(pos.pieces(BLACK, PAWN) & QueenSide);
 		}
 	}
 	else if (pos.pieces(BLACK, KING) & KingSide)
@@ -1319,18 +1319,18 @@ Value Evaluation::evaluation(const Position& pos, Value alpha, Value beta)
 			if (more_than_one(QN))
 				evalScore -= Score_B_KingSide;
 		}
-		//evalScore += Score_Pion_KVleugel * popcount(pos.stukken(WIT, PION) & KVleugel);
-		//evalScore -= Score_Pion_KVleugel * popcount(pos.stukken(ZWART, PION) & KVleugel);
+		//evalScore += Score_Pawn_KingSide * popcount(pos.pieces(WHITE, PAWN) & KingSide);
+		//evalScore -= Score_Pawn_KingSide * popcount(pos.pieces(BLACK, PAWN) & KingSide);
 	}
 #endif
 
-	//evalScore += (5 - 2 * pionTuple->lijn_breedte) * maak_score(0, 40) * (pos.count<PAARD>(WHITE) - pos.count<PAARD>(BLACK));
+	//evalScore += (5 - 2 * pawnTuple->file_width) * make_score(0, 40) * (pos.count<KNIGHT>(WHITE) - pos.count<KNIGHT>(BLACK));
 
-	// positionele eval wordt maal (140/128) gedaan
+	// positional eval is multiplied by (140/128)
 	int mul = (Threads.tacticalModeIndex == 1) ? 50 : 35;
 	Score score = pawnTuple->pawns_score() + kingSafety + score_muldiv(evalScore, mul, 32);
 
-	// in laat eindspel (zonder dames, hoogstens 2 torens)
+	// in late endgame (without queens, at most 2 rooks)
 	if (pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK) <= 4 * MATL_BISHOP)
 		score += Score_PawnFileWidth[pawnTuple->pawn_range(WHITE)] - Score_PawnFileWidth[pawnTuple->pawn_range(BLACK)];
 
@@ -1343,9 +1343,9 @@ Value Evaluation::evaluation(const Position& pos, Value alpha, Value beta)
 	eg += Initiative(pos, pawnTuple, materialTuple->value + eg);
 
 	if (materialTuple->conversion_is_estimated && !pos.pieces(QUEEN) && !(pawnTuple->passed_pawns(WHITE) | pawnTuple->passed_pawns(BLACK)))
-		conversionFactor = ScaleFactor(conversionFactor * 115 / 128); // ongeveer 0.9
+		conversionFactor = ScaleFactor(conversionFactor * 115 / 128); // approximately 0.9
 	if (pawnTuple->conversion_difficult)
-		conversionFactor = ScaleFactor(conversionFactor * 115 / 128); // ongeveer 0.9
+		conversionFactor = ScaleFactor(conversionFactor * 115 / 128); // approximately 0.9
 
 	ScaleFactor evalFactor = sf == NORMAL_FACTOR ? conversionFactor : ScaleFactor(std::min((int)conversionFactor, (int)2 * sf));
 
@@ -1358,15 +1358,15 @@ Value Evaluation::evaluation(const Position& pos, Value alpha, Value beta)
 #if 1
 	if (Threads.pieceContempt)
 	{
-		// aantal stukken
+		// number of pieces
 		int contempt_count = 2 * pos.count(Threads.contemptColor, PAWN)
 			+ 2 * pos.count(Threads.contemptColor, KNIGHT) + 3 * pos.count(Threads.contemptColor, BISHOP)
 			+ 4 * pos.count(Threads.contemptColor, ROOK) + 8 * pos.count(Threads.contemptColor, QUEEN);
 
-		// vastgelopen pionnen
-		//int vastgelopen_pionnen = popcount(pos.stukken(ZWART, PION) & (pos.stukken(WIT, PION) << 8)) - 2;
-		//if (vastgelopen_pionnen > 0)
-		//	contempt_aantal -= 5 * vastgelopen_pionnen * fase / int(MIDDENSPEL_FASE);
+		// stuck pawns
+		//int blocked_pawns = popcount(pos.pieces(BLACK, PAWN) & (pos.pieces(WHITE, PAWN) << 8)) - 2;
+		//if (blocked_pawns > 0)
+		//	contempt_count -= 5 * blocked_pawns * phase / int(MIDDLEGAME_PHASE);
 
 		int contemptScore = 4 * Threads.pieceContempt * contempt_count * evalFactor / MAX_FACTOR;
 		if (Threads.contemptColor == WHITE)
@@ -1379,16 +1379,16 @@ Value Evaluation::evaluation(const Position& pos, Value alpha, Value beta)
 	if (pos.side_to_move() == BLACK)
 		v = -v;
 
-	// tot hier is de score in 1/1600 pion (EvalWaarde)
-	// uiteindelijk resultaat in 1/200 pion (Value)
-	//Waarde result = ValueFromEval(v) + Waarde((unsigned int)WAARDE_TEMPO * (unsigned int)evalFactor / MAX_FACTOR);
+	// up to here the score is in 1/1600 pawn (EvalValue)
+	// final result in 1/200 pawn (Value)
+	//Value result = ValueFromEval(v) + Value((unsigned int)VALUE_TEMPO * (unsigned int)evalFactor / MAX_FACTOR);
 	Value result = ValueFromEval(v) + VALUE_TEMPO;
 
-	// 50 zet regel
+	// 50 move rule
 	if (pos.fifty_moves_counter() > Threads.fiftyMovesDistance)
 		result = result * (5 * (2 * Threads.fiftyMovesDistance - pos.fifty_moves_counter()) + 6) / 256;
 
-	// test op pat als enkel K + pionnen
+	// test for stalemate if only K + pawns
 	if (!pos.non_pawn_material(pos.side_to_move()))
 	{
 		if (pos.side_to_move() == WHITE)
@@ -1426,7 +1426,7 @@ Value Evaluation::evaluation_after_nullmove(Value eval)
 
 void Evaluation::initialize()
 {
-	// Mobiliteit multiplier
+	// Mobility multiplier
 	const int MobiMultConst[64] = {
 		 1, 1, 1, 1, 1, 1, 1, 1,
 		 1, 1, 1, 1, 1, 1, 1, 1,
@@ -1492,8 +1492,8 @@ void Evaluation::initialize()
 		MobiMult_N[n] = 270 * MobiMultConst[n] + (0 * MobiMultRankQuad[n] + 6 * MobiMultFileQuad[n]) / 2
 			- 2 * MobiMultCenter[n] + 0 * MobiMultRank[n] + 5 * MobiMultEdge[n];
 		MobiMult_B1[n] = 256;
-		//MobiMult_L1[n] = 271 * MobiMultConst[n] + (-5 * MobiMultRankQuad[n] + 0 * MobiMultFileQuad[n]) / 2
-		//	+ 0 * MobiMultCenter[n] + 0 * MobiMultRank[n] + 0 * MobiMultRand[n];
+		//MobiMult_B1[n] = 271 * MobiMultConst[n] + (-5 * MobiMultRankQuad[n] + 0 * MobiMultFileQuad[n]) / 2
+		//	+ 0 * MobiMultCenter[n] + 0 * MobiMultRank[n] + 0 * MobiMultEdge[n];
 		MobiMult_B2[n] = 249 * MobiMultConst[n] + (-8 * MobiMultRankQuad[n] - 3 * MobiMultFileQuad[n]) / 2
 			+ 0 * MobiMultCenter[n] - 3 * MobiMultRank[n] - 4 * MobiMultEdge[n];
 		MobiMult_R[n] = 255 * MobiMultConst[n] + (1 * MobiMultRankQuad[n] - 5 * MobiMultFileQuad[n]) / 2
@@ -1502,8 +1502,8 @@ void Evaluation::initialize()
 			+ 1 * MobiMultCenter[n] - 2 * MobiMultRank[n] - 8 * MobiMultEdge[n];
 
 		//int MobiMult = TUNE_1 * MobiMultConst[n] + (TUNE_2 * MobiMultRankQuad[n] + TUNE_3 * MobiMultFileQuad[n]) / 2
-		//	+ TUNE_4 * MobiMultCenter[n] + TUNE_5 * MobiMultRank[n] + TUNE_6 * MobiMultRand[n];
-		//MobiMult_L1[n] = std::max(std::min(MobiMult, 512), 64);
+		//	+ TUNE_4 * MobiMultCenter[n] + TUNE_5 * MobiMultRank[n] + TUNE_6 * MobiMultEdge[n];
+		//MobiMult_B1[n] = std::max(std::min(MobiMult, 512), 64);
 	}
 	for (int n = 0; n < 256; n++)
 	{

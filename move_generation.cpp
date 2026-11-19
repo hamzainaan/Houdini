@@ -208,7 +208,7 @@ namespace
 					&& !(EmptyAttack[piece][from] & target & pos.info()->checkSquares[piece]))
 					continue;
 
-				// aftrekschaaks worden in genereerZetten<GEN_RUSTIGE_SCHAAKS> geschreven
+				// discovered checks are written in generateMoves<GEN_QUIET_CHECKS>
 				if (pos.info()->xRay[~pos.side_to_move()] & from)
 					continue;
 			}

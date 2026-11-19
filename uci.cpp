@@ -53,7 +53,7 @@ namespace
 			pos.set(StartFEN, UciOptions["UCI_Chess960"], Threads.main());
 		}
 
-		// zettenlijst
+		// move list
 		while (is >> token && (move = UCI::move_from_string(pos, token)) != NO_MOVE)
 		{
 			pos.do_move(move);
@@ -196,7 +196,7 @@ void UCI::mainLoop(int argc, char* argv[])
 		{
 			Search::Signals.stopAnalysis = true;
 			Threads.main()->wake_up(false);
-			//Threads.main()->wacht_op_einde_zoeken();
+			//Threads.main()->wait_for_search_finished();
 		}
 		else if (word == "ponderhit")
 		{
@@ -228,7 +228,7 @@ void UCI::mainLoop(int argc, char* argv[])
 			else if (word == "set")       setoption2(is);
 			else if (word == "bench")     benchmark(pos, is);
 			else if (word == "b")         benchmark(pos, is);
-			//else if (woord == "d")         sync_cout << pos << sync_endl;
+			//else if (word == "d")         sync_cout << pos << sync_endl;
 			else if (word == "e")         show_evaluation(pos);
 #ifdef USE_LARGE_PAGES
 			else if (word == "lp")        test_large_pages();
@@ -304,7 +304,7 @@ string UCI::move(Move move, const Position& pos)
 	if (move_type(move) == CASTLING && pos.is_chess960())
 		to = pos.castling_rook_square(to);
 
-	//string sZet = UCI::veld(van) + UCI::veld(naar);
+	//string sMove = UCI::square(from) + UCI::square(to);
 	sMove[0] = 'a' + file_of(from);
 	sMove[1] = '1' + rank_of(from);
 	sMove[2] = 'a' + file_of(to);
@@ -321,7 +321,7 @@ Move UCI::move_from_string(const Position& pos, string& str)
 {
 	if (pos.is_chess960())
 	{
-		// Arena gebruikt O-O en O-O-O
+		// Arena uses O-O and O-O-O
 		if (str == "O-O")
 			str = UCI::move(make_move(CASTLING, pos.king(pos.side_to_move()), relative_square(pos.side_to_move(), SQ_G1)), pos);
 		else if (str == "O-O-O")

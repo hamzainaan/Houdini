@@ -7,7 +7,7 @@
 #include "houdini.h"
 
 #ifdef USE_PEXT
-#  include <immintrin.h> // voor _pext_u64()
+#  include <immintrin.h> // for _pext_u64()
 #  define pext(occupied, mask) _pext_u64(occupied, mask)
 #  define blsr_u64(b) _blsr_u64(b)
 #endif
@@ -264,7 +264,7 @@ inline Bitboard shift_upright(Bitboard bb)
 
 
 #if defined(USE_POPCNT) && (defined(__INTEL_COMPILER) || defined(_MSC_VER))
-#  include <nmmintrin.h> // voor _mm_popcnt_u64()
+#  include <nmmintrin.h> // for _mm_popcnt_u64()
 #endif
 
 inline int popcount(Bitboard b)
@@ -313,7 +313,7 @@ inline Square msb(Bitboard b)
 
 #elif defined(_WIN64) && defined(_MSC_VER)
 
-#include <intrin.h> // voor _BitScanForward64()
+#include <intrin.h> // for _BitScanForward64()
 
 inline Square lsb(Bitboard b)
 {

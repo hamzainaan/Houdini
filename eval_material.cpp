@@ -56,13 +56,13 @@ namespace
 		double conversionFactor;
 
 		if (phase == 0)
-			conversionFactor = 1.3;	// pionneneindspel
+			conversionFactor = 1.3;	// pawn endgame
 		else
 			conversionFactor = 0.95 + 0.21 * phase / MAX_PHASE;
 
 		if (WB == 1 && BB == 1 && ((WBL && BBD) || (WBD && BBL)))
 		{
-			// ongelijke lopers
+			// opposite bishops
 			if (phase == 2)
 				conversionFactor = 0.6;
 			else
@@ -78,12 +78,12 @@ namespace
 			else if (WPawn <= 4)
 				conversionFactor = conversionFactor * PawnFactor[WPawn];
 		}
-		//else if (WD + ZD == 0 && WT == 1 && ZT == 1 && WP + WL + ZP + ZL == 1)
+		//else if (WQ + BQ == 0 && WR == 1 && BR == 1 && WN + WB + BN + BB == 1)
 		else if (phase == 7 && WR == 1 && BR == 1)
 			conversionFactor = conversionFactor * 0.1;
 		else
 		{
-			// zonder pionnen
+			// without pawns
 			int matDifference = abs(3 * (WN - BN) + 7 * WB / 2 - 7 * BB / 2 + 5 * (WR - BR) + 9 * (WQ - BQ));
 			if (matDifference <= 4)
 				conversionFactor = conversionFactor * BalanceFactorOld[matDifference];
@@ -94,124 +94,124 @@ namespace
 	}
 
 	/*
-	EvalWaarde imbalanceK(int WPion, int WP, int WL, int WLL, int WLD, int WT, int WD,
-		int ZPion, int ZP, int ZL, int ZLL, int ZLD, int ZT, int ZD, SchaalFactor &conversion)
+	EvalValue imbalanceK(int WPawn, int WN, int WB, int WBL, int WBD, int WR, int WQ,
+		int BPawn, int BN, int BB, int BBL, int BBD, int BR, int BQ, ScaleFactor &conversion)
 	{
-		double conversie;
+		double conversionFactor;
 		int matScore;
 
-		const int MAX_FASE = 32;
-		int fase = (WP + ZP) + (WL + ZL) + 3 * (WT + ZT) + 6 * (WD + ZD);
-		fase = std::min(fase, MAX_FASE);
+		const int MAX_PHASE = 32;
+		int phase = (WN + BN) + (WB + BB) + 3 * (WR + BR) + 6 * (WQ + BQ);
+		phase = std::min(phase, MAX_PHASE);
 
-		int matIndexW = 6 * WP + 7 * WL + 10 * WT + 18 * WD;
-		int matIndexZ = 6 * ZP + 7 * ZL + 10 * ZT + 18 * ZD;
+		int matIndexW = 6 * WN + 7 * WB + 10 * WR + 18 * WQ;
+		int matIndexB = 6 * BN + 7 * BB + 10 * BR + 18 * BQ;
 
-		int matScoreW = 1000 * WPion + 3465 * WP + 3728 * WL + 6209 * WT + 11759 * WD
-			+ WPion * (21 * WP - 79 * WT - 129 * WD)
-			+ WP * (4 * WL - 45 * WT - 47 * WD)
-			+ WL * (-30 * WT - 60 * WD)
-			+ WT * (193 - 193 * WT - 524 * WD)
-			+ WD * (712 - 712 * WD);
+		int matScoreW = 1000 * WPawn + 3465 * WN + 3728 * WB + 6209 * WR + 11759 * WQ
+			+ WPawn * (21 * WN - 79 * WR - 129 * WQ)
+			+ WN * (4 * WB - 45 * WR - 47 * WQ)
+			+ WB * (-30 * WR - 60 * WQ)
+			+ WR * (193 - 193 * WR - 524 * WQ)
+			+ WQ * (712 - 712 * WQ);
 
-		int matScoreZ = 1000 * ZPion + 3465 * ZP + 3728 * ZL + 6209 * ZT + 11759 * ZD
-			+ ZPion * (21 * ZP - 79 * ZT - 129 * ZD)
-			+ ZP * (4 * ZL - 45 * ZT - 47 * ZD)
-			+ ZL * (-30 * ZT - 60 * ZD)
-			+ ZT * (193 - 193 * ZT - 524 * ZD)
-			+ ZD * (712 - 712 * ZD);
+		int matScoreB = 1000 * BPawn + 3465 * BN + 3728 * BB + 6209 * BR + 11759 * BQ
+			+ BPawn * (21 * BN - 79 * BR - 129 * BQ)
+			+ BN * (4 * BB - 45 * BR - 47 * BQ)
+			+ BB * (-30 * BR - 60 * BQ)
+			+ BR * (193 - 193 * BR - 524 * BQ)
+			+ BQ * (712 - 712 * BQ);
 
-		if (WLL && WLD)	// W loperpaar
+		if (WBL && WBD)	// W bishop pair
 		{
-			matScoreW += 488 - 76 * WD - 3 * WP - 8 * WPion - 17 * WT;
-			if (!(ZP + ZL))
+			matScoreW += 488 - 76 * WQ - 3 * WN - 8 * WPawn - 17 * WR;
+			if (!(BN + BB))
 				matScoreW += 37;
 		}
 
-		if (ZLL && ZLD)	// Z Loperpaar
+		if (BBL && BBD)	// B bishop pair
 		{
-			matScoreZ += 488 - 76 * ZD - 3 * ZP - 8 * ZPion - 17 * ZT;
-			if (!(WL + WP))
-				matScoreZ += 37;
+			matScoreB += 488 - 76 * BQ - 3 * BN - 8 * BPawn - 17 * BR;
+			if (!(WB + WN))
+				matScoreB += 37;
 		}
 
-		matScoreW += ZPion * (9 * WT + 2 * WL + 18 * WP + 24 * WD);
-		matScoreZ += WPion * (9 * ZT + 2 * ZL + 18 * ZP + 24 * ZD);
+		matScoreW += BPawn * (9 * WR + 2 * WB + 18 * WN + 24 * WQ);
+		matScoreB += WPawn * (9 * BR + 2 * BB + 18 * BN + 24 * BQ);
 
-		int WLichtStuk = WL + WP;
-		int ZLichtStuk = ZL + ZP;
+		int WMinorPiece = WB + WN;
+		int BMinorPiece = BB + BN;
 
-		if (WLichtStuk > ZLichtStuk)
+		if (WMinorPiece > BMinorPiece)
 		{
-			if (WLichtStuk > ZLichtStuk + 2)
+			if (WMinorPiece > BMinorPiece + 2)
 				matScoreW += 200;
-			if (WL > ZL)
+			if (WB > BB)
 				matScoreW += 17;
-			if (WP > ZP)
+			if (WN > BN)
 				matScoreW -= 17;
 		}
-		else if (WLichtStuk < ZLichtStuk)
+		else if (WMinorPiece < BMinorPiece)
 		{
-			if (ZLichtStuk > WLichtStuk + 2)
-				matScoreZ += 200;
-			if (WL < ZL)
-				matScoreZ += 17;
-			if (WP < ZP)
-				matScoreZ -= 17;
+			if (BMinorPiece > WMinorPiece + 2)
+				matScoreB += 200;
+			if (WB < BB)
+				matScoreB += 17;
+			if (WN < BN)
+				matScoreB -= 17;
 		}
 
-		matScore = matScoreW - matScoreZ;
-		conversie = 0.95 + 0.21 * fase / MAX_FASE;
+		matScore = matScoreW - matScoreB;
+		conversionFactor = 0.95 + 0.21 * phase / MAX_PHASE;
 
-		// pionneneindspel
-		if (ZPion + WPion && !matIndexW && !matIndexZ)
-			conversie = 1.3;
+		// pawn endgame
+		if (BPawn + WPawn && !matIndexW && !matIndexB)
+			conversionFactor = 1.3;
 
-		// D vs D of T vs T -> * 0.9
-		if (matIndexW == 10 && matIndexZ == 10 || matIndexW == 18 && matIndexZ == 18)
-			conversie *= 0.9;
+		// Q vs Q or R vs R -> * 0.9
+		if (matIndexW == 10 && matIndexB == 10 || matIndexW == 18 && matIndexB == 18)
+			conversionFactor *= 0.9;
 
-		// ongelijke L
-		if (WL == 1 && ZL == 1 && ((WLL && ZLD) || (WLD && ZLL)))
+		// opposite B
+		if (WB == 1 && BB == 1 && ((WBL && BBD) || (WBD && BBL)))
 		{
-			// ongelijke lopers
-			if (matIndexW == 7 && matIndexZ == 7)
-				conversie = 0.6;
+			// opposite bishops
+			if (matIndexW == 7 && matIndexB == 7)
+				conversionFactor = 0.6;
 			else
-				conversie *= 0.95;
+				conversionFactor *= 0.95;
 		}
 
-		if (WPion + ZPion)
+		if (WPawn + BPawn)
 		{
 			if (matScore <= 0)
 			{
 				if (matScore)
 				{
-					if (ZPion <= 4)
-						conversie *= PionFactor[ZPion];
+					if (BPawn <= 4)
+						conversionFactor *= PawnFactor[BPawn];
 				}
 				else
 				{
-					int pion = std::max(WPion, ZPion);
-					if (pion <= 4)
-						conversie *= PionFactor[pion];
+					int pawn = std::max(WPawn, BPawn);
+					if (pawn <= 4)
+						conversionFactor *= PawnFactor[pawn];
 				}
 			}
-			else if (WPion <= 4)
-				conversie *= PionFactor[WPion];
+			else if (WPawn <= 4)
+				conversionFactor *= PawnFactor[WPawn];
 		}
-		else // geen pionnen
+		else // no pawns
 		{
-			int matDifference = abs(matIndexW / 2 - matIndexZ / 2);
+			int matDifference = abs(matIndexW / 2 - matIndexB / 2);
 			if (matDifference <= 3)
-				conversie *= BalanceFactor[matDifference];
+				conversionFactor *= BalanceFactor[matDifference];
 		}
 
 		//if (abs(matScore) > 600)
 		// matScore = matScore * 107 / 100;
 
-		conversion = SchaalFactor(std::lround(conversie * MAX_FACTOR));
-		return EvalWaarde(ScoreMultiply(matScore));
+		conversion = ScaleFactor(std::lround(conversionFactor * MAX_FACTOR));
+		return EvalValue(ScoreMultiply(matScore));
 	} */
 
 } // namespace
@@ -236,8 +236,8 @@ namespace Material
 
 	Tuple* probe(const Position& pos)
 	{
-		// index in materialTable is de sleutel met kleur lopers (want conversie-factoren hangen af van kleur lopers)
-		// index in endgames is sleutel zonder kleur lopers (want de routines maken dit onderscheid zelf)
+		// index in materialTable is the key with bishop colors (because conversion factors depend on bishop colors)
+		// index in endgames is the key without bishop colors (because the routines make this distinction themselves)
 		Key64 key = pos.material_key() ^ pos.bishopcolor_key();
 		Tuple* e = pos.ti()->materialTable[key];
 
@@ -292,22 +292,22 @@ namespace Material
 		MaterialValue npm_w = pos.non_pawn_material(WHITE);
 		MaterialValue npm_b = pos.non_pawn_material(BLACK);
 
-		if (npm_w + npm_b == MATL_0 && pos.pieces(PAWN)) // pionneneindspel, maar niet KPK
+		if (npm_w + npm_b == MATL_0 && pos.pieces(PAWN)) // pawn endgame, but not KPK
 		{
 			if (!pos.count(BLACK, PAWN))
 			{
 				assert(pos.count(WHITE, PAWN) >= 2);
-				e->scaleFunctionIndex[WHITE] = 4;  // endgameScaleFactor_KPsK<WIT>
+				e->scaleFunctionIndex[WHITE] = 4;  // endgameScaleFactor_KPsK<WHITE>
 			}
 			else if (!pos.count(WHITE, PAWN))
 			{
 				assert(pos.count(BLACK, PAWN) >= 2);
-				e->scaleFunctionIndex[BLACK] = 5;  // endgameScaleFactor_KPsK<ZWART>
+				e->scaleFunctionIndex[BLACK] = 5;  // endgameScaleFactor_KPsK<BLACK>
 			}
 			else if (pos.count(WHITE, PAWN) == 1 && pos.count(BLACK, PAWN) == 1)
 			{
-				e->scaleFunctionIndex[WHITE] = 6;    // endgameScaleFactor_KPKP<WIT>
-				e->scaleFunctionIndex[BLACK] = 7;  // endgameScaleFactor_KPKP<ZWART>
+				e->scaleFunctionIndex[WHITE] = 6;    // endgameScaleFactor_KPKP<WHITE>
+				e->scaleFunctionIndex[BLACK] = 7;  // endgameScaleFactor_KPKP<BLACK>
 			}
 		}
 

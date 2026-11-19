@@ -131,7 +131,7 @@ namespace
 
 	void write_own_name(char *my_name)
 	{
-		// onnozele functie om hex editing van de EXE file moeilijker te maken
+		// silly function to make hex editing of the EXE file more difficult
 		char c = '§';
 		for (int n = 0; n < 14; n++)
 		{

@@ -190,8 +190,8 @@ namespace MoveSelection
 		else if (depth == DEPTH_0)
 			st->mp_stage = QSEARCH_WITH_CHECKS;
 
-		//else if (diepte == -PLY && delta < Waarde(50))
-		//	st->mp_etappe = QSEARCH_MET_DAMESCHAAK;
+		//else if (depth == -PLY && delta < Value(50))
+		//	st->mp_stage = QSEARCH_WITH_QUEEN_CHECKS;
 
 		else if (depth >= -4 * PLY)
 			st->mp_stage = QSEARCH_WITHOUT_CHECKS;
@@ -268,8 +268,8 @@ namespace MoveSelection
 			if (pos.is_capture(z->move))
 				z->value = SortValue(CaptureSortValues[pos.piece_on_square(to_square(z->move))]
 					- PieceOrder[pos.moved_piece(z->move)]) + SORT_MAX;
-			//else if (z->zet == st->mp_counterZet)
-			//	z->waarde = SorteerWaarde(99999);
+			//else if (z->move == st->mp_counterMove)
+			//	z->value = SortValue(99999);
 			else
 			{
 				int offset = MoveValueStats::compute_offset(pos.moved_piece(z->move), to_square(z->move));
@@ -287,7 +287,7 @@ namespace MoveSelection
 		{
 		case NORMAL_SEARCH: case EVADE_CHECK:
 		case QSEARCH_WITH_CHECKS: case QSEARCH_WITHOUT_CHECKS: 
-		//case QSEARCH_MET_DAMESCHAAK:
+		//case QSEARCH_WITH_QUEEN_CHECKS:
 		case PROBCUT:
 			st->mp_endList = (st - 1)->mp_endList;
 			++st->mp_stage;
@@ -357,7 +357,7 @@ namespace MoveSelection
 				}
 			}
 
-		//case RUSTIGE_ZETTEN_GEN:
+		//case QUIET_MOVES_GEN:
 			st->mp_currentMove = st->mp_endBadCapture;
 			if (st->mp_only_quiet_checks && st->moveNumber >= 1)
 			{
@@ -374,15 +374,15 @@ namespace MoveSelection
 				score<GEN_QUIET_MOVES>(pos);
 
 				MoveEx* sort_until = st->mp_endList;
-				// op lage diepte: sorteer enkel maar de positieve zetten; dus eerst een partitie maken
+				// at low depth: only sort the positive moves; so first make a partition
 				if (st->mp_depth < 6 * PLY)
 					sort_until = partition_moves(st->mp_currentMove, st->mp_endList, SortValue(6000 - 6000 * (st->mp_depth / PLY)));
 				insertion_sort(st->mp_currentMove, sort_until);
-				//if (st->mp_diepte < 8 * PLY)
-				//	partial_insertion_sort(st->mp_huidigeZet, st->mp_eindeLijst, SorteerWaarde(2000 - 3000 * (st->mp_diepte / PLY)));
+				//if (st->mp_depth < 8 * PLY)
+				//	partial_insertion_sort(st->mp_currentMove, st->mp_endList, SortValue(2000 - 3000 * (st->mp_depth / PLY)));
 				//else
-				//	insertion_sort(st->mp_huidigeZet, sorteer_tot);
-				//partial_insertion_sort(st->mp_huidigeZet, st->mp_eindeLijst, SorteerWaarde(4000 - 4000 * (st->mp_diepte / PLY)));
+				//	insertion_sort(st->mp_currentMove, sort_until);
+				//partial_insertion_sort(st->mp_currentMove, st->mp_endList, SortValue(4000 - 4000 * (st->mp_depth / PLY)));
 			}
 			st->mp_stage = QUIET_MOVES;
 
@@ -444,7 +444,7 @@ namespace MoveSelection
 			++st->mp_stage;
 
 		case QSEARCH_1_CAPTURES: case QSEARCH_2_CAPTURES: 
-		//case QSEARCH_3_SLAGZETTEN:
+		//case QSEARCH_3_CAPTURES:
 			while (st->mp_currentMove < st->mp_endList)
 			{
 				Move move = find_best_move(st->mp_currentMove++, st->mp_endList);
@@ -456,19 +456,19 @@ namespace MoveSelection
 				return NO_MOVE;
 
 			st->mp_currentMove = (st - 1)->mp_endList;
-			//if (st->mp_etappe == QSEARCH_3_SLAGZETTEN)
-			//	st->mp_eindeLijst = genereerZetten<GEN_DAME_SCHAAK>(pos, st->mp_huidigeZet);
+			//if (st->mp_stage == QSEARCH_3_CAPTURES)
+			//	st->mp_endList = generateMoves<GEN_QUEEN_CHECKS>(pos, st->mp_currentMove);
 			//else
 				st->mp_endList = generateMoves<GEN_QUIET_CHECKS>(pos, st->mp_currentMove);
-			//score<GEN_RUSTIGE_ZETTEN>(pos);
+			//score<GEN_QUIET_MOVES>(pos);
 			++st->mp_stage;
 
 		case QSEARCH_CHECKS: 
-		//case QSEARCH_DAMESCHAAKZETTEN:
+		//case QSEARCH_QUEEN_CHECKS:
 			while (st->mp_currentMove < st->mp_endList)
 			{
 				Move move = *st->mp_currentMove++;
-				//Zet zet = vind_beste_zet(st->mp_huidigeZet++, st->mp_eindeLijst);
+				//Move move = find_best_move(st->mp_currentMove++, st->mp_endList);
 				if (move != st->mp_ttMove)
 					return move;
 			}

@@ -787,8 +787,8 @@ namespace
 	// bit  0- 5: white king square (from SQ_A1 to SQ_H8)
 	// bit  6-11: black king square (from SQ_A1 to SQ_H8)
 	// bit    12: side to move (WHITE or BLACK)
-	// bit 13-14: white pawn file (from LIJN_A to LIJN_D)
-	// bit 15-17: white pawn RIJ_7 - rank (from RIJ_7 - RIJ_7 to RIJ_7 - RIJ_2)
+	// bit 13-14: white pawn file (from FILE_A to FILE_D)
+	// bit 15-17: white pawn RANK_7 - rank (from RANK_7 - RANK_7 to RANK_7 - RANK_2)
 	unsigned index(Color us, Square bK, Square wK, Square pawn) {
 		return wK | (bK << 6) | (us << 12) | (file_of(pawn) << 13) | ((RANK_7 - rank_of(pawn)) << 15);
 	}

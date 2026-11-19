@@ -55,89 +55,89 @@ Bitboard attack_king_inc(Square s) { return StepAttacksBB[KING][s] | s; }
 
 Value endgame_value_theoretical_draw(const Position& pos, AttackInfo& ai, const Pawns::Entry *pawnEntry, Value value)
 {
-	//VAR->exacte_waarde = TRUE;
+	//VAR->exact_value = TRUE;
 	return VALUE_DRAW;
 }
 
 Value endgame_value_minor_minor(const Position& pos, AttackInfo& ai, const Pawns::Entry *pawnEntry, Value value)
 {
-	// sommige stuk vs stuk posities kunnen mat zijn met de koning in de hoek
-	//VAR->exacte_waarde = ((pos.pieces(WHITE, KING) | pos.pieces(BLACK, KING)) & bb4(SQ_A1, SQ_H1, SQ_A8, SQ_H8)) == 0;
+	// some piece vs piece positions can be mate with the king in the corner
+	//VAR->exact_value = ((pos.pieces(WHITE, KING) | pos.pieces(BLACK, KING)) & bb4(SQ_A1, SQ_H1, SQ_A8, SQ_H8)) == 0;
 	return VALUE_DRAW;
 }
 
 
 Value endgame_value_KPs_KPs(const Position& pos, AttackInfo& ai, const Pawns::Entry *pawnEntry, Value value)
 {/*
-	int v, ww, verste_witte_vrijpion, verste_zwarte_vrijpion;
-	Square veld, promotieveld, koningsveld;
-	Rank rij;
-	Bitboard vrijpionnen;
+	int v, ww, furthest_white_passed_pawn, furthest_black_passed_pawn;
+	Square square, promotion_square, king_square;
+	Rank rank;
+	Bitboard passed_pawns;
 
-	verste_witte_vrijpion = 0;
-	koningsveld = pos.square<KING>(BLACK);
-	vrijpionnen = pionEntry->passedPawns[WHITE];
-	while (vrijpionnen)
+	furthest_white_passed_pawn = 0;
+	king_square = pos.square<KING>(BLACK);
+	passed_pawns = pawnEntry->passedPawns[WHITE];
+	while (passed_pawns)
 	{
-		veld = pop_lsb(&vrijpionnen);
-		rij = rank_of(veld);
-		promotieveld = make_square(file_of(veld), RANK_8);
-		if ((GG->bb_koning_steunt_vrijpion[WHITE][veld] & pos.pieces(WHITE, KING)) != 0
-			|| SquareDistance[promotieveld][koningsveld] > 8 - rij - (pos.side_to_move() == WHITE))
+		square = pop_lsb(&passed_pawns);
+		rank = rank_of(square);
+		promotion_square = make_square(file_of(square), RANK_8);
+		if ((GG->bb_king_supports_passed_pawn[WHITE][square] & pos.pieces(WHITE, KING)) != 0
+			|| SquareDistance[promotion_square][king_square] > 8 - rank - (pos.side_to_move() == WHITE))
 		{
-			if (pos.pieces(WHITE) & in_front_bb[WHITE][veld])
-				rij--;
-			if (attacks_bb<QUEEN>(promotieveld, pos.pieces() & ~GG->bb_veld[veld]) & pos.pieces(BLACK, KING))
-				rij++;
-			if (rij > verste_witte_vrijpion)
-				verste_witte_vrijpion = rij;
+			if (pos.pieces(WHITE) & in_front_bb[WHITE][square])
+				rank--;
+			if (attacks_bb<QUEEN>(promotion_square, pos.pieces() & ~GG->bb_square[square]) & pos.pieces(BLACK, KING))
+				rank++;
+			if (rank > furthest_white_passed_pawn)
+				furthest_white_passed_pawn = rank;
 		}
 	}
 
-	verste_zwarte_vrijpion = 0;
-	koningsveld = pos.square<KING>(WHITE);
-	vrijpionnen = pionEntry->passed_pawns(BLACK);
-	while (vrijpionnen)
+	furthest_black_passed_pawn = 0;
+	king_square = pos.square<KING>(WHITE);
+	passed_pawns = pawnEntry->passed_pawns(BLACK);
+	while (passed_pawns)
 	{
-		veld = pop_lsb(&vrijpionnen);
-		rij = RANK_8 - rank_of(veld);
-		promotieveld = make_square(file_of(veld), RANK_1);
-		if ((GG->bb_koning_steunt_vrijpion[BLACK][veld] & pos.pieces(BLACK, KING)) != 0
-			|| SquareDistance[promotieveld][koningsveld] > 7 - rij + (pos.side_to_move() == WHITE))
+		square = pop_lsb(&passed_pawns);
+		rank = RANK_8 - rank_of(square);
+		promotion_square = make_square(file_of(square), RANK_1);
+		if ((GG->bb_king_supports_passed_pawn[BLACK][square] & pos.pieces(BLACK, KING)) != 0
+			|| SquareDistance[promotion_square][king_square] > 7 - rank + (pos.side_to_move() == WHITE))
 		{
-			if (pos.pieces(BLACK) & in_front_bb[BLACK][veld])
-				rij--;
-			if (attacks_bb<QUEEN>(promotieveld, pos.pieces() & ~GG->bb_veld[veld]) & pos.pieces(WHITE, KING))
-				rij++;
-			if (rij > verste_zwarte_vrijpion)
-				verste_zwarte_vrijpion = rij;
+			if (pos.pieces(BLACK) & in_front_bb[BLACK][square])
+				rank--;
+			if (attacks_bb<QUEEN>(promotion_square, pos.pieces() & ~GG->bb_square[square]) & pos.pieces(WHITE, KING))
+				rank++;
+			if (rank > furthest_black_passed_pawn)
+				furthest_black_passed_pawn = rank;
 		}
 	}
 
-	ww = (sint16)((pos.psq_score() + pionEntry->score) & 0xffff);
+	ww = (sint16)((pos.psq_score() + pawnEntry->score) & 0xffff);
 	ww = ww / EVAL_MULTIPLY + Material_value;
-	v = (ww * conversie) / 128;
+	v = (ww * conversionFactor) / 128;
 
-	if (verste_witte_vrijpion > verste_zwarte_vrijpion)
+	if (furthest_white_passed_pawn > furthest_black_passed_pawn)
 	{
 		if (pos.side_to_move() == WHITE)
-			verste_witte_vrijpion++;
-		if ((pos.pieces(BLACK, PAWN) & GG->bb_ervoor_zwart[R8 - verste_witte_vrijpion + 2]) == 0
-				|| !more_than_one(pionEntry->passed_pawns(BLACK)))
-			v += SC(300) + SC(50) * verste_witte_vrijpion;
+			furthest_white_passed_pawn++;
+		if ((pos.pieces(BLACK, PAWN) & GG->bb_in_front_black[R8 - furthest_white_passed_pawn + 2]) == 0
+				|| !more_than_one(pawnEntry->passed_pawns(BLACK)))
+			v += SC(300) + SC(50) * furthest_white_passed_pawn;
 		else
-			v += SC(150) + SC(25) * verste_witte_vrijpion;
+			v += SC(150) + SC(25) * furthest_white_passed_pawn;
 	}
 
-	if (verste_zwarte_vrijpion > verste_witte_vrijpion)
+	if (furthest_black_passed_pawn > furthest_white_passed_pawn)
 	{
 		if (pos.side_to_move() == BLACK)
-			verste_zwarte_vrijpion++;
-		if  ((pos.pieces(WHITE, PAWN) & GG->bb_ervoor_wit[verste_zwarte_vrijpion - 2]) == 0
-				|| !more_than_one(pionEntry->passed_pawns[WHITE]))
-			v -= SC(300) + SC(50) * verste_zwarte_vrijpion;
+			furthest_black_passed_pawn++;
+		if  ((pos.pieces(WHITE, PAWN) & GG->bb_in_front_white[furthest_black_passed_pawn - 2]) == 0
+				|| !more_than_one(pawnEntry->passed_pawns[WHITE]))
+			v -= SC(300) + SC(50) * furthest_black_passed_pawn;
 		else
-			v -= SC(150) + SC(25) * verste_zwarte_vrijpion;
+			v -= SC(150) + SC(25) * furthest_black_passed_pawn;
 	}
 
 	if (v > 0 && !pos.pieces(WHITE, PAWN))
@@ -146,66 +146,66 @@ Value endgame_value_KPs_KPs(const Position& pos, AttackInfo& ai, const Pawns::En
 		v = 0;
 	if (v > 0)
 	{
-		Bitboard bb_koning_dekt = aanval_koning_inc(pos.square<KING>(BLACK)];
-		if (!(pos.pieces(WHITE, PAWN) & ~FileHBB) && bb_koning_dekt & bb(SQ_H8))
+		Bitboard bb_king_covers = attack_king_inc(pos.square<KING>(BLACK)];
+		if (!(pos.pieces(WHITE, PAWN) & ~FileHBB) && bb_king_covers & bb(SQ_H8))
 			v = 0;
-		if (!(pos.pieces(WHITE, PAWN) & ~FileABB) && bb_koning_dekt & bb(SQ_A8))
+		if (!(pos.pieces(WHITE, PAWN) & ~FileABB) && bb_king_covers & bb(SQ_A8))
 			v = 0;
 		if (!(pos.pieces(WHITE, PAWN) & ~FileBBB) && pos.pieces(WHITE, PAWN) & bb(SQ_B6) &&
-			pos.pieces(BLACK, PAWN) & bb(SQ_B7) && bb_koning_dekt & bb2(SQ_B8, SQ_C8))
+			pos.pieces(BLACK, PAWN) & bb(SQ_B7) && bb_king_covers & bb2(SQ_B8, SQ_C8))
 			v = 0;
 		if (!(pos.pieces(WHITE, PAWN) & ~FileGBB) && pos.pieces(WHITE, PAWN) & bb(SQ_G6) &&
-			pos.pieces(BLACK, PAWN) & bb(SQ_G7) && bb_koning_dekt & bb2(SQ_G8, SQ_F8))
+			pos.pieces(BLACK, PAWN) & bb(SQ_G7) && bb_king_covers & bb2(SQ_G8, SQ_F8))
 			v = 0;
-		// witte pionnen h6-g5-f4 geblokkeerd door een keten van h7-g6-f5
+		// white pawns h6-g5-f4 blocked by a chain of h7-g6-f5
 		if (pos.pieces(WHITE, PAWN) == bb2(SQ_H6,SQ_G5)
 			&& (pos.pieces(BLACK, PAWN) & (bb2(SQ_H7,SQ_G6) | bb3(SQ_G7,SQ_F7,SQ_F6))) == bb2(SQ_H7,SQ_G6)
-			&& bb_koning_dekt & bb(SQ_G8))
+			&& bb_king_covers & bb(SQ_G8))
 			v = 0;
 		if (pos.pieces(WHITE, PAWN) == bb3(SQ_H6,SQ_G5,SQ_F4)
 			&& (pos.pieces(BLACK, PAWN) & (bb3(SQ_H7,SQ_G6,SQ_F5) | bb3(SQ_G7,SQ_F7,SQ_F6) | bb3(SQ_E7,SQ_E6,SQ_E5))) == bb3(SQ_H7,SQ_G6,SQ_F5)
-			&& bb_koning_dekt & bb(SQ_G8))
+			&& bb_king_covers & bb(SQ_G8))
 			v = 0;
-		// witte pionnen a6-b5-c4 geblokkeerd door een keten van a7-b6-c5
+		// white pawns a6-b5-c4 blocked by a chain of a7-b6-c5
 		if (pos.pieces(WHITE, PAWN) == bb2(SQ_A6,SQ_B5)
 			&& (pos.pieces(BLACK, PAWN) & (bb2(SQ_A7,SQ_B6) | bb3(SQ_B7,SQ_C7,SQ_C6))) == bb2(SQ_A7,SQ_B6)
-			&& bb_koning_dekt & bb(SQ_B8))
+			&& bb_king_covers & bb(SQ_B8))
 			v = 0;
 		if (pos.pieces(WHITE, PAWN) == bb3(SQ_A6,SQ_B5,SQ_C4)
 			&& (pos.pieces(BLACK, PAWN) & (bb3(SQ_A7,SQ_B6,SQ_C5) | bb3(SQ_B7,SQ_C7,SQ_C6) | bb3(SQ_D7,SQ_D6,SQ_D5))) == bb3(SQ_A7,SQ_B6,SQ_C5)
-			&& bb_koning_dekt & bb(SQ_B8))
+			&& bb_king_covers & bb(SQ_B8))
 			v = 0;
 	}
 	else if (v < 0)
 	{
-		Bitboard bb_koning_dekt = aanval_koning_inc(pos.square<KING>(WHITE)];
-		if (!(pos.pieces(BLACK, PAWN) & ~FileHBB) && bb_koning_dekt & bb(SQ_H1))
+		Bitboard bb_king_covers = attack_king_inc(pos.square<KING>(WHITE)];
+		if (!(pos.pieces(BLACK, PAWN) & ~FileHBB) && bb_king_covers & bb(SQ_H1))
 			v = 0;
-		if (!(pos.pieces(BLACK, PAWN) & ~FileABB) && bb_koning_dekt & bb(SQ_A1))
+		if (!(pos.pieces(BLACK, PAWN) & ~FileABB) && bb_king_covers & bb(SQ_A1))
 			v = 0;
 		if (!(pos.pieces(BLACK, PAWN) & ~FileBBB) && pos.pieces(BLACK, PAWN) & bb(SQ_B3) &&
-			pos.pieces(WHITE, PAWN) & bb(SQ_B2) && bb_koning_dekt & bb2(SQ_B1, SQ_C1))
+			pos.pieces(WHITE, PAWN) & bb(SQ_B2) && bb_king_covers & bb2(SQ_B1, SQ_C1))
 			v = 0;
 		if (!(pos.pieces(BLACK, PAWN) & ~FileGBB) && pos.pieces(BLACK, PAWN) & bb(SQ_G3) &&
-			pos.pieces(WHITE, PAWN) & bb(SQ_G2) && bb_koning_dekt & bb2(SQ_G1, SQ_F1))
+			pos.pieces(WHITE, PAWN) & bb(SQ_G2) && bb_king_covers & bb2(SQ_G1, SQ_F1))
 			v = 0;
-		// zwarte pionnen h3-g4-f5 geblokkeerd door een keten van h2-g3-f4
+		// black pawns h3-g4-f5 blocked by a chain of h2-g3-f4
 		if (pos.pieces(BLACK, PAWN) == bb2(SQ_H3,SQ_G4)
 			&& (pos.pieces(WHITE, PAWN) & (bb2(SQ_H2,SQ_G3) | bb3(SQ_G2,SQ_F2,SQ_F3))) == bb2(SQ_H2,SQ_G3)
-			&& bb_koning_dekt & bb(SQ_G1))
+			&& bb_king_covers & bb(SQ_G1))
 			v = 0;
 		if (pos.pieces(BLACK, PAWN) == bb3(SQ_H3,SQ_G4,SQ_F5)
 			&& (pos.pieces(WHITE, PAWN) & (bb3(SQ_H2,SQ_G3,SQ_F4) | bb3(SQ_G2,SQ_F2,SQ_F3) | bb3(SQ_E2,SQ_E3,SQ_E4))) == bb3(SQ_H2,SQ_G3,SQ_F4)
-			&& bb_koning_dekt & bb(SQ_G1))
+			&& bb_king_covers & bb(SQ_G1))
 			v = 0;
-		// zwarte pionnen a3-b4-c5 geblokkeerd door een keten van a2-b3-c4
+		// black pawns a3-b4-c5 blocked by a chain of a2-b3-c4
 		if (pos.pieces(BLACK, PAWN) == bb2(SQ_A3,SQ_B4)
 			&& (pos.pieces(WHITE, PAWN) & (bb2(SQ_A2,SQ_B3) | bb3(SQ_B2,SQ_C2,SQ_C3))) == bb2(SQ_A2,SQ_B3)
-			&& bb_koning_dekt & bb(SQ_B1))
+			&& bb_king_covers & bb(SQ_B1))
 			v = 0;
 		if (pos.pieces(BLACK, PAWN) == bb3(SQ_A3,SQ_B4,SQ_C5)
 			&& (pos.pieces(WHITE, PAWN) & (bb3(SQ_A2,SQ_B3,SQ_C4) | bb3(SQ_B2,SQ_C2,SQ_C3) | bb3(SQ_D2,SQ_D3,SQ_D4))) == bb3(SQ_A2,SQ_B3,SQ_C4)
-			&& bb_koning_dekt & bb(SQ_B1))
+			&& bb_king_covers & bb(SQ_B1))
 			v = 0;
 	}
 	return v;*/
@@ -247,15 +247,15 @@ Value endgame_value_KB_KPP(const Position& pos, AttackInfo& ai, const Pawns::Ent
 
 
 /*
-test posities voor KBPP_KB_opposite
+test positions for KBPP_KB_opposite
 ===================================
-remise
+draw
 8/2k5/2P5/3P4/3K4/6b1/4B3/8 w - - 0 1
 6k1/8/6PP/7K/8/2b5/8/5B2 w - - 0 1
 5bk1/8/6PP/7K/8/8/8/5B2 w - - 0 1
 3k4/3P4/2K1B3/5P2/5b2/8/8/8 b - - 0 1
 2k5/8/PP6/1K6/3B4/5b2/8/8 w - - 0 1
-winst
+win
 8/3k4/8/2PP4/3K4/6b1/4B3/8 w - - 0 1
 3k4/3P4/2K1B3/5P2/5b2/8/8/8 w - - 0 1
 */
@@ -340,9 +340,9 @@ Value endgame_value_KBPP_KB_opposite(const Position& pos, AttackInfo& ai, const 
 
 
 /*
-test posities voor KRP_KB
+test positions for KRP_KB
 =========================
-remise
+draw
 5k2/R7/5P2/6K1/2b5/8/8/8 w - - 0 1
 8/8/8/2B5/6k1/5p2/r7/5K2 b - - 0 1
 8/k7/Pb6/1K6/8/8/R7/8 w - - 0 1
@@ -405,7 +405,7 @@ Value endgame_value_KRP_KB(const Position& pos, AttackInfo& ai, const Pawns::Ent
 	return value;
 }
 
-// TODO: KRP_KBP zoals KRP_KB met een enkele onbelangrijke extra pion voor Loperpartij
+// TODO: KRP_KBP like KRP_KB with a single unimportant extra pawn for the bishop side
 
 void ext_init_endgame_functions()
 {
@@ -439,25 +439,25 @@ endgame_kind compute_endgame_index(int WPawn, int WN, int WB, int WBL, int WBD, 
 	int BCount = BQ + BR + BB + BN;
 	bool one_versus_one = (WCount == 1 && BCount == 1);
 
-	//if (een_tegen_een && WD == 1 && ZD == 1)
-	//	materiaal->materiaal_vlaggen |= vlag_dame_eindspel;
+	//if (one_versus_one && WQ == 1 && BQ == 1)
+	//	material->material_flags |= flag_queen_endgame;
 
-	//if (een_tegen_een && WT == 1 && ZT == 1)
-	//	materiaal->materiaal_vlaggen |= vlag_toren_eindspel;
+	//if (one_versus_one && WR == 1 && BR == 1)
+	//	material->material_flags |= flag_rook_endgame;
 
-	//if (WAantal == 0)
-	//	materiaal->materiaal_vlaggen |= vlag_wit_pion;
+	//if (WCount == 0)
+	//	material->material_flags |= flag_white_pawn;
 
-	//if (ZAantal == 0)
-	//	materiaal->materiaal_vlaggen |= vlag_zwart_pion;
+	//if (BCount == 0)
+	//	material->material_flags |= flag_black_pawn;
 
-	//if (WL + WP == 1 && WAantal == 1)
-	//	materiaal->materiaal_vlaggen |= vlag_wit_stuk;
+	//if (WB + WN == 1 && WCount == 1)
+	//	material->material_flags |= flag_white_piece;
 
-	//if (ZL + ZP == 1 && ZAantal == 1)
-	//	materiaal->materiaal_vlaggen |= vlag_zwart_stuk;
+	//if (BB + BN == 1 && BCount == 1)
+	//	material->material_flags |= flag_black_piece;
 
-	// eindspel index
+	// endgame index
 	// ==============
 	if (WPawn + WR + WQ + BPawn + BR + BQ == 0 && WCount <= 1 && BCount <= 1)
 	{

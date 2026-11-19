@@ -24,17 +24,17 @@ ifneq ($(VERSION),Dev)
 	OBJS += egtb_nalimov.o egtb_nalimovprobe.o 
 endif
 
-versmelt = yes
+fuse = yes
 
-ifeq ($(versmelt),yes)
-	OBJS += versmelting.o
+ifeq ($(fuse),yes)
+	OBJS += fusion.o
 else
-	OBJS += zoeken.o evaluatie.o \
-		bord.o egtb_kpk.o eval_eindspel.o eval_materiaal.o eval_pionstruct.o \
-		eval_pst.o main.o stelling.o uci.o uci_opties.o uci_tijd.o \
-		util_bench.o util_tools.o zet_generatie.o zet_hash.o \
-		zet_keuze.o zoek_smp.o syzygy/tbprobe.o \
-		egtb_syzygyprobe.o licentie.o 
+	OBJS += search.o evaluation.o \
+		bitboard.o egtb_kpk.o eval_endgames.o eval_material.o eval_pawnstruct.o \
+		eval_pst.o main.o position.o uci.o uci_options.o uci_time.o \
+		util_bench.o util_tools.o move_generation.o move_hash.o \
+		move_selection.o search_smp.o syzygy/tbprobe.o \
+		egtb_syzygyprobe.o license.o 
 endif
 
 COBJS = zlib/adler32.o zlib/crc32.o zlib/inffast.o zlib/inflate.o \

@@ -7,7 +7,7 @@
 #include <sstream>
 
 #include "util_tools.h"
-#include "zoek_smp.h"
+#include "search_smp.h"
 
 using namespace std;
 
@@ -129,16 +129,16 @@ namespace
 		97 * ('H' - ' '), 97 * ('o' - 'H'), 97 * ('u' - 'o'), 97 * ('d' - 'u'), 97 * ('a' - 'd'), 97 * ('r' - 'a'), 97 * ('t' - 'r')
 	};
 
-	void write_own_name(char *mijn_naam)
+	void write_own_name(char *my_name)
 	{
-		// onnozele functie om hex editing van de EXE file moeilijker te maken
+		// silly function to make hex editing of the EXE file more difficult
 		char c = '§';
 		for (int n = 0; n < 14; n++)
 		{
 			c += name_offsets[n] / 97;
-			mijn_naam[n] = c;
+			my_name[n] = c;
 		}
-		mijn_naam[14] = 0;
+		my_name[14] = 0;
 	}
 } // namespace
 
@@ -146,12 +146,12 @@ namespace
 const string engine_info(bool to_uci) 
 {
 	stringstream ss;
-	char mijn_naam[15];
-	write_own_name(mijn_naam);
+	char my_name[15];
+	write_own_name(my_name);
 
 	//ss << NAME << " " << YEAR << setw(2) << setfill('0') << MONTH + 1 << setw(2) << DAY << endl;
 	ss << NAME << endl;
-	ss << (to_uci ? "id author " : "(c) 2017 ") << mijn_naam << endl;
+	ss << (to_uci ? "id author " : "(c) 2017 ") << my_name << endl;
 	return ss.str();
 }
 

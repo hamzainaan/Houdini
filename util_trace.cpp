@@ -43,28 +43,28 @@ void open_tracefile()
 	line_count = 1;
 }
 
-std::string zet_string(Zet zet)
+std::string move_string(Move move)
 {
-	char sZet[6];
+	char sMove[6];
 
-	Veld van = van_veld(zet);
-	Veld naar = naar_veld(zet);
+	Square from = from_square(move);
+	Square to = to_square(move);
 
-	if (zet == GEEN_ZET || zet == NULL_ZET)
+	if (move == NO_MOVE || move == NULL_MOVE)
 		return "0000";
 
-	sZet[0] = 'a' + lijn(van);
-	sZet[1] = '1' + rij(van);
-	sZet[2] = 'a' + lijn(naar);
-	sZet[3] = '1' + rij(naar);
-	if (zet_type(zet) != PROMOTIE)
-		return std::string(sZet, 4);
+	sMove[0] = 'a' + file_of(from);
+	sMove[1] = '1' + rank_of(from);
+	sMove[2] = 'a' + file_of(to);
+	sMove[3] = '1' + rank_of(to);
+	if (move_type(move) != PROMOTION)
+		return std::string(sMove, 4);
 
-	sZet[4] = "   nbrq"[promotie_stuk(zet)];
-	return std::string(sZet, 5);
+	sMove[4] = "   nbrq"[promotion_piece(move)];
+	return std::string(sMove, 5);
 }
 
-void trace_do_move(int zet)
+void trace_do_move(int move)
 {
 	std::string s;
 
@@ -73,9 +73,9 @@ void trace_do_move(int zet)
 		line_count++;
 		if (line_count == 360)
 		{
-			s = zet_string(Zet(zet));
+			s = move_string(Move(move));
 		}
-		s = zet_string(Zet(zet));
+		s = move_string(Move(move));
 		if (trace_on())
 			fprintf(tracefile, "\n%d %*s%s", line_count, trace_indent, "", s.c_str());
 		trace_indent += 6;
@@ -105,17 +105,17 @@ void trace_eval(int value)
 
 }
 
-void trace_msg(const char *MSG, int diepte, int alfa, int beta, bool force)
+void trace_msg(const char *MSG, int depth, int alpha, int beta, bool force)
 {
 	if (tracefile)
 	{
 		line_count++;
 		if (line_count == 546)
 		{
-			alfa = alfa;
+			alpha = alpha;
 		}
 		if (trace_on() || force)
-			fprintf(tracefile, "\n%d %*s%s(%d,%d...%d)", line_count, trace_indent, "", MSG, diepte, alfa, beta);
+			fprintf(tracefile, "\n%d %*s%s(%d,%d...%d)", line_count, trace_indent, "", MSG, depth, alpha, beta);
 	}
 }
 

@@ -8,44 +8,44 @@
 
 #include "houdini.h"
 #include "util_tools.h"
-#include "stelling.h"
-#include "zoeken.h"
-#include "zoek_smp.h"
+#include "position.h"
+#include "search.h"
+#include "search_smp.h"
 #include "uci.h"
 
 using namespace std;
 
-void benchmark(const Stelling& current, istream& is)
+void benchmark(const Position& current, istream& is)
 {
-	string woord;
-	vector<string> stellingen;
-	TijdLimiet tijdLimiet;
+	string word;
+	vector<string> positions;
+	TimeLimit timeLimit;
 
-	string ttSize = (is >> woord) ? woord : "16";
-	string threads = (is >> woord) ? woord : "1";
-	int limit = (is >> woord) ? stoi(woord) : DEFAULT_BENCHMARK_DEPTH;
-	string fenFile = (is >> woord) ? woord : "default";
-	string limitType = (is >> woord) ? woord : "depth";
-	int filter = (is >> woord) ? stoi(woord) : 0;
+	string ttSize = (is >> word) ? word : "16";
+	string threads = (is >> word) ? word : "1";
+	int limit = (is >> word) ? stoi(word) : DEFAULT_BENCHMARK_DEPTH;
+	string fenFile = (is >> word) ? word : "default";
+	string limitType = (is >> word) ? word : "depth";
+	int filter = (is >> word) ? stoi(word) : 0;
 
-	UciOpties["Hash"] = ttSize;
-	UciOpties["Threads"] = threads;
-	Zoeken::wis_alles();
+	UciOptions["Hash"] = ttSize;
+	UciOptions["Threads"] = threads;
+	Search::clear_all();
 
 	if (limitType == "time")
-		tijdLimiet.movetime = limit;
+		timeLimit.movetime = limit;
 
 	else if (limitType == "nodes")
-		tijdLimiet.nodes = limit;
+		timeLimit.nodes = limit;
 
 	else if (limitType == "mate")
-		tijdLimiet.mate = limit;
+		timeLimit.mate = limit;
 
 	else
-		tijdLimiet.depth = limit;
+		timeLimit.depth = limit;
 
 	if (fenFile == "current")
-		stellingen.push_back(current.fen());
+		positions.push_back(current.fen());
 
 	else
 	{
@@ -62,16 +62,16 @@ void benchmark(const Stelling& current, istream& is)
 
 		while (getline(file, fen))
 			if (!fen.empty())
-				stellingen.push_back(fen);
+				positions.push_back(fen);
 
 		file.close();
 	}
 
-	uint64_t knopen = 0;
-	Tijdstip verstreken = nu();
-	Stelling pos;
+	uint64_t nodes = 0;
+	TimePoint elapsed = now();
+	Position pos;
 
-	cerr << stellingen.size() << " bench positions" << endl;
+	cerr << positions.size() << " bench positions" << endl;
 	ofstream bad_file, ok_file;
 	if (filter)
 	{
@@ -79,9 +79,9 @@ void benchmark(const Stelling& current, istream& is)
 		ok_file.open("ok_pos.epd");
 	}
 
-	for (size_t i = 0; i < stellingen.size(); ++i)
+	for (size_t i = 0; i < positions.size(); ++i)
 	{
-		pos.set(stellingen[i], UciOpties["UCI_Chess960"], Threads.main());
+		pos.set(positions[i], UciOptions["UCI_Chess960"], Threads.main());
 
 		if (i % 10 == 9)
 			cerr << "o";
@@ -94,15 +94,15 @@ void benchmark(const Stelling& current, istream& is)
 
 		//else
 		{
-			tijdLimiet.startTijd = nu();
-			Threads.begin_zoek_opdracht(pos, tijdLimiet);
-			Threads.main()->wacht_op_einde_zoeken();
-			knopen += Threads.bezochte_knopen();
+			timeLimit.startTime = now();
+			Threads.start_search_task(pos, timeLimit);
+			Threads.main()->wait_for_search_finished();
+			nodes += Threads.visited_nodes();
 		}
 		if (filter)
 		{
-			ofstream* outfile = abs(Threads.main()->vorigeRootScore) > Waarde(2 * filter) ? &bad_file : &ok_file;
-			*outfile << stellingen[i] << " " << UCI::waarde(Threads.main()->vorigeRootScore) << endl;
+			ofstream* outfile = abs(Threads.main()->previousRootScore) > Value(2 * filter) ? &bad_file : &ok_file;
+			*outfile << positions[i] << " " << UCI::value(Threads.main()->previousRootScore) << endl;
 		}
 	}
 	if (filter)
@@ -111,12 +111,12 @@ void benchmark(const Stelling& current, istream& is)
 		ok_file.close();
 	}
 
-	verstreken = std::max(nu() - verstreken, Tijdstip(1));
+	elapsed = std::max(now() - elapsed, TimePoint(1));
 
 	dbg_print();
 
 	cerr << "\n==========================="
-		<< "\nTotal time (ms) : " << verstreken
-		<< "\nNodes searched  : " << knopen
-		<< "\nNodes/second    : " << knopen / verstreken * 1000 << endl;
+		<< "\nTotal time (ms) : " << elapsed
+		<< "\nNodes searched  : " << nodes
+		<< "\nNodes/second    : " << nodes / elapsed * 1000 << endl;
 }

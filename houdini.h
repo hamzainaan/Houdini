@@ -30,18 +30,18 @@
 #ifdef TRACE_LOG
 void open_tracefile();
 void close_tracefile();
-void trace_do_move(int zet);
+void trace_do_move(int move);
 void trace_cancel_move();
-void trace_eval(int waarde);
-void trace_msg(const char *MSG, int diepte, int alfa, int beta, bool force = false);
+void trace_eval(int value);
+void trace_msg(const char *MSG, int depth, int alpha, int beta, bool force = false);
 void trace_reset_indent();
 #else
 inline void open_tracefile() {}
 inline void close_tracefile() {}
-inline void trace_do_move(int zet) {}
+inline void trace_do_move(int move) {}
 inline void trace_cancel_move() {}
-inline void trace_eval(int waarde) {}
-inline void trace_msg(const char *MSG, int diepte, int alfa, int beta, bool force = false) {}
+inline void trace_eval(int value) {}
+inline void trace_msg(const char *MSG, int depth, int alpha, int beta, bool force = false) {}
 #endif
 
 //#define TRACE_TM
@@ -65,163 +65,163 @@ void trace_tm_msg(int MoveNumber, int elapsed, int optimum, const char *MSG);
 //#define USE_LICENSE
 //#define CHESSBASE
 //#define AQUARIUM
-//#define IMPORT_TABELLEN
-//#define EXPORT_TABELLEN
+//#define IMPORT_TABLES
+//#define EXPORT_TABLES
 
-typedef uint64_t Sleutel64;
-typedef uint64_t Bord;
+typedef uint64_t Key64;
+typedef uint64_t Bitboard;
 
-const int MAX_ZETTEN = 220;
+const int MAX_MOVES = 220;
 const int MAX_PLY = 128;
 const int MAX_PV = 63;
 
-enum Zet : unsigned int
+enum Move : unsigned int
 {
-	GEEN_ZET,
-	NULL_ZET = 65
+	NO_MOVE,
+	NULL_MOVE = 65
 };
 
-typedef uint16_t ZetCompact;
+typedef uint16_t MoveCompact;
 
-enum ZetType
+enum MoveType
 {
-	ROKADE     =  9 << 12,
+	CASTLING     =  9 << 12,
 	ENPASSANT  = 10 << 12,
-	PROMOTIE_P = 11 << 12,
-	PROMOTIE_L = 12 << 12,
-	PROMOTIE_T = 13 << 12,
-	PROMOTIE_D = 14 << 12
+	PROMOTION_N = 11 << 12,
+	PROMOTION_B = 12 << 12,
+	PROMOTION_R = 13 << 12,
+	PROMOTION_Q = 14 << 12
 };
 
-enum Kleur
+enum Color
 {
-	WIT, ZWART, KLEUR_N = 2
+	WHITE, BLACK, COLOR_N = 2
 };
 
-enum RokadeMogelijkheid : uint8_t
+enum CastlingRight : uint8_t
 {
-	GEEN_ROKADE,
-	WIT_KORT = 1,
-	WIT_LANG = 2,
-	ZWART_KORT = 4,
-	ZWART_LANG = 8,
-	ALLE_ROKADE = WIT_KORT | WIT_LANG | ZWART_KORT | ZWART_LANG,
-	ROKADE_MOGELIJK_N = 16
+	NO_CASTLING,
+	WHITE_SHORT = 1,
+	WHITE_LONG = 2,
+	BLACK_SHORT = 4,
+	BLACK_LONG = 8,
+	ALL_CASTLING = WHITE_SHORT | WHITE_LONG | BLACK_SHORT | BLACK_LONG,
+	CASTLING_RIGHT_N = 16
 };
 
-enum PartijFase
+enum GamePhase
 {
-	MIDDENSPEL_FASE = 26,
+	MIDDLEGAME_PHASE = 26,
 };
 
-enum SchaalFactor
+enum ScaleFactor
 {
-	REMISE_FACTOR = 0,
-	EEN_PION_FACTOR = 75,
-	NORMAAL_FACTOR = 100,
+	DRAW_FACTOR = 0,
+	ONE_PAWN_FACTOR = 75,
+	NORMAL_FACTOR = 100,
 	MAX_FACTOR = 200,
-	GEEN_FACTOR = 255
+	NO_FACTOR = 255
 };
 
-enum SorteerWaarde : int
+enum SortValue : int
 {
 	SORT_ZERO = 0,
 	SORT_MAX = 999999
 };
 
-typedef int16_t SorteerWaardeCompact;
+typedef int16_t SortValueCompact;
 
-enum EvalWaarde : int
+enum EvalValue : int
 {
 	EVAL_0 = 0,
-	REMISE_EVAL = 0,
-	GEEN_EVAL = 199999,
-	PION_EVAL = 100 * 16,
-	LOPER_EVAL = 360 * 16
+	DRAW_EVAL = 0,
+	NO_EVAL = 199999,
+	PAWN_EVAL = 100 * 16,
+	BISHOP_EVAL = 360 * 16
 };
 
-enum MateriaalWaarde : int
-{  // eenheid = 8 cp
+enum MaterialValue : int
+{  // unit = 8 cp
 	MATL_0 = 0,
-	MATL_PAARD = 41,
-	MATL_LOPER = 42,
-	MATL_TOREN = 64,
-	MATL_DAME = 127,
+	MATL_KNIGHT = 41,
+	MATL_BISHOP = 42,
+	MATL_ROOK = 64,
+	MATL_QUEEN = 127,
 };
 
-enum SeeWaarde : int
+enum SeeValue : int
 {
 	SEE_0 = 0,
-	SEE_PION = 100,
-	SEE_PAARD = 325,
-	SEE_LOPER = 350,
-	SEE_TOREN = 500,
-	SEE_DAME = 950
+	SEE_PAWN = 100,
+	SEE_KNIGHT = 325,
+	SEE_BISHOP = 350,
+	SEE_ROOK = 500,
+	SEE_QUEEN = 950
 };
 
-enum Waarde : int  // in 1/200 pion
+enum Value : int  // in 1/200 pawn
 {
-	WAARDE_0 = 0,
-	WAARDE_1 = 1,
-	REMISE_WAARDE = 0,
-	WINST_WAARDE = 15000,
-	EGTB_WIN_WAARDE = 28000,
-	LANGSTE_MAT_WAARDE = 29800,   // geen 30000 omdat cutechess-cli dat dan als een matscore interpreteert
-	MAT_WAARDE = 32700,
-	HOOGSTE_WAARDE = 32750,
-	GEEN_WAARDE = 32750,
+	VALUE_0 = 0,
+	VALUE_1 = 1,
+	DRAW_VALUE = 0,
+	WIN_VALUE = 15000,
+	EGTB_WIN_VALUE = 28000,
+	LONGEST_MATE_VALUE = 29800,   // not 30000 because cutechess-cli then interprets that as a mate score
+	MATE_VALUE = 32700,
+	HIGHEST_VALUE = 32750,
+	NO_VALUE = 32750,
 };
 
-#define DEFAULT_DRAW_VALUE Waarde(24)
-#define WAARDE_TEMPO Waarde(24)
-#define WAARDE_PION Waarde(200)
+#define DEFAULT_DRAW_VALUE Value(24)
+#define VALUE_TEMPO Value(24)
+#define VALUE_PAWN Value(200)
 
-enum StukType : uint8_t
+enum PieceType : uint8_t
 {
-	GEEN_STUKTYPE, KONING, PION, PAARD, LOPER, TOREN, DAME,
-	ALLE_STUKKEN = 0, STUKKEN_ZONDER_KONING = 7,
-	STUKTYPE_N = 8
+	NO_PIECE_TYPE, KING, PAWN, KNIGHT, BISHOP, ROOK, QUEEN,
+	ALL_PIECES = 0, PIECES_WITHOUT_KING = 7,
+	PIECE_TYPE_N = 8
 };
 
-enum Stuk : uint8_t
+enum Piece : uint8_t
 {
-	GEEN_STUK,
-	W_KONING = 1, W_PION, W_PAARD, W_LOPER, W_TOREN, W_DAME,
-	Z_KONING = 9, Z_PION, Z_PAARD, Z_LOPER, Z_TOREN, Z_DAME,
-	STUK_N = 16
+	NO_PIECE,
+	W_KING = 1, W_PAWN, W_KNIGHT, W_BISHOP, W_ROOK, W_QUEEN,
+	B_KING = 9, B_PAWN, B_KNIGHT, B_BISHOP, B_ROOK, B_QUEEN,
+	PIECE_N = 16
 };
 
-const MateriaalWaarde MateriaalWaarden[STUK_N] =
+const MaterialValue MaterialValues[PIECE_N] =
 {
-	MATL_0, MATL_0, MATL_0, MATL_PAARD, MATL_LOPER, MATL_TOREN, MATL_DAME, MATL_0,
-	MATL_0, MATL_0, MATL_0, MATL_PAARD, MATL_LOPER, MATL_TOREN, MATL_DAME, MATL_0
+	MATL_0, MATL_0, MATL_0, MATL_KNIGHT, MATL_BISHOP, MATL_ROOK, MATL_QUEEN, MATL_0,
+	MATL_0, MATL_0, MATL_0, MATL_KNIGHT, MATL_BISHOP, MATL_ROOK, MATL_QUEEN, MATL_0
 };
 
-inline Waarde WaardeVanMateriaal(MateriaalWaarde v) { return Waarde(16 * (int)v); }
+inline Value ValueFromMaterial(MaterialValue v) { return Value(16 * (int)v); }
 
-const int StukFase[STUK_N] =
+const int PiecePhase[PIECE_N] =
 {
 	0, 0, 0, 1, 1, 3, 6, 0,
 	0, 0, 0, 1, 1, 3, 6, 0
 };
 
-const int MATERIAAL_HASH_GROOTTE = 16384;
-const int PION_HASH_GROOTTE = 16384;
+const int MATERIAL_HASH_SIZE = 16384;
+const int PAWN_HASH_SIZE = 16384;
 
 const int DEFAULT_BENCHMARK_DEPTH = 12;
 
-enum Diepte
+enum Depth
 {
 	PLY = 8,
 	MAIN_THREAD_INC = 9,
 	OTHER_THREAD_INC = 9,
 
-	DIEPTE_0 = 0,
-	GEEN_DIEPTE = -6 * int(PLY),
-	MAX_DIEPTE = MAX_PLY * int(PLY)
+	DEPTH_0 = 0,
+	NO_DEPTH = -6 * int(PLY),
+	MAX_DEPTH = MAX_PLY * int(PLY)
 };
 
-enum Veld : int8_t
+enum Square : int8_t
 {
 	SQ_A1, SQ_B1, SQ_C1, SQ_D1, SQ_E1, SQ_F1, SQ_G1, SQ_H1,
 	SQ_A2, SQ_B2, SQ_C2, SQ_D2, SQ_E2, SQ_F2, SQ_G2, SQ_H2,
@@ -233,39 +233,39 @@ enum Veld : int8_t
 	SQ_A8, SQ_B8, SQ_C8, SQ_D8, SQ_E8, SQ_F8, SQ_G8, SQ_H8,
 	SQ_NONE = 127,
 
-	VELD_N = 64,
+	SQUARE_N = 64,
 
-	BOVEN = 8,
-	ONDER = -8,
-	LINKS = -1,
-	RECHTS = 1,
+	UP = 8,
+	DOWN = -8,
+	LEFT = -1,
+	RIGHT = 1,
 
-	RECHTSBOVEN = (int8_t)BOVEN + RECHTS,
-	RECHTSONDER = (int8_t)ONDER + RECHTS,
-	LINKSONDER = (int8_t)ONDER + LINKS,
-	LINKSBOVEN = (int8_t)BOVEN + LINKS
+	UP_RIGHT = (int8_t)UP + RIGHT,
+	DOWN_RIGHT = (int8_t)DOWN + RIGHT,
+	DOWN_LEFT = (int8_t)DOWN + LEFT,
+	UP_LEFT = (int8_t)UP + LEFT
 };
 
-enum Lijn
+enum File
 {
-	LIJN_A, LIJN_B, LIJN_C, LIJN_D, LIJN_E, LIJN_F, LIJN_G, LIJN_H, LIJN_N
+	FILE_A, FILE_B, FILE_C, FILE_D, FILE_E, FILE_F, FILE_G, FILE_H, FILE_N
 };
 
-enum Rij
+enum Rank
 {
-	RIJ_1, RIJ_2, RIJ_3, RIJ_4, RIJ_5, RIJ_6, RIJ_7, RIJ_8, RIJ_N
+	RANK_1, RANK_2, RANK_3, RANK_4, RANK_5, RANK_6, RANK_7, RANK_8, RANK_N
 };
 
-enum PikZetEtappe
+enum PickMoveStage
 {
-	NORMAAL_ZOEKEN, GOEDE_SLAGEN_GEN, GOEDE_SLAGEN, KILLERS, KILLERS1, LxP_SLAGEN_GEN, LxP_SLAGEN,
-		/*RUSTIGE_ZETTEN_GEN,*/ RUSTIGE_ZETTEN, SLECHTE_SLAGEN, UITGESTELDE_ZETTEN,
-	GA_UIT_SCHAAK, UIT_SCHAAK_GEN, UIT_SCHAAK_LUS,
-	QSEARCH_MET_SCHAAK, QSEARCH_1, QSEARCH_1_SLAGZETTEN, QSEARCH_SCHAAKZETTEN,
-	QSEARCH_ZONDER_SCHAAK, QSEARCH_2, QSEARCH_2_SLAGZETTEN,
-	//QSEARCH_MET_DAMESCHAAK, QSEARCH_3, QSEARCH_3_SLAGZETTEN, QSEARCH_DAMESCHAAKZETTEN,
-	PROBCUT, PROBCUT_GEN, PROBCUT_SLAGZETTEN,
-	TERUGSLAG_GEN, TERUGSLAG_ZETTEN
+	NORMAL_SEARCH, GOOD_CAPTURES_GEN, GOOD_CAPTURES, KILLERS, KILLERS1, BxN_CAPTURES_GEN, BxN_CAPTURES,
+		/*QUIET_MOVES_GEN,*/ QUIET_MOVES, BAD_CAPTURES, POSTPONED_MOVES,
+	EVADE_CHECK, EVASIONS_GEN, EVASIONS_LOOP,
+	QSEARCH_WITH_CHECKS, QSEARCH_1, QSEARCH_1_CAPTURES, QSEARCH_CHECKS,
+	QSEARCH_WITHOUT_CHECKS, QSEARCH_2, QSEARCH_2_CAPTURES,
+	//QSEARCH_WITH_QUEEN_CHECKS, QSEARCH_3, QSEARCH_3_CAPTURES, QSEARCH_QUEEN_CHECKS,
+	PROBCUT, PROBCUT_GEN, PROBCUT_CAPTURES,
+	RECAPTURE_GEN, RECAPTURE_MOVES
 };
 
 enum Score : int
@@ -274,28 +274,28 @@ enum Score : int
 };
 
 inline int ScoreMultiply(int x) { return x * 8 / 5; }
-inline Waarde ValueFromEval(EvalWaarde v) { return Waarde(v / 8); }
+inline Value ValueFromEval(EvalValue v) { return Value(v / 8); }
 
-inline Score maak_score(int mg, int eg)
+inline Score make_score(int mg, int eg)
 {
 	return Score((ScoreMultiply(mg) << 16) + ScoreMultiply(eg));
 }
 
-inline Score remake_score(EvalWaarde mg, EvalWaarde eg)
+inline Score remake_score(EvalValue mg, EvalValue eg)
 {
 	return Score(((int)mg << 16) + (int)eg);
 }
 
-inline EvalWaarde mg_waarde(Score score)
+inline EvalValue mg_value(Score score)
 {
 	union { uint16_t u; int16_t s; } mg = { uint16_t(unsigned(score + 0x8000) >> 16) };
-	return EvalWaarde(mg.s);
+	return EvalValue(mg.s);
 }
 
-inline EvalWaarde eg_waarde(Score score)
+inline EvalValue eg_value(Score score)
 {
 	union { uint16_t u; int16_t s; } eg = { uint16_t(unsigned(score)) };
-	return EvalWaarde(eg.s);
+	return EvalValue(eg.s);
 }
 
 #define ENABLE_BASE_OPERATORS_ON(T)                             \
@@ -318,20 +318,20 @@ inline T operator/(T d, int i) { return T(int(d) / i); }        \
 inline int operator/(T d1, T d2) { return int(d1) / int(d2); }  \
 inline T& operator/=(T& d, int i) { return d = T(int(d) / i); }
 
-ENABLE_FULL_OPERATORS_ON(Waarde)
-ENABLE_FULL_OPERATORS_ON(StukType)
-ENABLE_FULL_OPERATORS_ON(Stuk)
-ENABLE_FULL_OPERATORS_ON(Kleur)
-ENABLE_FULL_OPERATORS_ON(Diepte)
-ENABLE_FULL_OPERATORS_ON(Veld)
-ENABLE_FULL_OPERATORS_ON(Lijn)
-ENABLE_FULL_OPERATORS_ON(Rij)
-ENABLE_FULL_OPERATORS_ON(SorteerWaarde)
-ENABLE_FULL_OPERATORS_ON(EvalWaarde)
+ENABLE_FULL_OPERATORS_ON(Value)
+ENABLE_FULL_OPERATORS_ON(PieceType)
+ENABLE_FULL_OPERATORS_ON(Piece)
+ENABLE_FULL_OPERATORS_ON(Color)
+ENABLE_FULL_OPERATORS_ON(Depth)
+ENABLE_FULL_OPERATORS_ON(Square)
+ENABLE_FULL_OPERATORS_ON(File)
+ENABLE_FULL_OPERATORS_ON(Rank)
+ENABLE_FULL_OPERATORS_ON(SortValue)
+ENABLE_FULL_OPERATORS_ON(EvalValue)
 
 ENABLE_BASE_OPERATORS_ON(Score)
-ENABLE_BASE_OPERATORS_ON(MateriaalWaarde)
-ENABLE_BASE_OPERATORS_ON(SeeWaarde)
+ENABLE_BASE_OPERATORS_ON(MaterialValue)
+ENABLE_BASE_OPERATORS_ON(SeeValue)
 
 #undef ENABLE_FULL_OPERATORS_ON
 #undef ENABLE_BASE_OPERATORS_ON
@@ -340,168 +340,168 @@ inline Score operator*(Score s1, Score s2);
 
 inline Score operator/(Score score, int i)
 {
-	return remake_score(mg_waarde(score) / i, eg_waarde(score) / i);
+	return remake_score(mg_value(score) / i, eg_value(score) / i);
 }
 
 inline Score score_muldiv(Score score, int mul, int div)
 {
-	return remake_score(mg_waarde(score) * mul / div, eg_waarde(score) * mul / div);
+	return remake_score(mg_value(score) * mul / div, eg_value(score) * mul / div);
 }
 
-inline Kleur operator~(Kleur kleur)
+inline Color operator~(Color color)
 {
-	return Kleur(kleur ^ 1);
+	return Color(color ^ 1);
 }
 
-inline Veld operator~(Veld veld)
+inline Square operator~(Square square)
 {
-	return Veld(veld ^ 56);
+	return Square(square ^ 56);
 }
 
-inline Waarde geeft_mat(int ply)
+inline Value mate_in(int ply)
 {
-	return Waarde(MAT_WAARDE - ply);
+	return Value(MATE_VALUE - ply);
 }
 
-inline Waarde staat_mat(int ply)
+inline Value mated_in(int ply)
 {
-	return Waarde(-MAT_WAARDE + ply);
+	return Value(-MATE_VALUE + ply);
 }
 
-inline Veld maak_veld(Lijn f, Rij r)
+inline Square make_square(File f, Rank r)
 {
-	return Veld((r << 3) + f);
+	return Square((r << 3) + f);
 }
 
-inline Stuk maak_stuk(Kleur kleur, StukType stuk)
+inline Piece make_piece(Color color, PieceType piece)
 {
-	return Stuk((kleur << 3) + stuk);
+	return Piece((color << 3) + piece);
 }
 
-inline StukType stuk_type(Stuk stuk)
+inline PieceType piece_type(Piece piece)
 {
-	return StukType(stuk & 7);
+	return PieceType(piece & 7);
 }
 
-inline Kleur stuk_kleur(Stuk stuk)
+inline Color piece_color(Piece piece)
 {
-	assert(stuk != GEEN_STUK);
-	return Kleur(stuk >> 3);
+	assert(piece != NO_PIECE);
+	return Color(piece >> 3);
 }
 
-inline Lijn lijn(Veld veld)
+inline File file_of(Square square)
 {
-	return Lijn(veld & 7);
+	return File(square & 7);
 }
 
-inline Rij rij(Veld veld)
+inline Rank rank_of(Square square)
 {
-	return Rij(veld >> 3);
+	return Rank(square >> 3);
 }
 
-inline Veld relatief_veld(Kleur kleur, Veld veld)
+inline Square relative_square(Color color, Square square)
 {
-	return Veld(veld ^ (kleur * 56));
+	return Square(square ^ (color * 56));
 }
 
-inline Rij relatieve_rij(Kleur kleur, Rij r)
+inline Rank relative_rank(Color color, Rank r)
 {
-	return Rij(r ^ (kleur * 7));
+	return Rank(r ^ (color * 7));
 }
 
-inline Rij relatieve_rij(Kleur kleur, Veld veld)
+inline Rank relative_rank(Color color, Square square)
 {
-	return relatieve_rij(kleur, rij(veld));
+	return relative_rank(color, rank_of(square));
 }
 
-inline bool verschillende_kleur(Veld v1, Veld v2)
+inline bool different_color(Square v1, Square v2)
 {
 	int v = int(v1) ^ int(v2);
 	return ((v >> 3) ^ v) & 1;
 }
 
-inline Veld pion_vooruit(Kleur kleur)
+inline Square pawn_forward(Color color)
 {
-	return kleur == WIT ? BOVEN : ONDER;
+	return color == WHITE ? UP : DOWN;
 }
 
-inline Veld veld_voor(Kleur kleur, Veld veld)
+inline Square square_in_front(Color color, Square square)
 {
-	return kleur == WIT ? veld + BOVEN : veld + ONDER;
+	return color == WHITE ? square + UP : square + DOWN;
 }
 
-inline Veld veld_achter(Kleur kleur, Veld veld)
+inline Square square_behind(Color color, Square square)
 {
-	return kleur == WIT ? veld - BOVEN : veld - ONDER;
+	return color == WHITE ? square - UP : square - DOWN;
 }
 
-inline Veld van_veld(Zet zet)
+inline Square from_square(Move move)
 {
-	return Veld((zet >> 6) & 0x3F);
+	return Square((move >> 6) & 0x3F);
 }
 
-inline Veld naar_veld(Zet zet)
+inline Square to_square(Move move)
 {
-	return Veld(zet & 0x3F);
+	return Square(move & 0x3F);
 }
 
-inline ZetType zet_type(Zet zet)
+inline MoveType move_type(Move move)
 {
-	return ZetType(zet & (15 << 12));
+	return MoveType(move & (15 << 12));
 }
 
-inline StukType promotie_stuk(Zet zet)
+inline PieceType promotion_piece(Move move)
 {
-	return StukType(PAARD + (((zet >> 12) & 15) - (PROMOTIE_P >> 12)));
+	return PieceType(KNIGHT + (((move >> 12) & 15) - (PROMOTION_N >> 12)));
 }
 
-inline StukType stuk_van_zet(Zet zet)
+inline PieceType piece_of_move(Move move)
 {
-	assert(zet < Zet(ROKADE));
-	return StukType((zet >> 12) & 7);
+	assert(move < Move(CASTLING));
+	return PieceType((move >> 12) & 7);
 }
 
-inline Zet maak_zet(StukType stuk, Veld van, Veld naar)
+inline Move make_move(PieceType piece, Square from, Square to)
 {
-	//return Zet(naar + (van << 6) + (stuk << 12));
-	return Zet(naar + (van << 6));
+	//return Move(to + (from << 6) + (piece << 12));
+	return Move(to + (from << 6));
 }
 
-inline Zet maak_zet(ZetType type, Veld van, Veld naar)
+inline Move make_move(MoveType type, Square from, Square to)
 {
-	return Zet(naar + (van << 6) + type);
+	return Move(to + (from << 6) + type);
 }
 
-inline bool is_ok(Zet zet)
+inline bool is_ok(Move move)
 {
-	return zet != GEEN_ZET && zet != NULL_ZET;
+	return move != NO_MOVE && move != NULL_MOVE;
 }
 
 template <int Capacity>
-struct VasteZettenLijst
+struct FixedMoveList
 {
-	int zetNummer;
-	Zet zetten[Capacity];
+	int moveNumber;
+	Move moves[Capacity];
 
-	VasteZettenLijst() : zetNummer(0) {}
-	void add(Zet zet) { if (zetNummer < Capacity) zetten[zetNummer++] = zet; }
-	Zet& operator[](int index) { return zetten[index]; }
-	const Zet& operator[](int index) const { return zetten[index]; }
-	int size() const { return zetNummer; }
-	void resize(int newSize) { zetNummer = newSize; }
-	void clear() { zetNummer = 0; }
-	bool empty() { return zetNummer == 0; }
+	FixedMoveList() : moveNumber(0) {}
+	void add(Move move) { if (moveNumber < Capacity) moves[moveNumber++] = move; }
+	Move& operator[](int index) { return moves[index]; }
+	const Move& operator[](int index) const { return moves[index]; }
+	int size() const { return moveNumber; }
+	void resize(int newSize) { moveNumber = newSize; }
+	void clear() { moveNumber = 0; }
+	bool empty() { return moveNumber == 0; }
 
-	int find(Zet zet)
+	int find(Move move)
 	{
-		for (int i = 0; i < zetNummer; i++)
-			if (zetten[i] == zet)
+		for (int i = 0; i < moveNumber; i++)
+			if (moves[i] == move)
 				return i;
 		return -1;
 	}
 };
 
-typedef VasteZettenLijst<MAX_PV> HoofdVariant;
-typedef VasteZettenLijst<MAX_ZETTEN> MaxZettenLijst;
+typedef FixedMoveList<MAX_PV> PrincipalVariation;
+typedef FixedMoveList<MAX_MOVES> MaxMoveList;
 
 #endif // #ifndef HOUDINI_H

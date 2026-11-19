@@ -2,7 +2,7 @@
 */
 
 #include "houdini.h"
-#include "bord.h"
+#include "bitboard.h"
 
 namespace
 {
@@ -787,19 +787,19 @@ namespace
 	// bit  0- 5: white king square (from SQ_A1 to SQ_H8)
 	// bit  6-11: black king square (from SQ_A1 to SQ_H8)
 	// bit    12: side to move (WHITE or BLACK)
-	// bit 13-14: white pawn file (from LIJN_A to LIJN_D)
-	// bit 15-17: white pawn RIJ_7 - rank (from RIJ_7 - RIJ_7 to RIJ_7 - RIJ_2)
-	unsigned index(Kleur ik, Veld zK, Veld wK, Veld pion) {
-		return wK | (zK << 6) | (ik << 12) | (lijn(pion) << 13) | ((RIJ_7 - rij(pion)) << 15);
+	// bit 13-14: white pawn file (from FILE_A to FILE_D)
+	// bit 15-17: white pawn RANK_7 - rank (from RANK_7 - RANK_7 to RANK_7 - RANK_2)
+	unsigned index(Color us, Square bK, Square wK, Square pawn) {
+		return wK | (bK << 6) | (us << 12) | (file_of(pawn) << 13) | ((RANK_7 - rank_of(pawn)) << 15);
 	}
 } // namespace
 
 
-bool Bitbases::probe(Veld wK, Veld pion, Veld zK, Kleur ik)
+bool Bitbases::probe(Square wK, Square pawn, Square bK, Color us)
 {
-  assert(lijn(pion) <= LIJN_D);
+  assert(file_of(pawn) <= FILE_D);
 
-  unsigned idx = index(ik, zK, wK, pion);
+  unsigned idx = index(us, bK, wK, pawn);
   return KPKBitbase[idx / 32] & (1 << (idx & 0x1F));
 }
 

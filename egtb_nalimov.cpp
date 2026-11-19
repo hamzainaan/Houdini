@@ -2,7 +2,7 @@
 */
 
 #include "houdini.h"
-#include "zoek_smp.h"
+#include "search_smp.h"
 
 #if !defined(_MSC_VER)
 #pragma GCC diagnostic ignored "-Wunused-parameter"

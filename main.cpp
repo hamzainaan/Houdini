@@ -3,51 +3,51 @@
 
 #include <iostream>
 
-#include "bord.h"
-#include "evaluatie.h"
-#include "stelling.h"
-#include "zoeken.h"
-#include "zoek_smp.h"
-#include "zet_hash.h"
+#include "bitboard.h"
+#include "evaluation.h"
+#include "position.h"
+#include "search.h"
+#include "search_smp.h"
+#include "move_hash.h"
 #include "uci.h"
 
 #ifdef USE_LICENSE
-extern bool LICENTIE_OK;
-void lees_licentie_tabellen();
+extern bool LICENSE_OK;
+void read_license_tables();
 #endif
 
 int main(int argc, char* argv[])
 {
 	std::cout << engine_info() << std::endl;
-	Threads.programmaStart = nu();
+	Threads.programStart = now();
 
-	UCI::initialisatie(UciOpties);
-	PST::initialisatie();
-	Bitboards::initialisatie();
-	Stelling::initialisatie();
-	Zoeken::initialisatie();
-	Evaluatie::initialisatie();
-	Pionnen::initialisatie();
+	UCI::initialize(UciOptions);
+	PST::initialize();
+	Bitboards::initialize();
+	Position::initialize();
+	Search::initialize();
+	Evaluation::initialize();
+	Pawns::initialize();
 
-#ifdef EXPORT_TABELLEN
-	Zoeken::export_tabel();
-	Evaluatie::export_tabel();
-	PST::export_tabel();
+#ifdef EXPORT_TABLES
+	Search::export_table();
+	Evaluation::export_table();
+	PST::export_table();
 #endif
 #ifdef USE_LICENSE
-	lees_licentie_tabellen();
-	if (!LICENTIE_OK)
+	read_license_tables();
+	if (!LICENSE_OK)
 		std::cout << "info string No valid license found - the engine strength will be reduced" << std::endl;
 #endif
-#ifdef IMPORT_TABELLEN
-	Zoeken::import_tabel();
-	Evaluatie::import_tabel();
-	PST::import_tabel();
+#ifdef IMPORT_TABLES
+	Search::import_table();
+	Evaluation::import_table();
+	PST::import_table();
 #endif
 
-	Threads.initialisatie();
-	HoofdHash.verander_grootte(UciOpties["Hash"]);
-	UCI::hoofdLus(argc, argv);
+	Threads.initialize();
+	MainHash.change_size(UciOptions["Hash"]);
+	UCI::mainLoop(argc, argv);
 
 	Threads.exit();
 	return 0;

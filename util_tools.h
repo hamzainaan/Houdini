@@ -30,26 +30,26 @@ void dbg_min_max_of(int n, int v);
 void dbg_freq(int n);
 void dbg_print();
 
-typedef std::chrono::milliseconds::rep Tijdstip;
+typedef std::chrono::milliseconds::rep TimePoint;
 
-inline Tijdstip nu()
+inline TimePoint now()
 {
   return std::chrono::duration_cast<std::chrono::milliseconds>
         (std::chrono::steady_clock::now().time_since_epoch()).count();
 }
 
-template<class Tuple, int Grootte>
-struct HashTabel
+template<class Tuple, int Size>
+struct HashTable
 {
-	Tuple* operator[](Sleutel64 sleutel)
+	Tuple* operator[](Key64 key)
 	{
-		static_assert(sizeof(Tuple) == 32 || sizeof(Tuple) == 128, "Verkeerde grootte");
-		return (Tuple*)((char *)tabel + ((uint32_t)sleutel & ((Grootte - 1) * sizeof(Tuple))));
-		//return tabel + ((uint32_t)sleutel & (Grootte - 1));
+		static_assert(sizeof(Tuple) == 32 || sizeof(Tuple) == 128, "Wrong size");
+		return (Tuple*)((char *)table + ((uint32_t)key & ((Size - 1) * sizeof(Tuple))));
+		//return table + ((uint32_t)key & (Size - 1));
 	}
 
 private:
-	CACHE_ALIGN Tuple tabel[Grootte];
+	CACHE_ALIGN Tuple table[Size];
 };
 
 

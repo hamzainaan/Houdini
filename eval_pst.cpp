@@ -3,18 +3,18 @@
 
 #include "houdini.h"
 #include "uci.h"
-#include "stelling.h"
+#include "position.h"
 
 
 namespace PST 
 {
-	Score psq[STUK_N][VELD_N];
+	Score psq[PIECE_N][SQUARE_N];
 
-#if !defined(USE_LICENSE) && !defined(IMPORT_TABELLEN)
+#if !defined(USE_LICENSE) && !defined(IMPORT_TABLES)
 
-#define SC(mg, eg) maak_score(mg, eg)
+#define SC(mg, eg) make_score(mg, eg)
 
-	static const Score PST[DAME + 1][64] =
+	static const Score PST[QUEEN + 1][64] =
 	{
 		{},
 		// PST_K[64]
@@ -38,10 +38,10 @@ namespace PST
 			SC(-108, 0), SC(-32, -7), SC(4,-14), SC(40,-21), SC(40,-21), SC(4,-14), SC(-32, -7), SC(-108, 0),
 			SC(0, 0), SC(0,  0), SC(0,  0), SC(0,  0), SC(0,  0), SC(0,  0), SC(0,  0), SC(0, 0)
 		},
-		// PST_P[64]
+		// PST_N[64]
 		{
-			SC(-1210,-400), SC(-110, -50), SC(-66, -30), SC(-44,-20), SC(-44,-20), SC(-66, -30), SC(-110, -50), SC(-1210,-400),    // waarde van a8/h8 verminderen (-500,-200)
-			SC(-154, -70), SC(-66, -30), SC(0,   0), SC(22, 10), SC(22, 10), SC(22,  10), SC(-66, -30), SC(-154, -70),    // f7 zou (0,0) moeten zijn ipv (22,10)
+			SC(-1210,-400), SC(-110, -50), SC(-66, -30), SC(-44,-20), SC(-44,-20), SC(-66, -30), SC(-110, -50), SC(-1210,-400),    // reduce value of a8/h8 (-500,-200)
+			SC(-154, -70), SC(-66, -30), SC(0,   0), SC(22, 10), SC(22, 10), SC(22,  10), SC(-66, -30), SC(-154, -70),    // f7 should be (0,0) instead of (22,10)
 			SC(-88, -40), SC(0,   0), SC(66,  30), SC(110, 50), SC(110, 50), SC(66,  30), SC(0,   0), SC(-88, -40),
 			SC(-88, -40), SC(0,   0), SC(66,  30), SC(110, 50), SC(110, 50), SC(66,  30), SC(0,   0), SC(-88, -40),
 			SC(-110, -50), SC(-22, -10), SC(44,  20), SC(66, 30), SC(66, 30), SC(44,  20), SC(-22, -10), SC(-110, -50),
@@ -49,7 +49,7 @@ namespace PST
 			SC(-220,-100), SC(-154, -70), SC(-110, -50), SC(-88,-40), SC(-88,-40), SC(-110, -50), SC(-154, -70), SC(-220,-100),
 			SC(-330,-150), SC(-264,-120), SC(-220,-100), SC(-198,-90), SC(-198,-90), SC(-220,-100), SC(-264,-120), SC(-330,-150)
 		},
-		// PST_L[64]
+		// PST_B[64]
 		{
 			SC(-28,-10), SC(-35,-20), SC(-35,-20), SC(-28,-10), SC(-28,-10), SC(-35,-20), SC(-35,-20), SC(-28,-10),
 			SC(-42,-20), SC(21, 10), SC(35, 20), SC(14, 10), SC(14, 10), SC(35, 20), SC(21, 10), SC(-42,-20),
@@ -60,10 +60,10 @@ namespace PST
 			SC(-35,-20), SC(14, 10), SC(14, 10), SC(-7,  0), SC(-7,  0), SC(14, 10), SC(14, 10), SC(-35,-20),
 			SC(-21,-10), SC(-42,-20), SC(-56,-30), SC(-63,-30), SC(-63,-30), SC(-56,-30), SC(-42,-20), SC(-21,-10)
 		},
-		// PST_T[64]
+		// PST_R[64]
 		{
 			SC(-26,  0), SC(13,  0), SC(52,  0), SC(91,  0), SC(91,  0), SC(52,  0), SC(13,  0), SC(-26,  0),
-			SC(-26, 32), SC(13, 32), SC(52, 32), SC(91, 32), SC(78, 32), SC(52, 32), SC(13, 32), SC(-26, 32),   // e7 zou (91,32) moeten zijn ipv (78,32)
+			SC(-26, 32), SC(13, 32), SC(52, 32), SC(91, 32), SC(78, 32), SC(52, 32), SC(13, 32), SC(-26, 32),   // e7 should be (91,32) instead of (78,32)
 			SC(-39, 32), SC(0, 32), SC(39, 32), SC(78, 32), SC(78, 32), SC(39, 32), SC(0, 32), SC(-39, 32),
 			SC(-52, 16), SC(-13, 16), SC(26, 16), SC(65, 16), SC(65, 16), SC(26, 16), SC(-13, 16), SC(-52, 16),
 			SC(-52,  0), SC(-13,  0), SC(26,  0), SC(65,  0), SC(65,  0), SC(26,  0), SC(-13,  0), SC(-52,  0),
@@ -71,7 +71,7 @@ namespace PST
 			SC(-52,  0), SC(-13,  0), SC(26,  0), SC(65,  0), SC(65,  0), SC(26,  0), SC(-13,  0), SC(-52,  0),
 			SC(-52,  0), SC(-13,  0), SC(26,  0), SC(65,  0), SC(65,  0), SC(26,  0), SC(-13,  0), SC(-52,  0)
 		},
-		// PST_D[64]
+		// PST_Q[64]
 		{
 			SC(-30,-54), SC(-30,-54), SC(-30,-54), SC(-30,-54), SC(-30,-54), SC(-30,-54), SC(-30,-54), SC(-30,-54),
 			SC(-30,-54), SC(0,  0), SC(0,  0), SC(0,  0), SC(0,  0), SC(0,  0), SC(0,  0), SC(-30,-54),
@@ -87,22 +87,22 @@ namespace PST
 #undef SC
 #endif
 
-	void initialisatie()
+	void initialize()
 	{
-#if !defined(USE_LICENSE) && !defined(IMPORT_TABELLEN)
-		for (StukType stuk = KONING; stuk <= DAME; ++stuk)
+#if !defined(USE_LICENSE) && !defined(IMPORT_TABLES)
+		for (PieceType piece = KING; piece <= QUEEN; ++piece)
 		{
-			for (Veld s = SQ_A1; s <= SQ_H8; ++s)
+			for (Square s = SQ_A1; s <= SQ_H8; ++s)
 			{
-				Score waarde = PST[stuk][s];
-				if (stuk == PION) waarde = score_muldiv(waarde, 128, 256);
-				if (stuk == DAME) waarde = score_muldiv(waarde, 220, 256);
-				psq[maak_stuk(WIT, stuk)][~s] = waarde;
-				psq[maak_stuk(ZWART, stuk)][s] = -waarde;
+				Score value = PST[piece][s];
+				if (piece == PAWN) value = score_muldiv(value, 128, 256);
+				if (piece == QUEEN) value = score_muldiv(value, 220, 256);
+				psq[make_piece(WHITE, piece)][~s] = value;
+				psq[make_piece(BLACK, piece)][s] = -value;
 			}
 		}
 
-		// Mobiliteit multiplier
+		// Mobility multiplier
 		const int PstRankQuad[64] =
 		{
 			-9,-9,-9,-9,-9,-9,-9,-9,
@@ -136,7 +136,7 @@ namespace PST
 			3, 3, 3, 3, 3, 3, 3, 3,
 			4, 4, 4, 4, 4, 4, 4, 4
 		};
-		const int PstMult[DAME + 1][6] =
+		const int PstMult[QUEEN + 1][6] =
 		{
 			{},
 			{ 15,  5,-12,-18,  0,  2 },
@@ -147,38 +147,38 @@ namespace PST
 			{ 0,  0, -4,  8, -8, -2 }
 		};
 
-		for (StukType stuk = KONING; stuk <= DAME; ++stuk)
+		for (PieceType piece = KING; piece <= QUEEN; ++piece)
 		{
-			for (Veld s = SQ_A1; s <= SQ_H8; ++s)
+			for (Square s = SQ_A1; s <= SQ_H8; ++s)
 			{
-				int mg = (PstMult[stuk][0] * PstRankQuad[s] + PstMult[stuk][1] * PstFileQuad[s]) / 2 + PstMult[stuk][2] * PstRank[s];
-				int eg = (PstMult[stuk][3] * PstRankQuad[s] + PstMult[stuk][4] * PstFileQuad[s]) / 2 + PstMult[stuk][5] * PstRank[s];
-				Score waarde = maak_score(mg, eg);
-				psq[maak_stuk(WIT, stuk)][~s] += waarde;
-				psq[maak_stuk(ZWART, stuk)][s] -= waarde;
+				int mg = (PstMult[piece][0] * PstRankQuad[s] + PstMult[piece][1] * PstFileQuad[s]) / 2 + PstMult[piece][2] * PstRank[s];
+				int eg = (PstMult[piece][3] * PstRankQuad[s] + PstMult[piece][4] * PstFileQuad[s]) / 2 + PstMult[piece][5] * PstRank[s];
+				Score value = make_score(mg, eg);
+				psq[make_piece(WHITE, piece)][~s] += value;
+				psq[make_piece(BLACK, piece)][s] -= value;
 			}
 		}
 #if 0
-		for (Veld s = SQ_A1; s <= SQ_H8; ++s)
+		for (Square s = SQ_A1; s <= SQ_H8; ++s)
 		{
 			int mg = (TUNE_1 * PstRankQuad[s] + TUNE_2 * PstFileQuad[s]) / 2 + TUNE_3 * PstRank[s];
 			int eg = (TUNE_4 * PstRankQuad[s] + TUNE_5 * PstFileQuad[s]) / 2 + TUNE_6 * PstRank[s];
-			Score waarde = maak_score(mg, eg);
-			psq[WIT][PION][~s] += waarde;
-			psq[ZWART][PION][s] -= waarde;
+			Score value = make_score(mg, eg);
+			psq[WHITE][PAWN][~s] += value;
+			psq[BLACK][PAWN][s] -= value;
 		}
 #endif
 #endif
 	}
 
-	void export_tabel()
+	void export_table()
 	{
 		FILE *f = fopen("R:\\Schaak\\h6-pst-export.dat", "wb");
 		fwrite(psq, 1, sizeof(psq), f);
 		fclose(f);
 	}
 
-	void import_tabel()
+	void import_table()
 	{
 		FILE *f = fopen("R:\\Schaak\\h6-pst-export.dat", "rb");
 		fread(psq, 1, sizeof(psq), f);

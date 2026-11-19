@@ -4,8 +4,8 @@
 #include <iostream>
 
 #include "houdini.h"
-#include "stelling.h"
-#include "zoeken.h"
+#include "position.h"
+#include "search.h"
 #include "egtb_nalimovprobe.h"
 
 typedef uint64_t INDEX;
@@ -21,7 +21,7 @@ typedef uint8_t piece;
 #define L_pageL 65536
 #define L_tbbe_ssL   ((L_pageL - 4) / 2)
 #define L_bev_broken (L_tbbe_ssL + 1)     // illegal or busted
-#define L_bev_mi1    L_tbbe_ssL           // mate in 1 zet
+#define L_bev_mi1    L_tbbe_ssL           // mate in 1 move
 
 typedef INDEX (*PfnCalcIndex) (square*, square*, square, int Inverse);
 
@@ -38,7 +38,7 @@ int NalimovCacheSize = 32;
 
 static bool NalimovInUse = false;
 void *NalimovCache;
-Waarde Nalimov_probe(Stelling& pos, Waarde alfa, Waarde beta);
+Value Nalimov_probe(Position& pos, Value alpha, Value beta);
 
 void Nalimov_init(const std::string& path)
 {
@@ -94,7 +94,7 @@ void Nalimov_setCache(int size, bool verbose)
 #ifdef LOG_EGTB_PROBE
 #include <time.h>
 
-static LIJN *tracefile;
+static FILE *tracefile;
 
 void close_egtbtracefile()
 {
@@ -129,17 +129,17 @@ void write_egtbtracefile(const char *msg)
 #endif
 
 
-void register_piece(int rgiCounters[], int offset, square rgSquares[], int stuk, Bord bb)
+void register_piece(int rgiCounters[], int offset, square rgSquares[], int pieceNumber, Bitboard bb)
 {
 	if (bb)
 	{
-		rgSquares[3 * stuk] = pop_lsb(&bb);
+		rgSquares[3 * pieceNumber] = pop_lsb(&bb);
 		if (bb)
 		{
-			rgSquares[3 * stuk + 1] = pop_lsb(&bb);
+			rgSquares[3 * pieceNumber + 1] = pop_lsb(&bb);
 			if (bb)
 			{
-				rgSquares[3 * stuk + 2] = pop_lsb(&bb);
+				rgSquares[3 * pieceNumber + 2] = pop_lsb(&bb);
 				rgiCounters[offset] = 3;
 			}
 			else
@@ -152,7 +152,7 @@ void register_piece(int rgiCounters[], int offset, square rgSquares[], int stuk,
 		rgiCounters[offset] = 0;
 }
 
-Waarde Nalimov_probe(Stelling& pos, Waarde alfa, Waarde beta)
+Value Nalimov_probe(Position& pos, Value alpha, Value beta)
 {
 	int rgiCounters[10], iTb;
 	bool Inverted;
@@ -161,31 +161,31 @@ Waarde Nalimov_probe(Stelling& pos, Waarde alfa, Waarde beta)
 	square sqEP;
 	INDEX pos_index;
 
-	if (pos.stukken() == pos.stukken(KONING))
-		return REMISE_WAARDE;
+	if (pos.pieces() == pos.pieces(KING))
+		return DRAW_VALUE;
 
-	register_piece(rgiCounters, 0, sqW, 0, pos.stukken(WIT, PION));
-	register_piece(rgiCounters, 1, sqW, 1, pos.stukken(WIT, PAARD));
-	register_piece(rgiCounters, 2, sqW, 2, pos.stukken(WIT, LOPER));
-	register_piece(rgiCounters, 3, sqW, 3, pos.stukken(WIT, TOREN));
-	register_piece(rgiCounters, 4, sqW, 4, pos.stukken(WIT, DAME));
-	register_piece(rgiCounters, 5, sqB, 0, pos.stukken(ZWART, PION));
-	register_piece(rgiCounters, 6, sqB, 1, pos.stukken(ZWART, PAARD));
-	register_piece(rgiCounters, 7, sqB, 2, pos.stukken(ZWART, LOPER));
-	register_piece(rgiCounters, 8, sqB, 3, pos.stukken(ZWART, TOREN));
-	register_piece(rgiCounters, 9, sqB, 4, pos.stukken(ZWART, DAME));
+	register_piece(rgiCounters, 0, sqW, 0, pos.pieces(WHITE, PAWN));
+	register_piece(rgiCounters, 1, sqW, 1, pos.pieces(WHITE, KNIGHT));
+	register_piece(rgiCounters, 2, sqW, 2, pos.pieces(WHITE, BISHOP));
+	register_piece(rgiCounters, 3, sqW, 3, pos.pieces(WHITE, ROOK));
+	register_piece(rgiCounters, 4, sqW, 4, pos.pieces(WHITE, QUEEN));
+	register_piece(rgiCounters, 5, sqB, 0, pos.pieces(BLACK, PAWN));
+	register_piece(rgiCounters, 6, sqB, 1, pos.pieces(BLACK, KNIGHT));
+	register_piece(rgiCounters, 7, sqB, 2, pos.pieces(BLACK, BISHOP));
+	register_piece(rgiCounters, 8, sqB, 3, pos.pieces(BLACK, ROOK));
+	register_piece(rgiCounters, 9, sqB, 4, pos.pieces(BLACK, QUEEN));
 
 	iTb = IDescFindFromCounters (rgiCounters);
 	if (iTb == 0)
-		return GEEN_WAARDE;
+		return NO_VALUE;
 
-	sqW[15] = pos.koning(WIT);
-	sqB[15] = pos.koning(ZWART);
+	sqW[15] = pos.king(WHITE);
+	sqB[15] = pos.king(BLACK);
 
 	if (iTb > 0)
 	{
 		Inverted = false;
-		side = pos.aan_zet() == WIT ? x_colorWhite : x_colorBlack;
+		side = pos.side_to_move() == WHITE ? x_colorWhite : x_colorBlack;
 		psqW = sqW;
 		psqB = sqB;
 	}
@@ -193,31 +193,31 @@ Waarde Nalimov_probe(Stelling& pos, Waarde alfa, Waarde beta)
 	{
 		iTb = -iTb;
 		Inverted = true;
-		side = pos.aan_zet() == WIT ? x_colorBlack : x_colorWhite;
+		side = pos.side_to_move() == WHITE ? x_colorBlack : x_colorWhite;
 		psqW = sqB;
 		psqB = sqW;
 	}
 	if (!FRegisteredFun(iTb, side))
-		return GEEN_WAARDE;
+		return NO_VALUE;
 
-	sqEP = pos.enpassant_veld();
+	sqEP = pos.enpassant_square();
 	if (sqEP == SQ_NONE)
 		sqEP = EP_NO_SQUARE;
 
 	pos_index = PfnIndCalcFun(iTb, side) (psqW, psqB, sqEP, Inverted);
 	int probe_result = L_TbtProbeTable (iTb, side, pos_index);
 	if (probe_result == L_bev_broken)
-		return GEEN_WAARDE;
+		return NO_VALUE;
 
-	pos.verhoog_tb_hits();
+	pos.increase_tb_hits();
 
-	Waarde result;
+	Value result;
 	if (probe_result > 0)
-		result = Waarde(MAT_WAARDE - 1 + 2 * (probe_result - L_bev_mi1) - pos.info()->ply);
+		result = Value(MATE_VALUE - 1 + 2 * (probe_result - L_bev_mi1) - pos.info()->ply);
 	else if (probe_result < 0)
-		result = Waarde(-MAT_WAARDE + 2 * (L_bev_mi1 + probe_result) + pos.info()->ply);
+		result = Value(-MATE_VALUE + 2 * (L_bev_mi1 + probe_result) + pos.info()->ply);
 	else
-		result = REMISE_WAARDE;
+		result = DRAW_VALUE;
 
 	#ifdef LOG_EGTB_PROBE
 		char s[128];
@@ -227,12 +227,12 @@ Waarde Nalimov_probe(Stelling& pos, Waarde alfa, Waarde beta)
 			' ', 'k', 'p', 'n', 'b', 'r', 'q',
 		};
 		int count = 0;
-		uint64 bb = bb_bezet;
+		uint64 bb = bb_occupied;
 		while (bb)
 		{
 			int sq = LSB(bb);
 			clearLSB(bb);
-			s[count++] = piece_table[VELD[sq]];
+			s[count++] = piece_table[SQUARE[sq]];
 		}
 		sprintf(s + count, ": %d", result);
 

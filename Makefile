@@ -24,9 +24,9 @@ ifneq ($(VERSION),Dev)
 	OBJS += egtb_nalimov.o egtb_nalimovprobe.o 
 endif
 
-versmelt = yes
+fuse = yes
 
-ifeq ($(versmelt),yes)
+ifeq ($(fuse),yes)
 	OBJS += fusion.o
 else
 	OBJS += search.o evaluation.o \

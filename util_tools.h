@@ -32,7 +32,7 @@ void dbg_print();
 
 typedef std::chrono::milliseconds::rep TimePoint;
 
-inline TimePoint nu()
+inline TimePoint now()
 {
   return std::chrono::duration_cast<std::chrono::milliseconds>
         (std::chrono::steady_clock::now().time_since_epoch()).count();

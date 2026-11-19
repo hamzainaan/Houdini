@@ -46,7 +46,7 @@ namespace
 			return;
 
 		pos.set(fen, UciOpties["UCI_Chess960"], Threads.main());
-		string validatie = pos.valideer_stelling();
+		string validatie = pos.validate_position();
 		if (validatie != "")
 		{
 			sync_cout << "Invalid position: " << validatie << endl << "Reverting to starting position" << sync_endl;
@@ -54,10 +54,10 @@ namespace
 		}
 
 		// zettenlijst
-		while (is >> token && (zet = UCI::zet_van_string(pos, token)) != NO_MOVE)
+		while (is >> token && (zet = UCI::move_from_string(pos, token)) != NO_MOVE)
 		{
-			pos.speel_zet(zet);
-			pos.verhoog_partij_ply();
+			pos.do_move(zet);
+			pos.increase_game_ply();
 		}
 	}
 
@@ -99,13 +99,13 @@ namespace
 		TimeLimit tijdLimiet;
 		string woord;
 
-		tijdLimiet.startTijd = nu();
+		tijdLimiet.startTijd = now();
 
 		while (is >> woord)
 		{
 			if (woord == "searchmoves")
 				while (is >> woord)
-					tijdLimiet.zoekZetten.add(UCI::zet_van_string(pos, woord));
+					tijdLimiet.zoekZetten.add(UCI::move_from_string(pos, woord));
 
 			else if (woord == "wtime")     is >> tijdLimiet.time[WHITE];
 			else if (woord == "btime")     is >> tijdLimiet.time[BLACK];
@@ -121,7 +121,7 @@ namespace
 		}
 
 		// go = go infinite
-		if (!tijdLimiet.time[pos.aan_zet()] && !tijdLimiet.movestogo && !tijdLimiet.depth && !tijdLimiet.nodes
+		if (!tijdLimiet.time[pos.side_to_move()] && !tijdLimiet.movestogo && !tijdLimiet.depth && !tijdLimiet.nodes
 			&& !tijdLimiet.movetime && !tijdLimiet.mate)
 			tijdLimiet.infinite = 1;
 
@@ -134,7 +134,7 @@ namespace
 			sync_cout << "info string No valid license found - the engine strength will be reduced" << sync_endl;
 #endif
 
-		Threads.begin_zoek_opdracht(pos, tijdLimiet);
+		Threads.start_search_task(pos, tijdLimiet);
 	}
 
 } // namespace
@@ -153,23 +153,23 @@ std::string trim(const std::string& str, const std::string& whitespace = " \t")
 }
 
 
-void toon_evaluatie(const Position& pos)
+void show_evaluation(const Position& pos)
 {
 	Value v = Evaluation::evaluatie(pos, NO_VALUE, NO_VALUE);
-	v = pos.aan_zet() == WHITE ? v : -v;
+	v = pos.side_to_move() == WHITE ? v : -v;
 
 	sync_cout << std::showpos << std::fixed << std::setprecision(2)
 		<< "Evaluation: " << double(v) / VALUE_PAWN << sync_endl;
 }
 
 
-void UCI::hoofdLus(int argc, char* argv[])
+void UCI::mainLoop(int argc, char* argv[])
 {
 	Position pos;
 	string woord, cmd;
 
 	pos.set(StartFEN, false, Threads.main());
-	Search::wis_alles();
+	Search::clear_all();
 
 #ifdef TRACE_TM
 	open_tracefile();
@@ -195,13 +195,13 @@ void UCI::hoofdLus(int argc, char* argv[])
 			|| (woord == "ponderhit" && Search::Signalen.stopBijPonderhit))
 		{
 			Search::Signalen.stopAnalyse = true;
-			Threads.main()->maak_wakker(false);
+			Threads.main()->wake_up(false);
 			//Threads.main()->wacht_op_einde_zoeken();
 		}
 		else if (woord == "ponderhit")
 		{
 			Search::Klok.ponder = 0;
-			Search::pas_tijd_aan_na_ponderhit();
+			Search::adjust_time_after_ponderhit();
 		}
 
 		else if (woord == "uci")
@@ -212,9 +212,9 @@ void UCI::hoofdLus(int argc, char* argv[])
 		else if (woord == "ucinewgame")
 		{
 			Search::Signalen.stopAnalyse = true;
-			Threads.main()->maak_wakker(false);
-			Threads.main()->wacht_op_einde_zoeken();
-			Search::wis_alles();
+			Threads.main()->wake_up(false);
+			Threads.main()->wait_for_search_finished();
+			Search::clear_all();
 		}
 		else if (woord == "isready")
 			sync_cout << "readyok" << sync_endl;
@@ -229,7 +229,7 @@ void UCI::hoofdLus(int argc, char* argv[])
 			else if (woord == "bench")     benchmark(pos, is);
 			else if (woord == "b")         benchmark(pos, is);
 			//else if (woord == "d")         sync_cout << pos << sync_endl;
-			else if (woord == "e")         toon_evaluatie(pos);
+			else if (woord == "e")         show_evaluation(pos);
 #ifdef USE_LARGE_PAGES
 			else if (woord == "lp")        test_large_pages();
 #endif
@@ -241,7 +241,7 @@ void UCI::hoofdLus(int argc, char* argv[])
 
 	} while (woord != "quit" && argc == 1);
 
-	Threads.main()->wacht_op_einde_zoeken();
+	Threads.main()->wait_for_search_finished();
 
 #ifdef TRACE_TM
 	close_tracefile();
@@ -295,14 +295,14 @@ string UCI::zet(Move zet, const Position& pos)
 {
 	char sZet[6];
 
-	Square van = van_veld(zet);
-	Square naar = naar_veld(zet);
+	Square van = from_square(zet);
+	Square naar = to_square(zet);
 
 	if (zet == NO_MOVE || zet == NULL_MOVE)
 		return "0000";
 
-	if (zet_type(zet) == CASTLING && pos.is_chess960())
-		naar = pos.rokade_toren_veld(naar);
+	if (move_type(zet) == CASTLING && pos.is_chess960())
+		naar = pos.castling_rook_square(naar);
 
 	//string sZet = UCI::veld(van) + UCI::veld(naar);
 	sZet[0] = 'a' + lijn(van);
@@ -312,20 +312,20 @@ string UCI::zet(Move zet, const Position& pos)
 	if (zet < Move(PROMOTION_N))
 		return string(sZet, 4);
 
-	sZet[4] = "   nbrq"[promotie_stuk(zet)];
+	sZet[4] = "   nbrq"[promotion_piece(zet)];
 	return string(sZet, 5);
 }
 
 
-Move UCI::zet_van_string(const Position& pos, string& str)
+Move UCI::move_from_string(const Position& pos, string& str)
 {
 	if (pos.is_chess960())
 	{
 		// Arena gebruikt O-O en O-O-O
 		if (str == "O-O")
-			str = UCI::zet(maak_zet(CASTLING, pos.koning(pos.aan_zet()), relatief_veld(pos.aan_zet(), SQ_G1)), pos);
+			str = UCI::zet(make_move(CASTLING, pos.koning(pos.side_to_move()), relative_square(pos.side_to_move(), SQ_G1)), pos);
 		else if (str == "O-O-O")
-			str = UCI::zet(maak_zet(CASTLING, pos.koning(pos.aan_zet()), relatief_veld(pos.aan_zet(), SQ_C1)), pos);
+			str = UCI::zet(make_move(CASTLING, pos.koning(pos.side_to_move()), relative_square(pos.side_to_move(), SQ_C1)), pos);
 	}
 
 	if (str.length() == 5)

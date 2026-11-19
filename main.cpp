@@ -13,41 +13,41 @@
 
 #ifdef USE_LICENSE
 extern bool LICENSE_OK;
-void lees_licentie_tabellen();
+void read_license_tables();
 #endif
 
 int main(int argc, char* argv[])
 {
 	std::cout << engine_info() << std::endl;
-	Threads.programmaStart = nu();
+	Threads.programmaStart = now();
 
-	UCI::initialisatie(UciOpties);
-	PST::initialisatie();
-	Bitboards::initialisatie();
-	Position::initialisatie();
-	Search::initialisatie();
-	Evaluation::initialisatie();
-	Pawns::initialisatie();
+	UCI::initialize(UciOpties);
+	PST::initialize();
+	Bitboards::initialize();
+	Position::initialize();
+	Search::initialize();
+	Evaluation::initialize();
+	Pawns::initialize();
 
 #ifdef EXPORT_TABLES
-	Search::export_tabel();
-	Evaluation::export_tabel();
-	PST::export_tabel();
+	Search::export_table();
+	Evaluation::export_table();
+	PST::export_table();
 #endif
 #ifdef USE_LICENSE
-	lees_licentie_tabellen();
+	read_license_tables();
 	if (!LICENSE_OK)
 		std::cout << "info string No valid license found - the engine strength will be reduced" << std::endl;
 #endif
 #ifdef IMPORT_TABLES
-	Search::import_tabel();
-	Evaluation::import_tabel();
-	PST::import_tabel();
+	Search::import_table();
+	Evaluation::import_table();
+	PST::import_table();
 #endif
 
-	Threads.initialisatie();
-	HoofdHash.verander_grootte(UciOpties["Hash"]);
-	UCI::hoofdLus(argc, argv);
+	Threads.initialize();
+	HoofdHash.change_size(UciOpties["Hash"]);
+	UCI::mainLoop(argc, argv);
 
 	Threads.exit();
 	return 0;

@@ -35,14 +35,14 @@ inline bool operator<(const MoveEx& f, const MoveEx& s)
 }
 
 template<MoveGeneration>
-MoveEx* genereerZetten(const Position& pos, MoveEx* zetten);
+MoveEx* generateMoves(const Position& pos, MoveEx* zetten);
 
-MoveEx* genereerSlagzettenOpVeld(const Position& pos, MoveEx* zetten, Square veld);
-MoveEx* genereerLegaleZetten(const Position& pos, MoveEx* zetten);
+MoveEx* generateCapturesOnSquare(const Position& pos, MoveEx* zetten, Square veld);
+MoveEx* generateLegalMoves(const Position& pos, MoveEx* zetten);
 
 struct LegalMoveList 
 {
-	explicit LegalMoveList(const Position& pos) { einde = genereerLegaleZetten(pos, zetten); }
+	explicit LegalMoveList(const Position& pos) { einde = generateLegalMoves(pos, zetten); }
 	const MoveEx* begin() const { return zetten; }
 	const MoveEx* end() const { return einde; }
 
@@ -51,8 +51,8 @@ private:
 	MoveEx zetten[MAX_MOVES];
 };
 
-bool LegaleZettenLijstBevatZet(const Position& pos, Move zet);
-bool MinstensEenLegaleZet(const Position& pos);
-bool LegaleZettenLijstBevatRokade(const Position& pos, Move zet);
+bool LegalMoveListContainsMove(const Position& pos, Move zet);
+bool AtLeastOneLegalMove(const Position& pos);
+bool LegalMoveListContainsCastling(const Position& pos, Move zet);
 
 #endif // #ifndef MOVE_GENERATION_H

@@ -12,7 +12,7 @@ namespace PST
 
 #if !defined(USE_LICENSE) && !defined(IMPORT_TABLES)
 
-#define SC(mg, eg) maak_score(mg, eg)
+#define SC(mg, eg) make_score(mg, eg)
 
 	static const Score PST[QUEEN + 1][64] =
 	{
@@ -87,7 +87,7 @@ namespace PST
 #undef SC
 #endif
 
-	void initialisatie()
+	void initialize()
 	{
 #if !defined(USE_LICENSE) && !defined(IMPORT_TABLES)
 		for (PieceType stuk = KING; stuk <= QUEEN; ++stuk)
@@ -97,8 +97,8 @@ namespace PST
 				Score waarde = PST[stuk][s];
 				if (stuk == PAWN) waarde = score_muldiv(waarde, 128, 256);
 				if (stuk == QUEEN) waarde = score_muldiv(waarde, 220, 256);
-				psq[maak_stuk(WHITE, stuk)][~s] = waarde;
-				psq[maak_stuk(BLACK, stuk)][s] = -waarde;
+				psq[make_piece(WHITE, stuk)][~s] = waarde;
+				psq[make_piece(BLACK, stuk)][s] = -waarde;
 			}
 		}
 
@@ -153,9 +153,9 @@ namespace PST
 			{
 				int mg = (PstMult[stuk][0] * PstRankQuad[s] + PstMult[stuk][1] * PstFileQuad[s]) / 2 + PstMult[stuk][2] * PstRank[s];
 				int eg = (PstMult[stuk][3] * PstRankQuad[s] + PstMult[stuk][4] * PstFileQuad[s]) / 2 + PstMult[stuk][5] * PstRank[s];
-				Score waarde = maak_score(mg, eg);
-				psq[maak_stuk(WHITE, stuk)][~s] += waarde;
-				psq[maak_stuk(BLACK, stuk)][s] -= waarde;
+				Score waarde = make_score(mg, eg);
+				psq[make_piece(WHITE, stuk)][~s] += waarde;
+				psq[make_piece(BLACK, stuk)][s] -= waarde;
 			}
 		}
 #if 0
@@ -163,7 +163,7 @@ namespace PST
 		{
 			int mg = (TUNE_1 * PstRankQuad[s] + TUNE_2 * PstFileQuad[s]) / 2 + TUNE_3 * PstRank[s];
 			int eg = (TUNE_4 * PstRankQuad[s] + TUNE_5 * PstFileQuad[s]) / 2 + TUNE_6 * PstRank[s];
-			Score waarde = maak_score(mg, eg);
+			Score waarde = make_score(mg, eg);
 			psq[WHITE][PAWN][~s] += waarde;
 			psq[BLACK][PAWN][s] -= waarde;
 		}
@@ -171,14 +171,14 @@ namespace PST
 #endif
 	}
 
-	void export_tabel()
+	void export_table()
 	{
 		FILE *f = fopen("R:\\Schaak\\h6-pst-export.dat", "wb");
 		fwrite(psq, 1, sizeof(psq), f);
 		fclose(f);
 	}
 
-	void import_tabel()
+	void import_table()
 	{
 		FILE *f = fopen("R:\\Schaak\\h6-pst-export.dat", "rb");
 		fread(psq, 1, sizeof(psq), f);

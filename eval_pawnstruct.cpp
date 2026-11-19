@@ -11,7 +11,7 @@
 
 namespace 
 {
-	Bitboard LijnAchter(Bitboard x)
+	Bitboard FileBehind(Bitboard x)
 	{
 		x = x | (x >> 8);
 		x = x | (x >> 16);
@@ -19,7 +19,7 @@ namespace
 		return x;
 	}
 
-	Bitboard LijnVoor(Bitboard x)
+	Bitboard FileInFront(Bitboard x)
 	{
 		x = x | (x << 8);
 		x = x | (x << 16);
@@ -27,7 +27,7 @@ namespace
 		return x;
 	}
 
-	Bitboard LijnVoorAchter(Bitboard x)
+	Bitboard FileInFrontBehind(Bitboard x)
 	{
 		x = x | (x >> 8) | (x << 8);
 		x = x | (x >> 16) | (x << 16);
@@ -46,14 +46,14 @@ namespace
 	static const int PionSchild_Constanten[8] = { 0, 27, 22, 10, 5, 0, 0, 0 };
 	static const int PionStorm_Constanten[8] = { -2, 0, 0, -6, -13, -40, 0, 0 };
 
-#define S(mg, eg) maak_score(mg, eg) * 4 / 16
+#define S(mg, eg) make_score(mg, eg) * 4 / 16
 	static const Score VrijPionWaarden4[8] =
 	{
 		S(0, 0), S(28, 47), S(28, 47), S(127, 188),
 		S(325, 470), S(622, 893), S(1018, 1457), S(0, 0)
 	};
 #undef S
-#define S(mg, eg) maak_score(mg, eg) * 8 / 16
+#define S(mg, eg) make_score(mg, eg) * 8 / 16
 	static const Score VrijPionWaarden8[8] =
 	{
 		S(0, 0), S(28, 47), S(28, 47), S(127, 188),
@@ -80,35 +80,35 @@ namespace
 	};
 
 	template <Color Us>
-	EvalValue veiligheid_op_veld(const Position& pos, const Pawns::Tuple* e, Square veldK)
+	EvalValue safety_on_square(const Position& pos, const Pawns::Tuple* e, Square veldK)
 	{
 		const Color Them = Us == WHITE ? BLACK : WHITE;
 		EvalValue result = EVAL_0;
 
 		// pionnenschild voor koning
-		Bitboard UsPawns = pos.stukken(Us, PAWN);
+		Bitboard UsPawns = pos.pieces(Us, PAWN);
 		Bitboard lijnen_rond_K = AanvalsLijnen[lijn(veldK)];
 
-		Bitboard bb_schild = UsPawns & lijnen_rond_K & ~bb_rijen_voorwaarts(Them, rij(veldK));
+		Bitboard bb_schild = UsPawns & lijnen_rond_K & ~bb_ranks_forward(Them, rij(veldK));
 		while (bb_schild)
 		{
 			Square veld = pop_lsb(&bb_schild);
-			EvalValue v = Score_PionSchild[relatieve_rij(Us, veld)];
+			EvalValue v = Score_PionSchild[relative_rank(Us, veld)];
 			if (lijn(veld) == lijn(veldK))
 				result += v;
 			result += v;
 		}
 
 		// bestorming, het veld voor de koning telt niet mee (hier dient de aanvallende pion als schild!)
-		Bitboard bb_storm = pos.stukken(Them, PAWN) & lijnen_rond_K;
+		Bitboard bb_storm = pos.pieces(Them, PAWN) & lijnen_rond_K;
 		//Bord bb_storm = pos.stukken(JIJ, PION) & lijnen_rond_K & ~shift_up<Us>(pos.stukken(Us, KONING));
 		while (bb_storm)
 		{
 			Square veld = pop_lsb(&bb_storm);
-			if (bb_voorwaarts(Them, veld) & UsPawns)
-				result += Score_PionBestorming[relatieve_rij(Them, veld)];
+			if (bb_forward(Them, veld) & UsPawns)
+				result += Score_PionBestorming[relative_rank(Them, veld)];
 			else
-				result += Score_StormHalfOpenLijn[relatieve_rij(Them, veld)];
+				result += Score_StormHalfOpenLijn[relative_rank(Them, veld)];
 		}
 		// aantal halfopen lijnen voor aanval
 		result += Score_Aanvalslijnen[popcount(lijnen_rond_K & e->halfOpenLijnen[Them])];
@@ -122,8 +122,8 @@ namespace
 	{
 		const Color Them = (Us == WHITE ? BLACK : WHITE);
 
-		const Bitboard bb_mijnPion = pos.stukken(Us, PAWN);
-		const Bitboard bb_jouwPion = pos.stukken(Them, PAWN);
+		const Bitboard bb_mijnPion = pos.pieces(Us, PAWN);
+		const Bitboard bb_jouwPion = pos.pieces(Them, PAWN);
 		const Bitboard RANK56 = Us == WHITE ? 0x0000FFFF00000000 : 0x00000000FFFF0000;
 		const Bitboard TweedeRij = Us == WHITE ? 0x000000000000FF00 : 0x00FF000000000000;
 		const Square Up = Us == WHITE ? UP : DOWN;
@@ -140,40 +140,40 @@ namespace
 		Bitboard GeisoleerdeLijnen = ~((bb_pionlijnen[Us] << 1) & NOT_FILE_A | (bb_pionlijnen[Us] >> 1) & NOT_FILE_H);
 
 		// pionaanval op rij 5 of 6
-		result = maak_score(89, 78) * popcount(bb_mijnPion & RANK56 & e->pionAanval[Them]);
+		result = make_score(89, 78) * popcount(bb_mijnPion & RANK56 & e->pionAanval[Them]);
 
 		// KwetsbaarVoorToren = aangevallen door vijandelijke toren op de 8ste rij
-		Bitboard KwetsbaarVoorToren = Us == WHITE ? ~LijnAchter(bb_jouwPion | (bb_mijnPion >> 8)) : ~LijnVoor(bb_jouwPion | (bb_mijnPion << 8));
+		Bitboard KwetsbaarVoorToren = Us == WHITE ? ~FileBehind(bb_jouwPion | (bb_mijnPion >> 8)) : ~FileInFront(bb_jouwPion | (bb_mijnPion << 8));
 
 		// dubbelpionnen (voorste op de lijn)
-		Bitboard bb_dubbelpionnen = Us == WHITE ? bb_mijnPion & ~LijnAchter(bb_mijnPion >> 8) & LijnVoor(bb_mijnPion << 8) :
-			bb_mijnPion & ~LijnVoor(bb_mijnPion << 8) & LijnAchter(bb_mijnPion >> 8);
+		Bitboard bb_dubbelpionnen = Us == WHITE ? bb_mijnPion & ~FileBehind(bb_mijnPion >> 8) & FileInFront(bb_mijnPion << 8) :
+			bb_mijnPion & ~FileInFront(bb_mijnPion << 8) & FileBehind(bb_mijnPion >> 8);
 
-		result += (popcount(bb_mijnPion) - popcount(bb_pionlijnen[Us] & 0xFF)) * maak_score(-42, -65);    // dubbelpionnen
-		result += popcount(bb_dubbelpionnen & ~e->pionAanval[Us]) * maak_score(-36, -50); // niet gedekte dubbelpionnen
+		result += (popcount(bb_mijnPion) - popcount(bb_pionlijnen[Us] & 0xFF)) * make_score(-42, -65);    // dubbelpionnen
+		result += popcount(bb_dubbelpionnen & ~e->pionAanval[Us]) * make_score(-36, -50); // niet gedekte dubbelpionnen
 
 		if (bb_mijnPion & GeisoleerdeLijnen)
 		{
-			result += popcount(bb_mijnPion & GeisoleerdeLijnen & ~bb_pionlijnen[Them] & NOT_FILE_AH) * maak_score(-121, -136);  // geisoleerde pion op halfopen lijn, niet aan de rand
-			result += popcount(bb_mijnPion & GeisoleerdeLijnen & ~bb_pionlijnen[Them] & FILE_AH) * maak_score(-75, -87);  // geisoleerde randpion op halfopen lijn
-			result += popcount(bb_mijnPion & GeisoleerdeLijnen & bb_pionlijnen[Them] & NOT_FILE_AH) * maak_score(-34, -40);  // geisoleerde pion niet op halfopen lijn, niet aan de rand
-			result += popcount(bb_mijnPion & GeisoleerdeLijnen & bb_pionlijnen[Them] & FILE_AH) * maak_score(-31, -26);  // geisoleerde randpion niet op halfopen lijn
+			result += popcount(bb_mijnPion & GeisoleerdeLijnen & ~bb_pionlijnen[Them] & NOT_FILE_AH) * make_score(-121, -136);  // geisoleerde pion op halfopen lijn, niet aan de rand
+			result += popcount(bb_mijnPion & GeisoleerdeLijnen & ~bb_pionlijnen[Them] & FILE_AH) * make_score(-75, -87);  // geisoleerde randpion op halfopen lijn
+			result += popcount(bb_mijnPion & GeisoleerdeLijnen & bb_pionlijnen[Them] & NOT_FILE_AH) * make_score(-34, -40);  // geisoleerde pion niet op halfopen lijn, niet aan de rand
+			result += popcount(bb_mijnPion & GeisoleerdeLijnen & bb_pionlijnen[Them] & FILE_AH) * make_score(-31, -26);  // geisoleerde randpion niet op halfopen lijn
 		}
 
 		if (bb_dubbelpionnen & GeisoleerdeLijnen)
 		{
-			result += popcount(bb_dubbelpionnen & GeisoleerdeLijnen & ~bb_pionlijnen[Them] & NOT_FILE_AH) * maak_score(-24, -47);  // geisoleerde dubbelpion op halfopen lijn, niet aan de rand
-			result += popcount(bb_dubbelpionnen & GeisoleerdeLijnen & ~bb_pionlijnen[Them] & FILE_AH) * maak_score(-18, -42);  // geisoleerde dubbelpion op halfopen lijn, aan de rand
-			result += popcount(bb_dubbelpionnen & GeisoleerdeLijnen & bb_pionlijnen[Them] & NOT_FILE_AH) * maak_score(-14, -8);  // geisoleerde dubbelpion niet op halfopen lijn, niet aan de rand
-			result += popcount(bb_dubbelpionnen & GeisoleerdeLijnen & bb_pionlijnen[Them] & FILE_AH) * maak_score(-10, -5);  // geisoleerde dubbelpion niet op halfopen lijn, aan de rand
+			result += popcount(bb_dubbelpionnen & GeisoleerdeLijnen & ~bb_pionlijnen[Them] & NOT_FILE_AH) * make_score(-24, -47);  // geisoleerde dubbelpion op halfopen lijn, niet aan de rand
+			result += popcount(bb_dubbelpionnen & GeisoleerdeLijnen & ~bb_pionlijnen[Them] & FILE_AH) * make_score(-18, -42);  // geisoleerde dubbelpion op halfopen lijn, aan de rand
+			result += popcount(bb_dubbelpionnen & GeisoleerdeLijnen & bb_pionlijnen[Them] & NOT_FILE_AH) * make_score(-14, -8);  // geisoleerde dubbelpion niet op halfopen lijn, niet aan de rand
+			result += popcount(bb_dubbelpionnen & GeisoleerdeLijnen & bb_pionlijnen[Them] & FILE_AH) * make_score(-10, -5);  // geisoleerde dubbelpion niet op halfopen lijn, aan de rand
 		}
 
-		result += popcount(e->pionAanval[Us] & CENTER_BOX) * maak_score(9, 11);  // controle van centrum
-		result += popcount(e->pionAanval[Us] & BOARD_EDGE) * maak_score(6, 8);  // controle van rest van het bord
+		result += popcount(e->pionAanval[Us] & CENTER_BOX) * make_score(9, 11);  // controle van centrum
+		result += popcount(e->pionAanval[Us] & BOARD_EDGE) * make_score(6, 8);  // controle van rest van het bord
 
-		result += popcount(bb_mijnPion & BuurVelden & e->pionAanval[Us]) * maak_score(2, -5);  // pion ernaast en verdedigd
-		result += popcount(bb_mijnPion & e->pionAanval[Us]) * maak_score(48, 26);  // pion verdedigd
-		result += popcount(bb_mijnPion & BuurVelden) * maak_score(22, 23);  // pion ernaast
+		result += popcount(bb_mijnPion & BuurVelden & e->pionAanval[Us]) * make_score(2, -5);  // pion ernaast en verdedigd
+		result += popcount(bb_mijnPion & e->pionAanval[Us]) * make_score(48, 26);  // pion verdedigd
+		result += popcount(bb_mijnPion & BuurVelden) * make_score(22, 23);  // pion ernaast
 
 
 		// het volgende lijkt heel bizar - houdt er ook geen rekening mee of de hangende pion gedekt is of niet
@@ -207,12 +207,12 @@ namespace
 		Bitboard bb_echt_achtergebleven = bb_achtergebleven & ~bb_keten;
 		Bitboard bb_velden_voor_achtergebleven = shift_bb<Up>(bb_echt_achtergebleven);
 
-		result += popcount(bb_velden_voor_achtergebleven & KwetsbaarVoorToren & e->pionAanval[Them]) * maak_score(-55, -86);   // achtergebleven halfopen lijn, pionaanval stopt opmars
-		result += popcount(bb_velden_voor_achtergebleven & (pos.stukken(PAWN) | e->pionAanval[Them]) & NOT_FILE_AH) * maak_score(-30, -32);  // achtergebleven, pion of pionaanval, niet aan de rand
-		result += popcount(bb_velden_voor_achtergebleven & (pos.stukken(PAWN) | e->pionAanval[Them]) & FILE_AH) * maak_score(-26, -25);  // achtergebleven, pion of pionaanval, aan de rand
+		result += popcount(bb_velden_voor_achtergebleven & KwetsbaarVoorToren & e->pionAanval[Them]) * make_score(-55, -86);   // achtergebleven halfopen lijn, pionaanval stopt opmars
+		result += popcount(bb_velden_voor_achtergebleven & (pos.pieces(PAWN) | e->pionAanval[Them]) & NOT_FILE_AH) * make_score(-30, -32);  // achtergebleven, pion of pionaanval, niet aan de rand
+		result += popcount(bb_velden_voor_achtergebleven & (pos.pieces(PAWN) | e->pionAanval[Them]) & FILE_AH) * make_score(-26, -25);  // achtergebleven, pion of pionaanval, aan de rand
 
 		Bitboard bb_begin_blocked = e->pionAanval[Them] & shift_bb<Up>(bb_mijnPion & TweedeRij);
-		result += popcount(bb_begin_blocked) * maak_score(-11, -12); // geblokkeerde pionnen op beginpositie
+		result += popcount(bb_begin_blocked) * make_score(-11, -12); // geblokkeerde pionnen op beginpositie
 
 
 		// vrijpionnen
@@ -222,16 +222,16 @@ namespace
 		while (bb_gedekt_vrijpion)
 		{
 			Square veld = pop_lsb(&bb_gedekt_vrijpion);
-			result += 4 * VrijPionWaarden[relatieve_rij(Us, veld)] / 16; // gedekte vrijpion
+			result += 4 * VrijPionWaarden[relative_rank(Us, veld)] / 16; // gedekte vrijpion
 		}
 
 		e->vrijPionnen[Us] = bb_vrijpionnen;
-		if (meer_dan_een(bb_vrijpionnen))
-			result += maak_score(33, 128);
+		if (more_than_one(bb_vrijpionnen))
+			result += make_score(33, 128);
 
 		// potentiele vrijpionnen
 		// voorste pionnen in falanx op halfopen lijn
-		Bitboard voorste_pionnen = Us == WHITE ? bb_mijnPion & ~LijnAchter(bb_mijnPion >> 8) : bb_mijnPion & ~LijnVoor(bb_mijnPion << 8);
+		Bitboard voorste_pionnen = Us == WHITE ? bb_mijnPion & ~FileBehind(bb_mijnPion >> 8) : bb_mijnPion & ~FileInFront(bb_mijnPion << 8);
 		Bitboard bb_potentieel = voorste_pionnen & bb_falanx & KwetsbaarVoorToren & ~bb_vrijpionnen;
 		while (bb_potentieel)
 		{
@@ -241,18 +241,18 @@ namespace
 			{
 				Square veld_links = Square(veld - 1);
 				if (bbVeld[veld_links] & bb_jouwPion)
-					bb_actief &= ~bb_lijn(veld_links);
+					bb_actief &= ~bb_file(veld_links);
 			}
 			if (lijn(veld) != FILE_H)
 			{
 				Square veld_rechts = Square(veld + 1);
 				if (bbVeld[veld_rechts] & bb_jouwPion)
-					bb_actief &= ~bb_lijn(veld_rechts);
+					bb_actief &= ~bb_file(veld_rechts);
 			}
 
-			if (popcount(bb_aangrenzende_lijnen(lijn(veld)) & ~bb_rijen_voorwaarts(Us, rij(veld)) & bb_actief) >= 
-				popcount(bb_aangrenzende_lijnen(lijn(veld)) & bb_rijen_voorwaarts(Us, rij(veld)) & bb_jouwPion))
-				result += 11 * VrijPionWaarden[relatieve_rij(Us, veld)] / 16;  // potentiele vrijpionnen
+			if (popcount(bb_adjacent_files(lijn(veld)) & ~bb_ranks_forward(Us, rij(veld)) & bb_actief) >= 
+				popcount(bb_adjacent_files(lijn(veld)) & bb_ranks_forward(Us, rij(veld)) & bb_jouwPion))
+				result += 11 * VrijPionWaarden[relative_rank(Us, veld)] / 16;  // potentiele vrijpionnen
 		}
 
 		/* contempt stuff
@@ -305,7 +305,7 @@ namespace
 	const EvalValue MaxSafetyBonus = V(258);
 #undef V
 
-#define pawn_make_score(mg, eg) maak_score((87 * 177 * mg + 6 * 142 * eg) / (93 * 64), (-13 * 177 * mg + 106 * 142 * eg) / (93 * 64))
+#define pawn_make_score(mg, eg) make_score((87 * 177 * mg + 6 * 142 * eg) / (93 * 64), (-13 * 177 * mg + 106 * 142 * eg) / (93 * 64))
 #define S(mg, eg) pawn_make_score(mg, eg)
 
 	const Score DubbelPion = S(22, 48);
@@ -350,7 +350,7 @@ namespace
 
 	const Score NietOndersteundScore[2] = 
 	{ 
-		maak_score(79, 24), maak_score(53, 17)
+		make_score(79, 24), make_score(53, 17)
 	};
 
 	template<Color Us>
@@ -363,10 +363,10 @@ namespace
 
 		Square veld;
 		Score score = SCORE_ZERO;
-		const Square* pVeld = pos.stuk_lijst(Us, PAWN);
+		const Square* pVeld = pos.piece_list(Us, PAWN);
 
-		Bitboard mijnPionnen = pos.stukken(Us, PAWN);
-		Bitboard jouwPionnen = pos.stukken(Them, PAWN);
+		Bitboard mijnPionnen = pos.pieces(Us, PAWN);
+		Bitboard jouwPionnen = pos.pieces(Them, PAWN);
 
 		e->vrijPionnen[Us] = 0;
 		e->koningVeld[Us] = SQ_NONE;
@@ -377,15 +377,15 @@ namespace
 		{
 			File f = lijn(veld);
 
-			Bitboard buurPionnen = mijnPionnen & bb_aangrenzende_lijnen(f);
-			Bitboard dubbelPionnen = mijnPionnen & bb_voorwaarts(Us, veld);
+			Bitboard buurPionnen = mijnPionnen & bb_adjacent_files(f);
+			Bitboard dubbelPionnen = mijnPionnen & bb_forward(Us, veld);
 			//bool dubbelPion = mijnPionnen & veld_achter(IK, veld);
-			bool geslotenLijn = jouwPionnen & bb_voorwaarts(Us, veld);
-			Bitboard stoppers = jouwPionnen & vrijpion_mask(Us, veld);
+			bool geslotenLijn = jouwPionnen & bb_forward(Us, veld);
+			Bitboard stoppers = jouwPionnen & passed_pawn_mask(Us, veld);
 			Bitboard aanvallers = jouwPionnen & PionAanval[Us][veld];
-			Bitboard aanvallersPush = jouwPionnen & PionAanval[Us][veld_voor(Us, veld)];
-			Bitboard falanks = buurPionnen & bb_rij(veld);
-			Bitboard ondersteund = buurPionnen & bb_rij(veld_achter(Us, veld));
+			Bitboard aanvallersPush = jouwPionnen & PionAanval[Us][square_in_front(Us, veld)];
+			Bitboard falanks = buurPionnen & bb_rank(veld);
+			Bitboard ondersteund = buurPionnen & bb_rank(square_behind(Us, veld));
 			bool keten = ondersteund | falanks;
 			bool isolani = !buurPionnen;
 			bool achtergebleven;
@@ -394,13 +394,13 @@ namespace
 
 			if ((isolani | keten) 
 				|| aanvallers
-				|| (mijnPionnen & pion_aanval_bereik(Them, veld))
-				|| (relatieve_rij(Us, veld) >= RANK_5))
+				|| (mijnPionnen & pawn_attack_range(Them, veld))
+				|| (relative_rank(Us, veld) >= RANK_5))
 				achtergebleven = false;
 			else
 			{
-				Bitboard b = pion_aanval_bereik(Us, veld) & (mijnPionnen | jouwPionnen);
-				b = pion_aanval_bereik(Us, veld) & bb_rij(achterste_veld(Us, b));
+				Bitboard b = pawn_attack_range(Us, veld) & (mijnPionnen | jouwPionnen);
+				b = pawn_attack_range(Us, veld) & bb_rank(rearmost_square(Us, b));
 				achtergebleven = (b | shift_up<Us>(b)) & jouwPionnen;
 			}
 
@@ -408,18 +408,18 @@ namespace
 			{
 				e->vrijPionnen[Us] |= veld;
 				if (keten)
-					score += VrijPionWaarden4[relatieve_rij(Us, veld)]; // gedekte vrijpion
+					score += VrijPionWaarden4[relative_rank(Us, veld)]; // gedekte vrijpion
 			}
 			else if (!(stoppers ^ aanvallers ^ aanvallersPush)
 				&& !dubbelPionnen
 				&& popcount(ondersteund) >= popcount(aanvallers)
 				&& popcount(falanks) >= popcount(aanvallersPush))
 			{
-				score += VrijPionWaarden8[relatieve_rij(Us, veld)]; // kandidaat vrijpion
+				score += VrijPionWaarden8[relative_rank(Us, veld)]; // kandidaat vrijpion
 			}
 
 			if (keten) // 60.9 %, geslotenLijn 79.2 %, falanks 73.6 %, rijverdeling 62% 24% 11% 3% 0.3%
-				score += KetenScore[geslotenLijn][falanks != 0][popcount(ondersteund)][relatieve_rij(Us, veld)];
+				score += KetenScore[geslotenLijn][falanks != 0][popcount(ondersteund)][relative_rank(Us, veld)];
 
 			else if (isolani) // 15.8 % waarvan 42% randpion, 58% gesloten lijn
 				score -= IsolaniScore[geslotenLijn][f];
@@ -432,26 +432,26 @@ namespace
 				score -= NietOndersteundScore[geslotenLijn];
 
 			if (dubbelPionnen) // 5.8 % waarvan 6% randpion
-				score -= DubbelPionScoreAfstand[f][rij_afstand(veld, voorste_veld(Us, dubbelPionnen))];
+				score -= DubbelPionScoreAfstand[f][rank_distance(veld, frontmost_square(Us, dubbelPionnen))];
 			//if (dubbelPion && ~ondersteund)
 			//	score -= DubbelPion;
 
 			if (aanvallers) // 6.5 %
-				score += PionAanvallerScore[relatieve_rij(Us, veld)];
+				score += PionAanvallerScore[relative_rank(Us, veld)];
 		}
 
 		Bitboard b = e->halfOpenLijnen[Us] ^ 0xFF;
 		e->pionBereik[Us] = b ? int(msb(b) - lsb(b)) : 0;
 
-		const Score Score_Centrum_Bind = maak_score(41, -6);
+		const Score Score_Centrum_Bind = make_score(41, -6);
 		b = shift_upleft<Us>(mijnPionnen) & shift_upright<Us>(mijnPionnen) & CenterBindMask;
 		score += Score_Centrum_Bind * popcount(b);
 
-		const Score Score_Meerdere_Vrijpionnen = maak_score(33, 128);
-		if (meer_dan_een(e->vrijPionnen[Us]))
+		const Score Score_Meerdere_Vrijpionnen = make_score(33, 128);
+		if (more_than_one(e->vrijPionnen[Us]))
 			score += Score_Meerdere_Vrijpionnen;
 
-		const Score Score_Tweede_Rij_Vast = maak_score(11, 12);
+		const Score Score_Tweede_Rij_Vast = make_score(11, 12);
 		Bitboard bb_begin_blocked = e->pionAanval[Them] & shift_up<Us>(mijnPionnen & TweedeRij);
 		score -= Score_Tweede_Rij_Vast * popcount(bb_begin_blocked); // geblokkeerde pionnen op beginpositie
 
@@ -464,11 +464,11 @@ namespace Pawns
 	const int Seed[RANK_N]        = { 0,  0, 15, 10, 57,  75, 135, 0 };
 	const int falanksSeed[RANK_N] = { 0, 10, 13, 33, 66, 105, 196, 0 };
 
-	void initialisatie()
+	void initialize()
 	{
 		for (int n = 0; n < 17; n++)
-			for (int afstand = 0; afstand < 8; afstand++)
-				Score_K_Pion_afstand[n][afstand] = maak_score(0, (int)floor(sqrt((double)n) * 5.0 * afstand));
+			for (int distance = 0; distance < 8; distance++)
+				Score_K_Pion_afstand[n][distance] = make_score(0, (int)floor(sqrt((double)n) * 5.0 * distance));
 
 		for (int n = 0; n < 8; n++)
 		{
@@ -478,7 +478,7 @@ namespace Pawns
 			Score_Aanvalslijnen[n] = n * Score_PionBestorming[0];
 		}
 
-		const Score Score_Niet_Ondersteund = maak_score(53, 17);
+		const Score Score_Niet_Ondersteund = make_score(53, 17);
 		//const Score Score_Apex = maak_score(52, 25);
 
 		for (int geslotenLijn = 0; geslotenLijn <= 1; ++geslotenLijn)
@@ -497,7 +497,7 @@ namespace Pawns
 
 	Tuple* probe(const Position& pos)
 	{
-		Key64 sleutel = pos.pion_sleutel();
+		Key64 sleutel = pos.pawn_key();
 		Tuple* e = pos.ti()->pionnenTabel[sleutel];
 
 		if (e->sleutel64 == sleutel)
@@ -509,17 +509,17 @@ namespace Pawns
 
 		// bereken pionstelling
 		// ====================
-		Bitboard WPion = pos.stukken(WHITE, PAWN);
-		Bitboard ZPion = pos.stukken(BLACK, PAWN);
+		Bitboard WPion = pos.pieces(WHITE, PAWN);
+		Bitboard ZPion = pos.pieces(BLACK, PAWN);
 
-		bb_pionlijnen[WHITE] = LijnVoorAchter(WPion);
-		bb_pionlijnen[BLACK] = LijnVoorAchter(ZPion);
+		bb_pionlijnen[WHITE] = FileInFrontBehind(WPion);
+		bb_pionlijnen[BLACK] = FileInFrontBehind(ZPion);
 
 		e->pionAanval[WHITE] = pion_aanval<WHITE>(WPion);
 		e->pionAanval[BLACK] = pion_aanval<BLACK>(ZPion);
 
-		e->veiligVoorPion[WHITE] = ~LijnVoor(e->pionAanval[WHITE]);
-		e->veiligVoorPion[BLACK] = ~LijnAchter(e->pionAanval[BLACK]);
+		e->veiligVoorPion[WHITE] = ~FileInFront(e->pionAanval[WHITE]);
+		e->veiligVoorPion[BLACK] = ~FileBehind(e->pionAanval[BLACK]);
 
 		e->halfOpenLijnen[WHITE] = (int)~bb_pionlijnen[WHITE] & 0xFF;
 		e->halfOpenLijnen[BLACK] = (int)~bb_pionlijnen[BLACK] & 0xFF;
@@ -547,7 +547,7 @@ namespace Pawns
 			|| ((e->halfOpenLijnen[WHITE] & e->halfOpenLijnen[BLACK] & 0x3c) && !e->asymmetrie);
 
 		// bereken de gemiddelde lijn van pionnen
-		Bitboard bb_pionnen = pos.stukken(PAWN);
+		Bitboard bb_pionnen = pos.pieces(PAWN);
 		e->nPionnen = popcount(bb_pionnen);
 		if (bb_pionnen)
 		{
@@ -575,24 +575,24 @@ namespace Pawns
 
 		enum { NoOwnPawn, CanMove, StoppedByPawn, StoppedByKing };
 
-		Bitboard b = bb_rijen_voorwaarts(Us, rij(veldK)) | bb_rij(veldK);
-		Bitboard mijnPionnen = b & pos.stukken(Us, PAWN);
-		Bitboard jouwPionnen = b & pos.stukken(Them, PAWN);
+		Bitboard b = bb_ranks_forward(Us, rij(veldK)) | bb_rank(veldK);
+		Bitboard mijnPionnen = b & pos.pieces(Us, PAWN);
+		Bitboard jouwPionnen = b & pos.pieces(Them, PAWN);
 		EvalValue gevaar = EVAL_0;
 		File center = std::max(FILE_B, std::min(FILE_G, lijn(veldK)));
 
 		for (File f = center - File(1); f <= center + File(1); ++f)
 		{
-			b = mijnPionnen & bb_lijn(f);
-			Rank mijnRij = b ? relatieve_rij(Us, achterste_veld(Us, b)) : RANK_1;
+			b = mijnPionnen & bb_file(f);
+			Rank mijnRij = b ? relative_rank(Us, rearmost_square(Us, b)) : RANK_1;
 
-			b = jouwPionnen & bb_lijn(f);
-			Rank jouwRij = b ? relatieve_rij(Us, voorste_veld(Them, b)) : RANK_1;
+			b = jouwPionnen & bb_file(f);
+			Rank jouwRij = b ? relative_rank(Us, frontmost_square(Them, b)) : RANK_1;
 
 			gevaar += ShelterWeakness[std::min(f, FILE_H - f)][mijnRij] * schild_factor[std::abs(f - lijn(veldK))];
 
 			int ttype = 
-				(f == lijn(veldK) && jouwRij == relatieve_rij(Us, veldK) + 1) ? StoppedByKing :
+				(f == lijn(veldK) && jouwRij == relative_rank(Us, veldK) + 1) ? StoppedByKing :
 				(mijnRij == RANK_1) ? NoOwnPawn :
 				(jouwRij == mijnRij + 1) ? StoppedByPawn :
 				CanMove;
@@ -607,46 +607,46 @@ namespace Pawns
 
 
 	template<Color Us>
-	Score Tuple::bereken_koning_veiligheid(const Position& pos)
+	Score Tuple::compute_king_safety(const Position& pos)
 	{
 		const Color Them = (Us == WHITE ? BLACK : WHITE);
 
 		Square veldK = pos.koning(Us);
 		koningVeld[Us] = veldK;
-		rokadeMogelijkheden[Us] = pos.rokade_mogelijkheden(Us);
+		rokadeMogelijkheden[Us] = pos.castling_rights(Us);
 
 		EvalValue veilig_bonus = sf_shelter_storm<Us>(pos, veldK);
 
-		if (pos.rokade_mogelijk(Us == WHITE ? WHITE_SHORT : BLACK_SHORT))
-			veilig_bonus = std::max(veilig_bonus, sf_shelter_storm<Us>(pos, relatief_veld(Us, SQ_G1)));
-		if (pos.rokade_mogelijk(Us == WHITE ? WHITE_LONG : BLACK_LONG))
-			veilig_bonus = std::max(veilig_bonus, sf_shelter_storm<Us>(pos, relatief_veld(Us, SQ_C1)));
+		if (pos.castling_possible(Us == WHITE ? WHITE_SHORT : BLACK_SHORT))
+			veilig_bonus = std::max(veilig_bonus, sf_shelter_storm<Us>(pos, relative_square(Us, SQ_G1)));
+		if (pos.castling_possible(Us == WHITE ? WHITE_LONG : BLACK_LONG))
+			veilig_bonus = std::max(veilig_bonus, sf_shelter_storm<Us>(pos, relative_square(Us, SQ_C1)));
 
 		const Bitboard THIRD_FOURTH_RANK = Us == WHITE ? Rank3BB | Rank4BB : Rank6BB | Rank5BB;
 		const Bitboard FIFTH_RANK = Us == WHITE ? Rank5BB : Rank4BB;
 
-		Bitboard aanvallende_pionnen = AanvalsLijnen[lijn(veldK)] & pos.stukken(Them, PAWN);
+		Bitboard aanvallende_pionnen = AanvalsLijnen[lijn(veldK)] & pos.pieces(Them, PAWN);
 
 		safety[Us] = veilig_bonus / 220 * 8
 			- 16 * popcount(aanvallende_pionnen & THIRD_FOURTH_RANK)    // vijandelijke pionnen op onze 3de rij
 			- 8 * popcount(aanvallende_pionnen & FIFTH_RANK);         // vijandelijke pionnen op onze 5de rij
 
-		Score result = maak_score(veilig_bonus, 0);
+		Score result = make_score(veilig_bonus, 0);
 
 		// K op eerste rij achter 3 pionnen -> malus voor mat achter de paaltjes
-		Bitboard bb_Koning = pos.stukken(Us, KING);
+		Bitboard bb_Koning = pos.pieces(Us, KING);
 		const Bitboard FIRST_RANK = Us == WHITE ? Rank1BB : Rank8BB;
 
 		if (bb_Koning & FIRST_RANK)
 		{
 			Bitboard bb = shift_up<Us>(bb_Koning) | shift_upleft<Us>(bb_Koning) | shift_upright<Us>(bb_Koning);
-			if (bb == (pos.stukken(Us, PAWN) & bb))
-				result += maak_score(-63, -173);
+			if (bb == (pos.pieces(Us, PAWN) & bb))
+				result += make_score(-63, -173);
 		}
 
 		// koning voor vijandelijke pion?
-		if (pos.stukken(Them, PAWN) & shift_down<Us>(bb_Koning))
-			result += maak_score(0, 27);
+		if (pos.pieces(Them, PAWN) & shift_down<Us>(bb_Koning))
+			result += make_score(0, 27);
 
 		if (nPionnen)
 			result -= Score_K_Pion_afstand[nPionnen][abs(gemiddeldeLijn - lijn(pos.koning(Us)))];
@@ -654,6 +654,6 @@ namespace Pawns
 		return result;
 	}
 
-	template Score Tuple::bereken_koning_veiligheid<WHITE>(const Position& pos);
-	template Score Tuple::bereken_koning_veiligheid<BLACK>(const Position& pos);
+	template Score Tuple::compute_king_safety<WHITE>(const Position& pos);
+	template Score Tuple::compute_king_safety<BLACK>(const Position& pos);
 } // namespace

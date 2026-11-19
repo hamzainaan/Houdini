@@ -161,19 +161,19 @@ Value Nalimov_probe(Position& pos, Value alfa, Value beta)
 	square sqEP;
 	INDEX pos_index;
 
-	if (pos.stukken() == pos.stukken(KING))
+	if (pos.pieces() == pos.pieces(KING))
 		return DRAW_VALUE;
 
-	register_piece(rgiCounters, 0, sqW, 0, pos.stukken(WHITE, PAWN));
-	register_piece(rgiCounters, 1, sqW, 1, pos.stukken(WHITE, KNIGHT));
-	register_piece(rgiCounters, 2, sqW, 2, pos.stukken(WHITE, BISHOP));
-	register_piece(rgiCounters, 3, sqW, 3, pos.stukken(WHITE, ROOK));
-	register_piece(rgiCounters, 4, sqW, 4, pos.stukken(WHITE, QUEEN));
-	register_piece(rgiCounters, 5, sqB, 0, pos.stukken(BLACK, PAWN));
-	register_piece(rgiCounters, 6, sqB, 1, pos.stukken(BLACK, KNIGHT));
-	register_piece(rgiCounters, 7, sqB, 2, pos.stukken(BLACK, BISHOP));
-	register_piece(rgiCounters, 8, sqB, 3, pos.stukken(BLACK, ROOK));
-	register_piece(rgiCounters, 9, sqB, 4, pos.stukken(BLACK, QUEEN));
+	register_piece(rgiCounters, 0, sqW, 0, pos.pieces(WHITE, PAWN));
+	register_piece(rgiCounters, 1, sqW, 1, pos.pieces(WHITE, KNIGHT));
+	register_piece(rgiCounters, 2, sqW, 2, pos.pieces(WHITE, BISHOP));
+	register_piece(rgiCounters, 3, sqW, 3, pos.pieces(WHITE, ROOK));
+	register_piece(rgiCounters, 4, sqW, 4, pos.pieces(WHITE, QUEEN));
+	register_piece(rgiCounters, 5, sqB, 0, pos.pieces(BLACK, PAWN));
+	register_piece(rgiCounters, 6, sqB, 1, pos.pieces(BLACK, KNIGHT));
+	register_piece(rgiCounters, 7, sqB, 2, pos.pieces(BLACK, BISHOP));
+	register_piece(rgiCounters, 8, sqB, 3, pos.pieces(BLACK, ROOK));
+	register_piece(rgiCounters, 9, sqB, 4, pos.pieces(BLACK, QUEEN));
 
 	iTb = IDescFindFromCounters (rgiCounters);
 	if (iTb == 0)
@@ -185,7 +185,7 @@ Value Nalimov_probe(Position& pos, Value alfa, Value beta)
 	if (iTb > 0)
 	{
 		Inverted = false;
-		side = pos.aan_zet() == WHITE ? x_colorWhite : x_colorBlack;
+		side = pos.side_to_move() == WHITE ? x_colorWhite : x_colorBlack;
 		psqW = sqW;
 		psqB = sqB;
 	}
@@ -193,14 +193,14 @@ Value Nalimov_probe(Position& pos, Value alfa, Value beta)
 	{
 		iTb = -iTb;
 		Inverted = true;
-		side = pos.aan_zet() == WHITE ? x_colorBlack : x_colorWhite;
+		side = pos.side_to_move() == WHITE ? x_colorBlack : x_colorWhite;
 		psqW = sqB;
 		psqB = sqW;
 	}
 	if (!FRegisteredFun(iTb, side))
 		return NO_VALUE;
 
-	sqEP = pos.enpassant_veld();
+	sqEP = pos.enpassant_square();
 	if (sqEP == SQ_NONE)
 		sqEP = EP_NO_SQUARE;
 
@@ -209,7 +209,7 @@ Value Nalimov_probe(Position& pos, Value alfa, Value beta)
 	if (probe_result == L_bev_broken)
 		return NO_VALUE;
 
-	pos.verhoog_tb_hits();
+	pos.increase_tb_hits();
 
 	Value result;
 	if (probe_result > 0)

@@ -23,7 +23,7 @@ namespace
 		}
 	}
 
-	inline MoveEx* partitie(MoveEx* begin, MoveEx* end, SortValue v)
+	inline MoveEx* partition_moves(MoveEx* begin, MoveEx* end, SortValue v)
 	{
 		MoveEx tmp;
 
@@ -105,7 +105,7 @@ namespace
 	}
 
 
-	inline Move vind_beste_zet(MoveEx* begin, MoveEx* end)
+	inline Move find_best_move(MoveEx* begin, MoveEx* end)
 	{
 		MoveEx* best = begin;
 		for (MoveEx* z = begin + 1; z < end; z++)
@@ -157,21 +157,21 @@ namespace MoveSelection
 		PositionInfo* st = pos.info();
 		st->mp_diepte = diepte;
 		st->mp_alleen_rustige_schaakzetten = alleen_rustige_schaakzetten;
-		st->mp_ttZet = ttZet && pos.geldige_zet(ttZet) ? ttZet : NO_MOVE;
+		st->mp_ttZet = ttZet && pos.valid_move(ttZet) ? ttZet : NO_MOVE;
 
-		if (pos.schaak_gevers())
+		if (pos.check_givers())
 			st->mp_etappe = st->mp_ttZet ? EVADE_CHECK : EVASIONS_GEN;
 		else
 		{
 			st->mp_etappe = st->mp_ttZet ? NORMAL_SEARCH : GOOD_CAPTURES_GEN;
 			if (st->counterZetWaarden)
 			{
-				st->mp_counterZet = Move(pos.ti()->counterZetten.get(st->bewogenStuk, naar_veld(st->vorigeZet)));
+				st->mp_counterZet = Move(pos.ti()->counterZetten.get(st->bewogenStuk, to_square(st->vorigeZet)));
 				if (!st->mp_ttZet && (st - 1)->counterZetWaarden
-					&& (!st->mp_counterZet || !pos.geldige_zet(st->mp_counterZet) || pos.slag_of_promotie(st->mp_counterZet)))
+					&& (!st->mp_counterZet || !pos.valid_move(st->mp_counterZet) || pos.slag_of_promotie(st->mp_counterZet)))
 				{
-					st->mp_counterZet = pos.ti()->counterfollowupZetten.get((st - 1)->bewogenStuk, naar_veld((st - 1)->vorigeZet),
-						st->bewogenStuk, naar_veld(st->vorigeZet));
+					st->mp_counterZet = pos.ti()->counterfollowupZetten.get((st - 1)->bewogenStuk, to_square((st - 1)->vorigeZet),
+						st->bewogenStuk, to_square(st->vorigeZet));
 				}
 			}
 			else
@@ -184,7 +184,7 @@ namespace MoveSelection
 		assert(diepte <= DEPTH_0);
 		PositionInfo* st = pos.info();
 
-		if (pos.schaak_gevers())
+		if (pos.check_givers())
 			st->mp_etappe = EVADE_CHECK;
 
 		else if (diepte == DEPTH_0)
@@ -203,19 +203,19 @@ namespace MoveSelection
 			return;
 		}
 
-		st->mp_ttZet = ttZet && pos.geldige_zet(ttZet) ? ttZet : NO_MOVE;
+		st->mp_ttZet = ttZet && pos.valid_move(ttZet) ? ttZet : NO_MOVE;
 		if (!st->mp_ttZet)
 			++st->mp_etappe;
 	}
 
 	void init_probcut(const Position& pos, Move ttZet, SeeValue limiet)
 	{
-		assert(!pos.schaak_gevers());
+		assert(!pos.check_givers());
 		PositionInfo* st = pos.info();
 		st->mp_threshold = limiet + SeeValue(1);
 
 		st->mp_ttZet = ttZet
-			&& pos.geldige_zet(ttZet)
+			&& pos.valid_move(ttZet)
 			&& pos.slag_of_promotie(ttZet)
 			&& pos.see_test(ttZet, st->mp_threshold) ? ttZet : NO_MOVE;
 
@@ -227,8 +227,8 @@ namespace MoveSelection
 	{
 		PositionInfo* st = pos.info();
 		for (MoveEx *z = st->mp_huidigeZet; z < st->mp_eindeLijst; z++)
-			z->waarde = SortValue(CaptureSortValues[pos.stuk_op_veld(naar_veld(z->zet))]
-				- 200 * relatieve_rij(pos.aan_zet(), naar_veld(z->zet)));
+			z->waarde = SortValue(CaptureSortValues[pos.piece_on_square(to_square(z->zet))]
+				- 200 * relative_rank(pos.side_to_move(), to_square(z->zet)));
 	}
 
 	template<>
@@ -241,18 +241,18 @@ namespace MoveSelection
 		const CounterMoveValues* fm = (st - 1)->counterZetWaarden ? (st - 1)->counterZetWaarden : &pos.ni()->counterZetStatistieken[NO_PIECE][SQ_A1];
 		const CounterMoveValues* f2 = (st - 3)->counterZetWaarden ? (st - 3)->counterZetWaarden : &pos.ni()->counterZetStatistieken[NO_PIECE][SQ_A1];
 
-		Square dreiging = st->mp_diepte < 6 * PLY ? pos.bereken_dreiging() : SQ_NONE;
+		Square dreiging = st->mp_diepte < 6 * PLY ? pos.compute_threat() : SQ_NONE;
 
 		for (MoveEx *z = st->mp_huidigeZet; z < st->mp_eindeLijst; z++)
 		{
-			int offset = MoveValueStats::bereken_offset(pos.bewogen_stuk(z->zet), naar_veld(z->zet));
+			int offset = MoveValueStats::compute_offset(pos.moved_piece(z->zet), to_square(z->zet));
 			z->waarde = SortValue(history.valueAtOffset(offset))
 				+ SortValue(cm->valueAtOffset(offset))
 				+ SortValue(fm->valueAtOffset(offset))
 				+ SortValue(f2->valueAtOffset(offset));
-			z->waarde += SortValue(8 * pos.ti()->maxWinstTabel.get(pos.bewogen_stuk(z->zet), z->zet));
+			z->waarde += SortValue(8 * pos.ti()->maxWinstTabel.get(pos.moved_piece(z->zet), z->zet));
 
-			if (van_veld(z->zet) == dreiging)
+			if (from_square(z->zet) == dreiging)
 				z->waarde += SortValue(9000 - 1000 * (st->mp_diepte / PLY));
 		}
 	}
@@ -265,21 +265,21 @@ namespace MoveSelection
 
 		for (MoveEx *z = st->mp_huidigeZet; z < st->mp_eindeLijst; z++)
 		{
-			if (pos.is_slagzet(z->zet))
-				z->waarde = SortValue(CaptureSortValues[pos.stuk_op_veld(naar_veld(z->zet))]
-					- PieceOrder[pos.bewogen_stuk(z->zet)]) + SORT_MAX;
+			if (pos.is_capture(z->zet))
+				z->waarde = SortValue(CaptureSortValues[pos.piece_on_square(to_square(z->zet))]
+					- PieceOrder[pos.moved_piece(z->zet)]) + SORT_MAX;
 			//else if (z->zet == st->mp_counterZet)
 			//	z->waarde = SorteerWaarde(99999);
 			else
 			{
-				int offset = MoveValueStats::bereken_offset(pos.bewogen_stuk(z->zet), naar_veld(z->zet));
+				int offset = MoveValueStats::compute_offset(pos.moved_piece(z->zet), to_square(z->zet));
 				z->waarde = SortValue(history.valueAtOffset(offset));
 			}
 		}
 	}
 
 
-	Move geef_zet(const Position& pos)
+	Move next_move(const Position& pos)
 	{
 		PositionInfo* st = pos.info();
 
@@ -297,14 +297,14 @@ namespace MoveSelection
 			st->mp_huidigeZet = (st - 1)->mp_eindeLijst;
 			st->mp_eindeSlechteSlag = st->mp_huidigeZet;
 			st->mp_uitgesteld_aantal = 0;
-			st->mp_eindeLijst = genereerZetten<GEN_CAPTURES_OR_PROMOTIONS>(pos, st->mp_huidigeZet);
+			st->mp_eindeLijst = generateMoves<GEN_CAPTURES_OR_PROMOTIONS>(pos, st->mp_huidigeZet);
 			score<GEN_CAPTURES_OR_PROMOTIONS>(pos);
 			st->mp_etappe = GOOD_CAPTURES;
 
 		case GOOD_CAPTURES:
 			while (st->mp_huidigeZet < st->mp_eindeLijst)
 			{
-				Move zet = vind_beste_zet(st->mp_huidigeZet++, st->mp_eindeLijst);
+				Move zet = find_best_move(st->mp_huidigeZet++, st->mp_eindeLijst);
 				if (zet != st->mp_ttZet)
 				{
 					if (pos.see_test(zet, SEE_0))
@@ -318,7 +318,7 @@ namespace MoveSelection
 			st->mp_etappe = KILLERS;
 			{
 				Move zet = st->killers[0];
-				if (zet && zet != st->mp_ttZet && pos.geldige_zet(zet) && !pos.slag_of_promotie(zet))
+				if (zet && zet != st->mp_ttZet && pos.valid_move(zet) && !pos.slag_of_promotie(zet))
 					return zet;
 			}
 
@@ -327,7 +327,7 @@ namespace MoveSelection
 			st->mp_etappe = KILLERS1;
 			{
 				Move zet = st->killers[1];
-				if (zet && zet != st->mp_ttZet && pos.geldige_zet(zet) && !pos.slag_of_promotie(zet))
+				if (zet && zet != st->mp_ttZet && pos.valid_move(zet) && !pos.slag_of_promotie(zet))
 					return zet;
 			}
 
@@ -338,7 +338,7 @@ namespace MoveSelection
 				Move zet = st->mp_counterZet;
 				if (zet && zet != st->mp_ttZet && zet != st->killers[0]
 					&& zet != st->killers[1]
-					&& pos.geldige_zet(zet) && !pos.slag_of_promotie(zet))
+					&& pos.valid_move(zet) && !pos.slag_of_promotie(zet))
 					return zet;
 			}
 
@@ -350,7 +350,7 @@ namespace MoveSelection
 			while (st->mp_huidigeZet < st->mp_eindeSlechteSlag)
 			{
 				Move zet = *st->mp_huidigeZet++;
-				if (stuk_type(pos.stuk_op_veld(naar_veld(zet))) == KNIGHT && stuk_type(pos.stuk_op_veld(van_veld(zet))) == BISHOP)
+				if (piece_type(pos.piece_on_square(to_square(zet))) == KNIGHT && piece_type(pos.piece_on_square(from_square(zet))) == BISHOP)
 				{
 					*(st->mp_huidigeZet - 1) = NO_MOVE;
 					return zet;
@@ -362,22 +362,22 @@ namespace MoveSelection
 			if (st->mp_alleen_rustige_schaakzetten && st->zetNummer >= 1)
 			{
 				MoveEx* z = st->mp_huidigeZet;
-				z = genereerZetten<GEN_QUIET_CHECKS>(pos, z);
-				z = genereerZetten<GEN_PAWN_ADVANCES>(pos, z);
+				z = generateMoves<GEN_QUIET_CHECKS>(pos, z);
+				z = generateMoves<GEN_PAWN_ADVANCES>(pos, z);
 				st->mp_eindeLijst = z;
 				score<GEN_QUIET_MOVES>(pos);
 				insertion_sort(st->mp_huidigeZet, st->mp_eindeLijst);
 			}
 			else
 			{
-				st->mp_eindeLijst = genereerZetten<GEN_QUIET_MOVES>(pos, st->mp_huidigeZet);
+				st->mp_eindeLijst = generateMoves<GEN_QUIET_MOVES>(pos, st->mp_huidigeZet);
 				score<GEN_QUIET_MOVES>(pos);
 
-				MoveEx* sorteer_tot = st->mp_eindeLijst;
+				MoveEx* sort_until = st->mp_eindeLijst;
 				// op lage diepte: sorteer enkel maar de positieve zetten; dus eerst een partitie maken
 				if (st->mp_diepte < 6 * PLY)
-					sorteer_tot = partitie(st->mp_huidigeZet, st->mp_eindeLijst, SortValue(6000 - 6000 * (st->mp_diepte / PLY)));
-				insertion_sort(st->mp_huidigeZet, sorteer_tot);
+					sort_until = partition_moves(st->mp_huidigeZet, st->mp_eindeLijst, SortValue(6000 - 6000 * (st->mp_diepte / PLY)));
+				insertion_sort(st->mp_huidigeZet, sort_until);
 				//if (st->mp_diepte < 8 * PLY)
 				//	partial_insertion_sort(st->mp_huidigeZet, st->mp_eindeLijst, SorteerWaarde(2000 - 3000 * (st->mp_diepte / PLY)));
 				//else
@@ -423,14 +423,14 @@ namespace MoveSelection
 
 		case EVASIONS_GEN:
 			st->mp_huidigeZet = (st - 1)->mp_eindeLijst;
-			st->mp_eindeLijst = genereerZetten<GEN_EVASIONS>(pos, st->mp_huidigeZet);
+			st->mp_eindeLijst = generateMoves<GEN_EVASIONS>(pos, st->mp_huidigeZet);
 			score<GEN_EVASIONS>(pos);
 			st->mp_etappe = EVASIONS_LOOP;
 
 		case EVASIONS_LOOP:
 			while (st->mp_huidigeZet < st->mp_eindeLijst)
 			{
-				Move zet = vind_beste_zet(st->mp_huidigeZet++, st->mp_eindeLijst);
+				Move zet = find_best_move(st->mp_huidigeZet++, st->mp_eindeLijst);
 				if (zet != st->mp_ttZet)
 					return zet;
 			}
@@ -439,7 +439,7 @@ namespace MoveSelection
 		case QSEARCH_1: case QSEARCH_2: 
 		//case QSEARCH_3:
 			st->mp_huidigeZet = (st - 1)->mp_eindeLijst;
-			st->mp_eindeLijst = genereerZetten<GEN_CAPTURES_OR_PROMOTIONS>(pos, st->mp_huidigeZet);
+			st->mp_eindeLijst = generateMoves<GEN_CAPTURES_OR_PROMOTIONS>(pos, st->mp_huidigeZet);
 			score<GEN_CAPTURES_OR_PROMOTIONS>(pos);
 			++st->mp_etappe;
 
@@ -447,7 +447,7 @@ namespace MoveSelection
 		//case QSEARCH_3_SLAGZETTEN:
 			while (st->mp_huidigeZet < st->mp_eindeLijst)
 			{
-				Move zet = vind_beste_zet(st->mp_huidigeZet++, st->mp_eindeLijst);
+				Move zet = find_best_move(st->mp_huidigeZet++, st->mp_eindeLijst);
 				if (zet != st->mp_ttZet)
 					return zet;
 			}
@@ -459,7 +459,7 @@ namespace MoveSelection
 			//if (st->mp_etappe == QSEARCH_3_SLAGZETTEN)
 			//	st->mp_eindeLijst = genereerZetten<GEN_DAME_SCHAAK>(pos, st->mp_huidigeZet);
 			//else
-				st->mp_eindeLijst = genereerZetten<GEN_QUIET_CHECKS>(pos, st->mp_huidigeZet);
+				st->mp_eindeLijst = generateMoves<GEN_QUIET_CHECKS>(pos, st->mp_huidigeZet);
 			//score<GEN_RUSTIGE_ZETTEN>(pos);
 			++st->mp_etappe;
 
@@ -476,14 +476,14 @@ namespace MoveSelection
 
 		case PROBCUT_GEN:
 			st->mp_huidigeZet = (st - 1)->mp_eindeLijst;
-			st->mp_eindeLijst = genereerZetten<GEN_CAPTURES_OR_PROMOTIONS>(pos, st->mp_huidigeZet);
+			st->mp_eindeLijst = generateMoves<GEN_CAPTURES_OR_PROMOTIONS>(pos, st->mp_huidigeZet);
 			score<GEN_CAPTURES_OR_PROMOTIONS>(pos);
 			st->mp_etappe = PROBCUT_CAPTURES;
 
 		case PROBCUT_CAPTURES:
 			while (st->mp_huidigeZet < st->mp_eindeLijst)
 			{
-				Move zet = vind_beste_zet(st->mp_huidigeZet++, st->mp_eindeLijst);
+				Move zet = find_best_move(st->mp_huidigeZet++, st->mp_eindeLijst);
 				if (zet != st->mp_ttZet && pos.see_test(zet, st->mp_threshold))
 					return zet;
 			}
@@ -491,15 +491,15 @@ namespace MoveSelection
 
 		case RECAPTURE_GEN:
 			st->mp_huidigeZet = (st - 1)->mp_eindeLijst;
-			st->mp_eindeLijst = genereerSlagzettenOpVeld(pos, st->mp_huidigeZet, st->mp_slagVeld);
+			st->mp_eindeLijst = generateCapturesOnSquare(pos, st->mp_huidigeZet, st->mp_slagVeld);
 			score<GEN_CAPTURES_OR_PROMOTIONS>(pos);
 			st->mp_etappe = RECAPTURE_MOVES;
 
 		case RECAPTURE_MOVES:
 			while (st->mp_huidigeZet < st->mp_eindeLijst)
 			{
-				Move zet = vind_beste_zet(st->mp_huidigeZet++, st->mp_eindeLijst);
-				if (naar_veld(zet) == st->mp_slagVeld)
+				Move zet = find_best_move(st->mp_huidigeZet++, st->mp_eindeLijst);
+				if (to_square(zet) == st->mp_slagVeld)
 					return zet;
 			}
 			return NO_MOVE;
@@ -512,13 +512,13 @@ namespace MoveSelection
 }
 
 
-int SpecialKillerStats::index_mijn_stukken(const Position &pos, Color kleur)
+int SpecialKillerStats::index_our_pieces(const Position &pos, Color kleur)
 {
-	return hash_bitboard(pos.stukken(kleur));
+	return hash_bitboard(pos.pieces(kleur));
 }
 
-int SpecialKillerStats::index_jouw_stukken(const Position &pos, Color kleur, Square to)
+int SpecialKillerStats::index_their_pieces(const Position &pos, Color kleur, Square to)
 {
-	return hash_bitboard(pos.stukken(kleur, stuk_type(pos.stuk_op_veld(to))));
+	return hash_bitboard(pos.pieces(kleur, piece_type(pos.piece_on_square(to))));
 }
 

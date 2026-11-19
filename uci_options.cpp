@@ -29,7 +29,7 @@ namespace UCI
 {
 	void on_clear_hash(const UciOption&)
 	{
-		Search::wis_alles();
+		Search::clear_all();
 		if (UciOpties["Never Clear Hash"])
 			sync_cout << "info string \"Never Clear Hash\" option is enabled" << sync_endl;
 		else
@@ -38,7 +38,7 @@ namespace UCI
 
 	void on_hash_size(const UciOption& o)
 	{
-		HoofdHash.verander_grootte(o);
+		HoofdHash.change_size(o);
 	}
 
 	void on_logger(const UciOption& o)
@@ -48,7 +48,7 @@ namespace UCI
 
 	void on_threads(const UciOption&)
 	{
-		Threads.verander_thread_aantal();
+		Threads.change_thread_count();
 	}
 
 	void on_syzygy_path(const UciOption& o)
@@ -94,7 +94,7 @@ namespace UCI
 			sync_cout << "info string Failure to Load Hash from File" << sync_endl;
 	}
 
-	int sterkte_voor_elo(int elo)
+	int strength_for_elo(int elo)
 	{
 		if (elo <= 800)
 			return 0;
@@ -106,7 +106,7 @@ namespace UCI
 			return 100;
 	}
 
-	int elo_voor_sterkte(int sterkte)
+	int elo_for_strength(int sterkte)
 	{
 		if (sterkte <= 50)
 			return 800 + 30 * sterkte;
@@ -121,7 +121,7 @@ namespace UCI
 		int elo = int(o);
 		elo = std::min(std::max(elo, 1400), 3200);
 		if (elo < 3200)
-			sync_cout << "info string UCI_Elo " << elo << " is translated to Strength " << sterkte_voor_elo(elo - 200) << sync_endl;
+			sync_cout << "info string UCI_Elo " << elo << " is translated to Strength " << strength_for_elo(elo - 200) << sync_endl;
 	}
 
 	void on_strength(const UciOption& o)
@@ -129,18 +129,18 @@ namespace UCI
 		int strength = int(o);
 		strength = std::min(std::max(strength, 0), 100);
 		if (strength < 100)
-			sync_cout << "info string Strength " << strength << " corresponds to approximately " << elo_voor_sterkte(strength) + 200 << " Elo" << sync_endl;
+			sync_cout << "info string Strength " << strength << " corresponds to approximately " << elo_for_strength(strength) + 200 << " Elo" << sync_endl;
 	}
 
 #ifdef USE_NUMA
 	void on_numa_offset(const UciOption& o)
 	{
-		Threads.verander_numa_offset(o);
+		Threads.change_numa_offset(o);
 	}
 
 	void on_numa_enabled(const UciOption& o)
 	{
-		Threads.verander_numa(o);
+		Threads.change_numa(o);
 	}
 #endif
 
@@ -182,7 +182,7 @@ namespace UCI
 	const int MAX_HASH_MB = 1024;
 #endif
 
-	void initialisatie(UciOptionsMap& o)
+	void initialize(UciOptionsMap& o)
 	{
 		o["Threads"] << UciOption(1, 1, MAX_THREADS, on_threads);
 		o["Hash"] << UciOption(128, 1, MAX_HASH_MB, on_hash_size);

@@ -218,12 +218,12 @@ namespace
 
 namespace Material
 {
-	Value Tuple::waarde_uit_functie(const Position& pos) const
+	Value Tuple::value_from_function(const Position& pos) const
 	{
 		return (*Threads.endgames.waarde_functies[waardeFunctieIndex])(pos);
 	}
 
-	ScaleFactor Tuple::schaalfactor_uit_functie(const Position & pos, Color kleur) const
+	ScaleFactor Tuple::scalefactor_from_function(const Position & pos, Color kleur) const
 	{
 		if (schaalFunctieIndex[kleur] >= 0)
 		{
@@ -238,7 +238,7 @@ namespace Material
 	{
 		// index in materialTable is de sleutel met kleur lopers (want conversie-factoren hangen af van kleur lopers)
 		// index in endgames is sleutel zonder kleur lopers (want de routines maken dit onderscheid zelf)
-		Key64 sleutel = pos.materiaal_sleutel() ^ pos.loperkleur_sleutel();
+		Key64 sleutel = pos.material_key() ^ pos.bishopcolor_key();
 		Tuple* e = pos.ti()->materiaalTabel[sleutel];
 
 		if (e->sleutel64 == sleutel)
@@ -247,31 +247,31 @@ namespace Material
 		std::memset(e, 0, sizeof(Tuple));
 		e->sleutel64 = sleutel;
 		e->factor[WHITE] = e->factor[BLACK] = (uint8_t)NORMAL_FACTOR;
-		e->partijFase = pos.partij_fase();
+		e->partijFase = pos.game_phase();
 		e->conversie = MAX_FACTOR;
 		e->waardeFunctieIndex = e->schaalFunctieIndex[WHITE] = e->schaalFunctieIndex[BLACK] = -1;
 
 		e->waarde = imbalanceH(
 			pos.aantal(WHITE, PAWN), pos.aantal(WHITE, KNIGHT), pos.aantal(WHITE, BISHOP),
-			popcount(pos.stukken(WHITE, BISHOP) & ~DarkSquares), popcount(pos.stukken(WHITE, BISHOP) & DarkSquares),
+			popcount(pos.pieces(WHITE, BISHOP) & ~DarkSquares), popcount(pos.pieces(WHITE, BISHOP) & DarkSquares),
 			pos.aantal(WHITE, ROOK), pos.aantal(WHITE, QUEEN),
 			pos.aantal(BLACK, PAWN), pos.aantal(BLACK, KNIGHT), pos.aantal(BLACK, BISHOP),
-			popcount(pos.stukken(BLACK, BISHOP) & ~DarkSquares), popcount(pos.stukken(BLACK, BISHOP) & DarkSquares),
+			popcount(pos.pieces(BLACK, BISHOP) & ~DarkSquares), popcount(pos.pieces(BLACK, BISHOP) & DarkSquares),
 			pos.aantal(BLACK, ROOK), pos.aantal(BLACK, QUEEN), e->conversie);
 
-		e->waardeFunctieIndex = Threads.endgames.probe_waarde(pos.materiaal_sleutel());
+		e->waardeFunctieIndex = Threads.endgames.probe_value(pos.material_key());
 		if (e->waardeFunctieIndex >= 0)
 			return e;
 
 		for (Color kleur = WHITE; kleur <= BLACK; ++kleur)
-			if (!meer_dan_een(pos.stukken(~kleur)) && pos.niet_pion_materiaal(kleur) >= MATL_ROOK)
+			if (!more_than_one(pos.pieces(~kleur)) && pos.non_pawn_material(kleur) >= MATL_ROOK)
 			{
 				e->waardeFunctieIndex = kleur == WHITE ? 0 : 1;  // endgameValue_KXK
 				return e;
 			}
 
 		Color sterkeZijde;
-		int sf = Threads.endgames.probe_schaalfactor(pos.materiaal_sleutel(), sterkeZijde);
+		int sf = Threads.endgames.probe_scalefactor(pos.material_key(), sterkeZijde);
 
 		if (sf >= 0)
 		{
@@ -281,18 +281,18 @@ namespace Material
 
 		for (Color kleur = WHITE; kleur <= BLACK; ++kleur)
 		{
-			if (pos.niet_pion_materiaal(kleur) == MATL_BISHOP && pos.aantal(kleur, BISHOP) == 1 && pos.aantal(kleur, PAWN) >= 1)
+			if (pos.non_pawn_material(kleur) == MATL_BISHOP && pos.aantal(kleur, BISHOP) == 1 && pos.aantal(kleur, PAWN) >= 1)
 				e->schaalFunctieIndex[kleur] = kleur == WHITE ? 0 : 1;  // endgameScaleFactor_KBPsK
 
-			else if (!pos.aantal(kleur, PAWN) && pos.niet_pion_materiaal(kleur) == MATL_QUEEN && pos.aantal(kleur, QUEEN) == 1
+			else if (!pos.aantal(kleur, PAWN) && pos.non_pawn_material(kleur) == MATL_QUEEN && pos.aantal(kleur, QUEEN) == 1
 				&& pos.aantal(~kleur, ROOK) == 1 && pos.aantal(~kleur, PAWN) >= 1)
 				e->schaalFunctieIndex[kleur] = kleur == WHITE ? 2 : 3;  // endgameScaleFactor_KQKRPs
 		}
 
-		MaterialValue npm_w = pos.niet_pion_materiaal(WHITE);
-		MaterialValue npm_b = pos.niet_pion_materiaal(BLACK);
+		MaterialValue npm_w = pos.non_pawn_material(WHITE);
+		MaterialValue npm_b = pos.non_pawn_material(BLACK);
 
-		if (npm_w + npm_b == MATL_0 && pos.stukken(PAWN)) // pionneneindspel, maar niet KPK
+		if (npm_w + npm_b == MATL_0 && pos.pieces(PAWN)) // pionneneindspel, maar niet KPK
 		{
 			if (!pos.aantal(BLACK, PAWN))
 			{

@@ -9,7 +9,7 @@
 
 TranspositionTable HoofdHash;
 
-void TranspositionTable::verander_grootte(size_t mbSize) 
+void TranspositionTable::change_size(size_t mbSize) 
 {
 	bool large_pages;
 	size_t nieuwClusterAantal = size_t(1) << msb((mbSize * 1024 * 1024) / sizeof(Cluster));
@@ -38,14 +38,14 @@ void TranspositionTable::verander_grootte(size_t mbSize)
 }
 
 
-void TranspositionTable::wis() 
+void TranspositionTable::clear() 
 {
 	std::memset(tabel, 0, clusterAantal * sizeof(Cluster));
 }
 
 bool TranspositionTable::is_entry_in_use(const Key64 sleutel, Depth d) const
 {
-	TTTuple* tt = zoek_bestaand(sleutel);
+	TTTuple* tt = find_existing(sleutel);
 	int dd = d / PLY;
 	return tt && (tt->vlaggen8 & IN_USE) && (dd >= tt->diepte8);
 }
@@ -53,15 +53,15 @@ bool TranspositionTable::is_entry_in_use(const Key64 sleutel, Depth d) const
 void TranspositionTable::mark_entry_in_use(const Key64 sleutel, Depth diepte, uint8_t waarde)
 {
 	uint16_t sleutel16 = sleutel >> 48;
-	TTTuple* tt = zoek_vervang(sleutel);
+	TTTuple* tt = find_replace(sleutel);
 	if (tt->sleutel16 != sleutel16)
-		tt->bewaar(sleutel, NO_VALUE, NO_BOUND, diepte, NO_MOVE,
+		tt->save(sleutel, NO_VALUE, NO_BOUND, diepte, NO_MOVE,
 			NO_VALUE, HoofdHash.generatie());
 	tt->vlaggen8 = (tt->vlaggen8 & UsageMask) | waarde;
 }
 
 
-TTTuple* TranspositionTable::zoek_bestaand(const Key64 sleutel) const
+TTTuple* TranspositionTable::find_existing(const Key64 sleutel) const
 {
 	TTTuple* const ttt = tuple(sleutel);
 	uint16_t sleutel16 = sleutel >> 48;
@@ -80,7 +80,7 @@ TTTuple* TranspositionTable::zoek_bestaand(const Key64 sleutel) const
 }
 
 
-TTTuple * TranspositionTable::zoek_vervang(const Key64 sleutel) const
+TTTuple * TranspositionTable::find_replace(const Key64 sleutel) const
 {
 	TTTuple* const ttt = tuple(sleutel);
 	uint16_t sleutel16 = sleutel >> 48;
@@ -192,7 +192,7 @@ bool TranspositionTable::load_from_file(string uci_hash_file)
 		if (Result && hash_grootte != clusterAantal)
 		{
 			size_t mb = (size_t)((hash_grootte * sizeof(Cluster)) >> 20);
-			verander_grootte(mb);
+			change_size(mb);
 			Result = hash_grootte == clusterAantal;
 		}
 
@@ -214,7 +214,7 @@ bool TranspositionTable::load_from_file(string uci_hash_file)
 }
 
 
-int TranspositionTable::bereken_hashfull() const
+int TranspositionTable::compute_hashfull() const
 {
 	const int i_max = 999 / ClusterSize + 1;
 	int cnt = 0;

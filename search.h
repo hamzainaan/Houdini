@@ -26,8 +26,8 @@ struct RootMove
 
 	bool operator<(const RootMove& rootZet) const { return rootZet.score < score; }
 	bool operator==(const Move& zet) const { return pv[0] == zet; }
-	bool vind_ponder_zet_in_tt(Position& pos);
-	void vervolledig_pv_met_tt(Position& pos);
+	bool find_ponder_move_in_tt(Position& pos);
+	void complete_pv_with_tt(Position& pos);
 
 	Depth diepte = DEPTH_0;
 	Value score = -HIGHEST_VALUE;
@@ -69,11 +69,11 @@ namespace Search
 	extern TimeLimit Klok;
 	extern bool Running;
 
-	void initialisatie();
-	void wis_alles();
-	void pas_tijd_aan_na_ponderhit();
-	void export_tabel();
-	void import_tabel();
+	void initialize();
+	void clear_all();
+	void adjust_time_after_ponderhit();
+	void export_table();
+	void import_table();
 	extern uint8_t LMReducties[2][2][64 * (int)PLY][64];
 }
 

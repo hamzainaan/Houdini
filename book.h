@@ -20,7 +20,7 @@ public:
 	PolyglotBook();
 	~PolyglotBook();
 	Move probe(Position& pos, const std::string& bookPath, bool besteVariant);
-	void nieuwe_partij();
+	void new_game();
 
 private:
 	std::string boekBestand;
@@ -28,10 +28,10 @@ private:
 	int gemisteProbes;
 
 	bool open(const char* bookPath);
-	size_t vind_tupel(Key64 sleutel);
-	Move zet_van_polyglot(const Position& pos, Move pg_zet);
-	bool geeft_zetherhaling(Position & pos, Move pg_zet);
-	bool lees_tupel(PolyglotTuple* tupel);
+	size_t find_tuple(Key64 sleutel);
+	Move move_from_polyglot(const Position& pos, Move pg_zet);
+	bool gives_repetition(Position & pos, Move pg_zet);
+	bool read_tuple(PolyglotTuple* tupel);
 };
 
 #endif // #ifndef BOOK_H_INCLUDED

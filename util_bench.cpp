@@ -30,7 +30,7 @@ void benchmark(const Position& current, istream& is)
 
 	UciOpties["Hash"] = ttSize;
 	UciOpties["Threads"] = threads;
-	Search::wis_alles();
+	Search::clear_all();
 
 	if (limitType == "time")
 		tijdLimiet.movetime = limit;
@@ -68,7 +68,7 @@ void benchmark(const Position& current, istream& is)
 	}
 
 	uint64_t knopen = 0;
-	TimePoint verstreken = nu();
+	TimePoint elapsed = now();
 	Position pos;
 
 	cerr << stellingen.size() << " bench positions" << endl;
@@ -94,10 +94,10 @@ void benchmark(const Position& current, istream& is)
 
 		//else
 		{
-			tijdLimiet.startTijd = nu();
-			Threads.begin_zoek_opdracht(pos, tijdLimiet);
-			Threads.main()->wacht_op_einde_zoeken();
-			knopen += Threads.bezochte_knopen();
+			tijdLimiet.startTijd = now();
+			Threads.start_search_task(pos, tijdLimiet);
+			Threads.main()->wait_for_search_finished();
+			knopen += Threads.visited_nodes();
 		}
 		if (filter)
 		{
@@ -111,12 +111,12 @@ void benchmark(const Position& current, istream& is)
 		ok_file.close();
 	}
 
-	verstreken = std::max(nu() - verstreken, TimePoint(1));
+	elapsed = std::max(now() - elapsed, TimePoint(1));
 
 	dbg_print();
 
 	cerr << "\n==========================="
-		<< "\nTotal time (ms) : " << verstreken
+		<< "\nTotal time (ms) : " << elapsed
 		<< "\nNodes searched  : " << knopen
-		<< "\nNodes/second    : " << knopen / verstreken * 1000 << endl;
+		<< "\nNodes/second    : " << knopen / elapsed * 1000 << endl;
 }

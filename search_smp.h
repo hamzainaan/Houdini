@@ -74,10 +74,10 @@ class Thread
 public:
 	Thread();
 	virtual ~Thread();
-	virtual void start_zoeken();
+	virtual void start_search();
 	void idle_loop();
-	void maak_wakker(bool activeer_zoeken);
-	void wacht_op_einde_zoeken();
+	void wake_up(bool activeer_zoeken);
+	void wait_for_search_finished();
 	void wait(std::atomic_bool& b);
 
 	ThreadInfo* ti;
@@ -93,7 +93,7 @@ public:
 
 struct MainThread : public Thread
 {
-	virtual void start_zoeken();
+	virtual void start_search();
 
 	bool snelleZetToegelaten, snelleZetGespeeld, snelleZetEvaluatieBezig, snelleZetEvaluatieAfgebroken, failedLow;
 	int besteZetVerandert;
@@ -106,7 +106,7 @@ struct MainThread : public Thread
 
 struct ThreadPool
 {
-	void initialisatie();
+	void initialize();
 	void exit();
 
 	int threadCount;
@@ -114,11 +114,11 @@ struct ThreadPool
 	int totaleAnalyseTijd;
 	Thread* threads[MAX_THREADS];
 	MainThread* main() { return static_cast<MainThread*>(threads[0]); }
-	void begin_zoek_opdracht(Position&, const TimeLimit&);
-	void verander_thread_aantal();
-	uint64_t bezochte_knopen();
+	void start_search_task(Position&, const TimeLimit&);
+	void change_thread_count();
+	uint64_t visited_nodes();
 	uint64_t tb_hits();
-	void wis_counter_zet_geschiedenis();
+	void clear_counter_move_history();
 
 	int activeThreadCount; // kan verschillend zijn, bij SpeelSterkte < 100 wordt maar 1 thread gebruikt
 	int geknoeiMetExe;
@@ -142,16 +142,16 @@ struct ThreadPool
 private:
 	GROUP_AFFINITY NUMA_affinities[MAX_NUMA_NODES];
 	int NUMA_offset = 0;
-	void initialiseer_Numa();
-	void herinitialiseer_Numa();
-	int get_numa_node_affiniteiten();
+	void initialize_Numa();
+	void reinitialize_Numa();
+	int get_numa_node_affinities();
 public:
 	unsigned long NUMA_highest_node;
 	NumaInfo* NUMA_data[MAX_NUMA_NODES];
 	int numa_node_voor_thread[MAX_THREADS];
-	void set_thread_affiniteit(int thread_id);
-	void verander_numa(bool aan);
-	void verander_numa_offset(int offset);
+	void set_thread_affinity(int thread_id);
+	void change_numa(bool aan);
+	void change_numa_offset(int offset);
 #endif
 };
 

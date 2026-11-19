@@ -57,7 +57,7 @@ Value Syzygy_probe_wdl(Position& pos, Value alfa, Value beta)
 	if (success == 0)
 		return NO_VALUE;
 
-	pos.verhoog_tb_hits();
+	pos.increase_tb_hits();
 
 	int drawScore = EGTB::UseRule50 ? 1 : 0;
 	if (v > drawScore)
@@ -78,9 +78,9 @@ Value Syzygy_probe_dtz(Position& pos, Value alfa, Value beta)
 	if (success == 0)
 		return NO_VALUE;
 
-	pos.verhoog_tb_hits();
+	pos.increase_tb_hits();
 
-	int move50 = pos.vijftig_zetten_teller();
+	int move50 = pos.fifty_moves_counter();
 
 	if (v > 0 && (!EGTB::UseRule50 || move50 + v <= 100))  // gewonnen
 		return std::max(Value(LONGEST_MATE_VALUE - (pos.info()->ply + v)), EGTB_WIN_VALUE + VALUE_1);

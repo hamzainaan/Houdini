@@ -12,13 +12,13 @@ namespace Pawns
 {
 	struct Tuple
 	{
-		Score pionnen_score() const { return score; }
+		Score pawns_score() const { return score; }
 		Bitboard pion_aanval(Color kleur) const { return pionAanval[kleur]; }
 		Bitboard vrijpionnen(Color kleur) const { return vrijPionnen[kleur]; }
-		Bitboard veilig_voor_pion(Color kleur) const { return veiligVoorPion[kleur]; }
-		int pion_bereik(Color kleur) const { return pionBereik[kleur]; }
+		Bitboard safe_from_pawn(Color kleur) const { return veiligVoorPion[kleur]; }
+		int pawn_range(Color kleur) const { return pionBereik[kleur]; }
 
-		int half_open_lijn(Color kleur, File f) const
+		int half_open_file(Color kleur, File f) const
 		{
 			return halfOpenLijnen[kleur] & (1 << f);
 		}
@@ -28,12 +28,12 @@ namespace Pawns
 			return halfOpenLijnen[kleur] & (leftSide ? (1 << f) - 1 : ~((1 << (f + 1)) - 1));
 		}
 
-		int pionnen_op_kleur(Color kleur, Square veld) const
+		int pawns_on_color(Color kleur, Square veld) const
 		{
 			return pionnenOpKleur[kleur][!!(DarkSquares & veld)];
 		}
 
-		int pionnen_niet_op_kleur(Color kleur, Square veld) const
+		int pawns_not_on_color(Color kleur, Square veld) const
 		{
 			return pionnenOpKleur[kleur][!(DarkSquares & veld)];
 		}
@@ -41,13 +41,13 @@ namespace Pawns
 		template<Color Us>
 		Score koning_veiligheid(const Position& pos)
 		{
-			if (koningVeld[Us] != pos.koning(Us) || rokadeMogelijkheden[Us] != pos.rokade_mogelijkheden(Us))
-				koningVeiligheid[Us] = bereken_koning_veiligheid<Us>(pos);
+			if (koningVeld[Us] != pos.koning(Us) || rokadeMogelijkheden[Us] != pos.castling_rights(Us))
+				koningVeiligheid[Us] = compute_king_safety<Us>(pos);
 			return koningVeiligheid[Us];
 		}
 
 		template<Color Us>
-		Score bereken_koning_veiligheid(const Position& pos);
+		Score compute_king_safety(const Position& pos);
 
 		Key64 sleutel64;
 		Bitboard vrijPionnen[COLOR_N];
@@ -73,7 +73,7 @@ namespace Pawns
 
 	typedef HashTable<Tuple, PAWN_HASH_SIZE> Table;
 
-	void initialisatie();
+	void initialize();
 	Tuple* probe(const Position& pos);
 } // namespace
 

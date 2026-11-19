@@ -16,7 +16,7 @@ struct TimeLimit
 			movestogo = depth = movetime = mate = infinite = ponder = 0;
 	}
 
-	bool gebruikt_tijd_berekening() const
+	bool uses_time_calculation() const
 	{
 		return !(mate | movetime | depth | nodes | infinite);
 	}
@@ -31,11 +31,11 @@ struct TimeLimit
 class TimeManagement 
 {
 public:
-	void initialisatie(TimeLimit& tijdLimiet, Color ik, int ply);
+	void initialize(TimeLimit& tijdLimiet, Color ik, int ply);
 	int64_t optimum() const { return optimaleTijd; }
 	int64_t maximum() const { return maximumTijd; }
-	int64_t verstreken() const;
-	void aanpassing_na_ponderhit();
+	int64_t elapsed() const;
+	void adjustment_after_ponderhit();
 
 private:
 	TimePoint startTijd;

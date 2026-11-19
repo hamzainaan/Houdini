@@ -45,14 +45,14 @@ namespace UCI
 		OnChange on_change;
 	};
 
-	void initialisatie(UciOptionsMap&);
-	void hoofdLus(int argc, char* argv[]);
+	void initialize(UciOptionsMap&);
+	void mainLoop(int argc, char* argv[]);
 	std::string waarde(Value v);
 	std::string veld(Square veld);
 	std::string zet(Move zet, const Position& pos);
 	std::string pv(const Position& pos, Value alfa, Value beta, int actievePV, int actieveZet);
-	Move zet_van_string(const Position& pos, std::string& str);
-	int sterkte_voor_elo(int elo);
+	Move move_from_string(const Position& pos, std::string& str);
+	int strength_for_elo(int elo);
 }
 
 extern UCI::UciOptionsMap UciOpties;

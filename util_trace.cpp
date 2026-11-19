@@ -47,8 +47,8 @@ std::string zet_string(Move zet)
 {
 	char sZet[6];
 
-	Square van = van_veld(zet);
-	Square naar = naar_veld(zet);
+	Square van = from_square(zet);
+	Square naar = to_square(zet);
 
 	if (zet == NO_MOVE || zet == NULL_MOVE)
 		return "0000";
@@ -57,10 +57,10 @@ std::string zet_string(Move zet)
 	sZet[1] = '1' + rij(van);
 	sZet[2] = 'a' + lijn(naar);
 	sZet[3] = '1' + rij(naar);
-	if (zet_type(zet) != PROMOTION)
+	if (move_type(zet) != PROMOTION)
 		return std::string(sZet, 4);
 
-	sZet[4] = "   nbrq"[promotie_stuk(zet)];
+	sZet[4] = "   nbrq"[promotion_piece(zet)];
 	return std::string(sZet, 5);
 }
 

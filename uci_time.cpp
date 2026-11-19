@@ -23,7 +23,7 @@ namespace
 }
 
 
-void TimeManagement::initialisatie(TimeLimit& tijdLimiet, Color ik, int ply)
+void TimeManagement::initialize(TimeLimit& tijdLimiet, Color ik, int ply)
 {
 	const int MovesHorizon = 50; 
 	const double MaxRatio = 7.09;
@@ -93,13 +93,13 @@ void TimeManagement::initialisatie(TimeLimit& tijdLimiet, Color ik, int ply)
 	//	optimaleTijd = std::min(optimaleTijd, maximumTijd);
 }
 
-int64_t TimeManagement::verstreken() const
+int64_t TimeManagement::elapsed() const
 {
-	return int64_t(nu() - startTijd);
+	return int64_t(now() - startTijd);
 }
 
-void TimeManagement::aanpassing_na_ponderhit()
+void TimeManagement::adjustment_after_ponderhit()
 {
-	int64_t nieuweMaxTijd = maximumTijd + verstreken();
+	int64_t nieuweMaxTijd = maximumTijd + elapsed();
 	optimaleTijd = optimaleTijd * nieuweMaxTijd / maximumTijd;
 }

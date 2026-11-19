@@ -25,13 +25,13 @@ namespace Zobrist
 	Key64 hash_50move[32];
 }
 
-Key64 Position::uitzondering_sleutel(Move zet) const
+Key64 Position::exclusion_key(Move zet) const
 { 
-	return Zobrist::psq[W_KING][van_veld(zet)] ^ Zobrist::psq[B_KING][naar_veld(zet)];
+	return Zobrist::psq[W_KING][from_square(zet)] ^ Zobrist::psq[B_KING][to_square(zet)];
 	//return zet;
 }
 
-Key64 Position::remise50_sleutel() const
+Key64 Position::draw50_key() const
 {
 	return Zobrist::hash_50move[st->remise50Zetten >> 2];
 }
@@ -43,34 +43,34 @@ namespace
 } // namespace
 
 
-void Position::bereken_schaak_penningen() const
+void Position::compute_check_pins() const
 {
-	bereken_penningen<WHITE>();
-	bereken_penningen<BLACK>();
+	compute_pins<WHITE>();
+	compute_pins<BLACK>();
 	Square veldK = koning(~aanZet);
-	st->schaakVelden[PAWN]  = aanval_van<PAWN>(veldK, ~aanZet);
-	st->schaakVelden[KNIGHT] = aanval_van<KNIGHT>(veldK);
-	st->schaakVelden[BISHOP] = aanval_van<BISHOP>(veldK);
-	st->schaakVelden[ROOK] = aanval_van<ROOK>(veldK);
+	st->schaakVelden[PAWN]  = attack_from<PAWN>(veldK, ~aanZet);
+	st->schaakVelden[KNIGHT] = attack_from<KNIGHT>(veldK);
+	st->schaakVelden[BISHOP] = attack_from<BISHOP>(veldK);
+	st->schaakVelden[ROOK] = attack_from<ROOK>(veldK);
 	st->schaakVelden[QUEEN]  = st->schaakVelden[BISHOP] | st->schaakVelden[ROOK];
 	st->schaakVelden[KING] = 0;
 }
 
 template <Color kleur>
-void Position::bereken_penningen() const
+void Position::compute_pins() const
 {
 	Bitboard penningGevers, result = 0;
 	Square veldK = koning(kleur);
 
-	penningGevers = (LegeAanval[ROOK][veldK] & stukken(~kleur, QUEEN, ROOK))
-		          | (LegeAanval[BISHOP][veldK] & stukken(~kleur, QUEEN, BISHOP));
+	penningGevers = (LegeAanval[ROOK][veldK] & pieces(~kleur, QUEEN, ROOK))
+		          | (LegeAanval[BISHOP][veldK] & pieces(~kleur, QUEEN, BISHOP));
 
 	while (penningGevers)
 	{
 		Square veld = pop_lsb(&penningGevers);
-		Bitboard b = bb_tussen(veldK, veld) & stukken();
+		Bitboard b = bb_between(veldK, veld) & pieces();
 
-		if (b && !meer_dan_een(b))
+		if (b && !more_than_one(b))
 		{
 			result |= b;
 			st->penning_door[lsb(b)] = veld;
@@ -87,7 +87,7 @@ std::ostream& operator<<(std::ostream& os, const Position& pos)
 	for (Rank r = RANK_8; r >= RANK_1; --r)
 	{
 		for (File f = FILE_A; f <= FILE_H; ++f)
-			os << " | " << PieceToChar[pos.stuk_op_veld(maak_veld(f, r))];
+			os << " | " << PieceToChar[pos.piece_on_square(make_square(f, r))];
 
 		os << " |\n +---+---+---+---+---+---+---+---+\n";
 	}
@@ -98,14 +98,14 @@ std::ostream& operator<<(std::ostream& os, const Position& pos)
 }
 
 
-void Position::initialisatie()
+void Position::initialize()
 {
 	PRNG rng(19680708);
 
 	for (Color kleur = WHITE; kleur <= BLACK; ++kleur)
 		for (PieceType stuk = KING; stuk <= QUEEN; ++stuk)
 			for (Square veld = SQ_A1; veld <= SQ_H8; ++veld)
-				Zobrist::psq[maak_stuk(kleur, stuk)][veld] = rng.rand<Key64>();
+				Zobrist::psq[make_piece(kleur, stuk)][veld] = rng.rand<Key64>();
 
 	for (File f = FILE_A; f <= FILE_H; ++f)
 		Zobrist::enpassant[f] = rng.rand<Key64>();
@@ -164,7 +164,7 @@ Position& Position::set(const string& fenStr, bool isChess960, Thread* th)
 
 		else if ((idx = PieceToChar.find(token)) != string::npos)
 		{
-			zet_stuk(stuk_kleur(Piece(idx)), Piece(idx), sq);
+			put_piece(piece_color(Piece(idx)), Piece(idx), sq);
 			++sq;
 		}
 	}
@@ -180,32 +180,32 @@ Position& Position::set(const string& fenStr, bool isChess960, Thread* th)
 	{
 		Square rsq;
 		Color kleur = islower(token) ? BLACK : WHITE;
-		Piece toren = maak_stuk(kleur, ROOK);
+		Piece toren = make_piece(kleur, ROOK);
 
 		token = char(toupper(token));
 
 		if (token == 'K')
-			for (rsq = relatief_veld(kleur, SQ_H1); stuk_op_veld(rsq) != toren; --rsq) {}
+			for (rsq = relative_square(kleur, SQ_H1); piece_on_square(rsq) != toren; --rsq) {}
 
 		else if (token == 'Q')
-			for (rsq = relatief_veld(kleur, SQ_A1); stuk_op_veld(rsq) != toren; ++rsq) {}
+			for (rsq = relative_square(kleur, SQ_A1); piece_on_square(rsq) != toren; ++rsq) {}
 
 		else if (token >= 'A' && token <= 'H')
-			rsq = maak_veld(File(token - 'A'), relatieve_rij(kleur, RANK_1));
+			rsq = make_square(File(token - 'A'), relative_rank(kleur, RANK_1));
 
 		else
 			continue;
 
-		set_rokade_mogelijkheid(kleur, rsq);
+		set_castling_right(kleur, rsq);
 	}
 
 	// en-passant
 	if (((ss >> col) && (col >= 'a' && col <= 'h'))
 		&& ((ss >> row) && (row == '3' || row == '6')))
 	{
-		st->enpassantVeld = maak_veld(File(col - 'a'), Rank(row - '1'));
+		st->enpassantVeld = make_square(File(col - 'a'), Rank(row - '1'));
 
-		if (!(aanvallers_naar(st->enpassantVeld) & stukken(aanZet, PAWN)))
+		if (!(attackers_to(st->enpassantVeld) & pieces(aanZet, PAWN)))
 			st->enpassantVeld = SQ_NONE;
 	}
 	else
@@ -219,16 +219,16 @@ Position& Position::set(const string& fenStr, bool isChess960, Thread* th)
 	mijnThread = th;
 	threadInfo = th->ti;
 	numaInfo = th->ni;
-	set_stelling_info(st);
-	bereken_schaak_penningen();
+	set_position_info(st);
+	compute_check_pins();
 
-	assert(stelling_is_ok());
+	assert(position_is_ok());
 
 	return *this;
 }
 
 
-void Position::kopieer_stelling(const Position* pos, Thread* th, PositionInfo* copyState)
+void Position::copy_position(const Position* pos, Thread* th, PositionInfo* copyState)
 {
 	std::memcpy(this, pos, sizeof(Position));
 	if (th)
@@ -254,17 +254,17 @@ void Position::kopieer_stelling(const Position* pos, Thread* th, PositionInfo* c
 		}
 		st--;
 	}
-	assert(stelling_is_ok());
+	assert(position_is_ok());
 }
 
 
-void Position::set_rokade_mogelijkheid(Color kleur, Square vanT)
+void Position::set_castling_right(Color kleur, Square vanT)
 {
 	Square vanK = koning(kleur);
 	CastlingRight rokade = CastlingRight(WHITE_SHORT << ((vanK >= vanT) + 2 * kleur));
 
-	Square naarK = relatief_veld(kleur, vanK < vanT ? SQ_G1 : SQ_C1);
-	Square naarT = relatief_veld(kleur, vanK < vanT ? SQ_F1 : SQ_D1);
+	Square naarK = relative_square(kleur, vanK < vanT ? SQ_G1 : SQ_C1);
+	Square naarT = relative_square(kleur, vanK < vanT ? SQ_F1 : SQ_D1);
 
 	st->rokadeMogelijkheden |= rokade;
 	rokadeMask[vanK] |= rokade;
@@ -280,46 +280,46 @@ void Position::set_rokade_mogelijkheid(Color kleur, Square vanT)
 
 	rokadePad[rokade] = pad & ~(bbVeld[vanK] | bbVeld[vanT]);
 
-	if (vanK != relatief_veld(kleur, SQ_E1))
+	if (vanK != relative_square(kleur, SQ_E1))
 		chess960 = true;
-	if (vanK < vanT && vanT != relatief_veld(kleur, SQ_H1))
+	if (vanK < vanT && vanT != relative_square(kleur, SQ_H1))
 		chess960 = true;
-	if (vanK >= vanT && vanT != relatief_veld(kleur, SQ_A1))
+	if (vanK >= vanT && vanT != relative_square(kleur, SQ_A1))
 		chess960 = true;
 }
 
 
-void Position::bereken_loper_kleur_sleutel() const
+void Position::compute_bishop_color_key() const
 {
 	Key64 key = 0;
-	if (stukken(WHITE, BISHOP) & DarkSquares)
+	if (pieces(WHITE, BISHOP) & DarkSquares)
 		key ^= 0xF3094B57AC4789A2;
-	if (stukken(WHITE, BISHOP) & ~DarkSquares)
+	if (pieces(WHITE, BISHOP) & ~DarkSquares)
 		key ^= 0x89A2F3094B57AC47;
-	if (stukken(BLACK, BISHOP) & DarkSquares)
+	if (pieces(BLACK, BISHOP) & DarkSquares)
 		key ^= 0xAC4789A2F3094B57;
-	if (stukken(BLACK, BISHOP) & ~DarkSquares)
+	if (pieces(BLACK, BISHOP) & ~DarkSquares)
 		key ^= 0x4B57AC4789A2F309;
 	st->loperKleurSleutel = key;
 }
 
 
-void Position::set_stelling_info(PositionInfo* si) const
+void Position::set_position_info(PositionInfo* si) const
 {
 	si->sleutel = si->materiaalSleutel = 0;
 	si->nietPionMateriaal[WHITE] = si->nietPionMateriaal[BLACK] = MATL_0;
 	si->psq = SCORE_ZERO;
 	si->fase = 0;
 
-	si->schaakGevers = aanvallers_naar(koning(aanZet)) & stukken(~aanZet);
+	si->schaakGevers = attackers_to(koning(aanZet)) & pieces(~aanZet);
 
-	for (Bitboard b = stukken(); b; )
+	for (Bitboard b = pieces(); b; )
 	{
 		Square veld = pop_lsb(&b);
-		Piece stuk = stuk_op_veld(veld);
+		Piece stuk = piece_on_square(veld);
 		si->sleutel ^= Zobrist::psq[stuk][veld];
 		si->psq += PST::psq[stuk][veld];
-		si->fase += StukFase[stuk_type(stuk)];
+		si->fase += StukFase[piece_type(stuk)];
 	}
 
 	if (si->enpassantVeld != SQ_NONE)
@@ -331,22 +331,22 @@ void Position::set_stelling_info(PositionInfo* si) const
 	si->sleutel ^= Zobrist::rokade[si->rokadeMogelijkheden];
 
 	si->pionSleutel = 0x1234567890ABCDEF;
-	for (Bitboard b = stukken(PAWN); b; )
+	for (Bitboard b = pieces(PAWN); b; )
 	{
 		Square veld = pop_lsb(&b);
-		si->pionSleutel ^= Zobrist::psq[stuk_op_veld(veld)][veld];
+		si->pionSleutel ^= Zobrist::psq[piece_on_square(veld)][veld];
 	}
 
 	for (Color kleur = WHITE; kleur <= BLACK; ++kleur)
 		for (PieceType stuk = KING; stuk <= QUEEN; ++stuk)
-			for (int cnt = 0; cnt < stukAantal[maak_stuk(kleur, stuk)]; ++cnt)
-				si->materiaalSleutel ^= Zobrist::psq[maak_stuk(kleur, stuk)][cnt];
+			for (int cnt = 0; cnt < stukAantal[make_piece(kleur, stuk)]; ++cnt)
+				si->materiaalSleutel ^= Zobrist::psq[make_piece(kleur, stuk)][cnt];
 
-	bereken_loper_kleur_sleutel();
+	compute_bishop_color_key();
 
 	for (Color kleur = WHITE; kleur <= BLACK; ++kleur)
 		for (PieceType stuk = KNIGHT; stuk <= QUEEN; ++stuk)
-			si->nietPionMateriaal[kleur] += MateriaalWaarden[stuk] * (int)stukAantal[maak_stuk(kleur, stuk)];
+			si->nietPionMateriaal[kleur] += MateriaalWaarden[stuk] * (int)stukAantal[make_piece(kleur, stuk)];
 }
 
 
@@ -359,14 +359,14 @@ const string Position::fen() const
 	{
 		for (File f = FILE_A; f <= FILE_H; ++f)
 		{
-			for (emptyCnt = 0; f <= FILE_H && leeg_veld(maak_veld(f, r)); ++f)
+			for (emptyCnt = 0; f <= FILE_H && empty_square(make_square(f, r)); ++f)
 				++emptyCnt;
 
 			if (emptyCnt)
 				ss << emptyCnt;
 
 			if (f <= FILE_H)
-				ss << PieceToChar[stuk_op_veld(maak_veld(f, r))];
+				ss << PieceToChar[piece_on_square(make_square(f, r))];
 		}
 
 		if (r == RANK_1)
@@ -377,88 +377,88 @@ const string Position::fen() const
 
 	ss << (aanZet == WHITE ? " w " : " b ");
 
-	if (rokade_mogelijk(WHITE_SHORT))
-		ss << (chess960 ? char('A' + lijn(rokade_toren_veld(SQ_G1))) : 'K');
+	if (castling_possible(WHITE_SHORT))
+		ss << (chess960 ? char('A' + lijn(castling_rook_square(SQ_G1))) : 'K');
 
-	if (rokade_mogelijk(WHITE_LONG))
-		ss << (chess960 ? char('A' + lijn(rokade_toren_veld(SQ_C1))) : 'Q');
+	if (castling_possible(WHITE_LONG))
+		ss << (chess960 ? char('A' + lijn(castling_rook_square(SQ_C1))) : 'Q');
 
-	if (rokade_mogelijk(BLACK_SHORT))
-		ss << (chess960 ? char('a' + lijn(rokade_toren_veld(SQ_G8))) : 'k');
+	if (castling_possible(BLACK_SHORT))
+		ss << (chess960 ? char('a' + lijn(castling_rook_square(SQ_G8))) : 'k');
 
-	if (rokade_mogelijk(BLACK_LONG))
-		ss << (chess960 ? char('a' + lijn(rokade_toren_veld(SQ_C8))) : 'q');
+	if (castling_possible(BLACK_LONG))
+		ss << (chess960 ? char('a' + lijn(castling_rook_square(SQ_C8))) : 'q');
 
-	if (!rokade_mogelijkheden(WHITE) && !rokade_mogelijkheden(BLACK))
+	if (!castling_rights(WHITE) && !castling_rights(BLACK))
 		ss << '-';
 
-	ss << (enpassant_veld() == SQ_NONE ? " - " : " " + UCI::veld(enpassant_veld()) + " ")
+	ss << (enpassant_square() == SQ_NONE ? " - " : " " + UCI::veld(enpassant_square()) + " ")
 		<< st->remise50Zetten << " " << 1 + (partijPly - (aanZet == BLACK)) / 2;
 
 	return ss.str();
 }
 
 
-GamePhase Position::partij_fase() const
+GamePhase Position::game_phase() const
 {
 	return GamePhase(std::max(0, std::min((int)MIDDLEGAME_PHASE, (int)st->fase - 6)));
 }
 
 
-Bitboard Position::aanvallers_naar(Square veld, Bitboard bezet) const
+Bitboard Position::attackers_to(Square veld, Bitboard bezet) const
 {
-	return (aanval_van<PAWN>(veld, BLACK) & stukken(WHITE, PAWN))
-		| (aanval_van<PAWN>(veld, WHITE)    & stukken(BLACK, PAWN))
-		| (aanval_van<KNIGHT>(veld)        & stukken(KNIGHT))
-		| (aanval_bb_toren(veld, bezet)   & stukken(ROOK, QUEEN))
-		| (aanval_bb_loper(veld, bezet)   & stukken(BISHOP, QUEEN))
-		| (aanval_van<KING>(veld)       & stukken(KING));
+	return (attack_from<PAWN>(veld, BLACK) & pieces(WHITE, PAWN))
+		| (attack_from<PAWN>(veld, WHITE)    & pieces(BLACK, PAWN))
+		| (attack_from<KNIGHT>(veld)        & pieces(KNIGHT))
+		| (attack_bb_rook(veld, bezet)   & pieces(ROOK, QUEEN))
+		| (attack_bb_bishop(veld, bezet)   & pieces(BISHOP, QUEEN))
+		| (attack_from<KING>(veld)       & pieces(KING));
 }
 
 
-bool Position::legale_zet(Move zet) const
+bool Position::legal_move(Move zet) const
 {
 	assert(is_ok(zet));
 
 	Color ik = aanZet;
-	Square van = van_veld(zet);
+	Square van = from_square(zet);
 
-	assert(stuk_kleur(bewogen_stuk(zet)) == ik);
-	assert(stuk_op_veld(koning(ik)) == maak_stuk(ik, KING));
+	assert(piece_color(moved_piece(zet)) == ik);
+	assert(piece_on_square(koning(ik)) == make_piece(ik, KING));
 
-	if (zet_type(zet) == ENPASSANT)
+	if (move_type(zet) == ENPASSANT)
 	{
 		Square veldK = koning(ik);
-		Square naar = naar_veld(zet);
-		Square slagveld = naar - pion_vooruit(ik);
-		Bitboard bezet = (stukken() ^ van ^ slagveld) | naar;
+		Square naar = to_square(zet);
+		Square slagveld = naar - pawn_forward(ik);
+		Bitboard bezet = (pieces() ^ van ^ slagveld) | naar;
 
-		assert(naar == enpassant_veld());
-		assert(bewogen_stuk(zet) == maak_stuk(ik, PAWN));
-		assert(stuk_op_veld(slagveld) == maak_stuk(~ik, PAWN));
-		assert(stuk_op_veld(naar) == NO_PIECE);
+		assert(naar == enpassant_square());
+		assert(moved_piece(zet) == make_piece(ik, PAWN));
+		assert(piece_on_square(slagveld) == make_piece(~ik, PAWN));
+		assert(piece_on_square(naar) == NO_PIECE);
 
-		return !(aanval_bb_toren(veldK, bezet) & stukken(~ik, QUEEN, ROOK))
-			&& !(aanval_bb_loper(veldK, bezet) & stukken(~ik, QUEEN, BISHOP));
+		return !(attack_bb_rook(veldK, bezet) & pieces(~ik, QUEEN, ROOK))
+			&& !(attack_bb_bishop(veldK, bezet) & pieces(~ik, QUEEN, BISHOP));
 	}
 
-	if (stuk_type(stuk_op_veld(van)) == KING)
-		return zet_type(zet) == CASTLING || !(aanvallers_naar(naar_veld(zet)) & stukken(~ik));
+	if (piece_type(piece_on_square(van)) == KING)
+		return move_type(zet) == CASTLING || !(attackers_to(to_square(zet)) & pieces(~ik));
 
-	return !(st->xRay[aanZet] & van) || op_een_lijn(van, naar_veld(zet), koning(ik));
+	return !(st->xRay[aanZet] & van) || on_a_line(van, to_square(zet), koning(ik));
 }
 
 
-bool Position::geldige_zet(const Move zet) const
+bool Position::valid_move(const Move zet) const
 {
 	Color ik = aanZet;
-	Square van = van_veld(zet);
+	Square van = from_square(zet);
 
-	if (!(stukken(ik) & van))
+	if (!(pieces(ik) & van))
 		return false;
 
-	Square naar = naar_veld(zet);
-	PieceType stuk = stuk_type(bewogen_stuk(zet));
+	Square naar = to_square(zet);
+	PieceType stuk = piece_type(moved_piece(zet));
 
 	// rokade 0,8%  enpassant 0,03%  promotie 0,6%
 	if (zet >= Move(CASTLING))
@@ -469,9 +469,9 @@ bool Position::geldige_zet(const Move zet) const
 				return false;
 		}
 		else if (zet < Move(ENPASSANT)) // rokade
-			return LegaleZettenLijstBevatRokade(*this, zet);
+			return LegalMoveListContainsCastling(*this, zet);
 		else  // en-passant
-			return LegaleZettenLijstBevatZet(*this, zet);
+			return LegalMoveListContainsMove(*this, zet);
 	}
 	else
 	{
@@ -479,37 +479,37 @@ bool Position::geldige_zet(const Move zet) const
 		//	return false;
 	}
 
-	if (stukken(ik) & naar)
+	if (pieces(ik) & naar)
 		return false;
 
 	if (stuk == PAWN)
 	{
-		if ((zet >= Move(PROMOTION_N)) ^ (rij(naar) == relatieve_rij(ik, RANK_8)))
+		if ((zet >= Move(PROMOTION_N)) ^ (rij(naar) == relative_rank(ik, RANK_8)))
 			return false;
 
-		if (!(aanval_van<PAWN>(van, ik) & stukken(~ik) & naar)
-			&& !((van + pion_vooruit(ik) == naar) && leeg_veld(naar))
-			&& !((van + 2 * pion_vooruit(ik) == naar)
-				&& (rij(van) == relatieve_rij(ik, RANK_2))
-				&& leeg_veld(naar)
-				&& leeg_veld(naar - pion_vooruit(ik))))
+		if (!(attack_from<PAWN>(van, ik) & pieces(~ik) & naar)
+			&& !((van + pawn_forward(ik) == naar) && empty_square(naar))
+			&& !((van + 2 * pawn_forward(ik) == naar)
+				&& (rij(van) == relative_rank(ik, RANK_2))
+				&& empty_square(naar)
+				&& empty_square(naar - pawn_forward(ik))))
 			return false;
 	}
-	else if (!(aanval_van(stuk, van) & naar))
+	else if (!(attack_from(stuk, van) & naar))
 	//else if (bb_tussen(van, naar) & stukken())
 		return false;
 
-	if (schaak_gevers())
+	if (check_givers())
 	{
 		if (stuk != KING)
 		{
-			if (meer_dan_een(schaak_gevers()))
+			if (more_than_one(check_givers()))
 				return false;
 
-			if (!((bb_tussen(lsb(schaak_gevers()), koning(ik)) | schaak_gevers()) & naar))
+			if (!((bb_between(lsb(check_givers()), koning(ik)) | check_givers()) & naar))
 				return false;
 		}
-		else if (aanvallers_naar(naar, stukken() ^ van) & stukken(~ik))
+		else if (attackers_to(naar, pieces() ^ van) & pieces(~ik))
 			return false;
 	}
 
@@ -517,57 +517,57 @@ bool Position::geldige_zet(const Move zet) const
 }
 
 
-bool Position::geeft_schaak(Move zet) const
+bool Position::gives_check(Move zet) const
 {
 	assert(is_ok(zet));
-	assert(stuk_kleur(bewogen_stuk(zet)) == aanZet);
+	assert(piece_color(moved_piece(zet)) == aanZet);
 
-	Square van = van_veld(zet);
-	Square naar = naar_veld(zet);
+	Square van = from_square(zet);
+	Square naar = to_square(zet);
 	Square veldK = koning(~aanZet);
 
-	if (st->schaakVelden[stuk_type(stuk_op_veld(van))] & naar)
+	if (st->schaakVelden[piece_type(piece_on_square(van))] & naar)
 		return true;
 
-	if ((st->xRay[~aanZet] & van) && !op_een_lijn(van, naar, veldK))
+	if ((st->xRay[~aanZet] & van) && !on_a_line(van, naar, veldK))
 		return true;
 
 	if (zet < Move(CASTLING))
 		return false;
 
 	if (zet >= Move(PROMOTION_N))
-		return aanval_bb(promotie_stuk(zet), naar, stukken() ^ van) & veldK;
+		return attack_bb(promotion_piece(zet), naar, pieces() ^ van) & veldK;
 
 	if (zet < Move(ENPASSANT))  // rokade
 	{
-		Square vanT = rokade_toren_veld(naar);
-		Square naarT = relatief_veld(aanZet, vanT > van ? SQ_F1 : SQ_D1);
+		Square vanT = castling_rook_square(naar);
+		Square naarT = relative_square(aanZet, vanT > van ? SQ_F1 : SQ_D1);
 
 		return (LegeAanval[ROOK][naarT] & veldK)
-			&& (aanval_bb_toren(naarT, (stukken() ^ van ^ vanT) | naarT | naar) & veldK);
+			&& (attack_bb_rook(naarT, (pieces() ^ van ^ vanT) | naarT | naar) & veldK);
 	}
 
 	// en-passant
 	{
-		Square ep_veld = maak_veld(lijn(naar), rij(van));
-		Bitboard b = (stukken() ^ van ^ ep_veld) | naar;
+		Square ep_veld = make_square(lijn(naar), rij(van));
+		Bitboard b = (pieces() ^ van ^ ep_veld) | naar;
 
-		return  (aanval_bb_toren(veldK, b) & stukken(aanZet, QUEEN, ROOK))
-			| (aanval_bb_loper(veldK, b) & stukken(aanZet, QUEEN, BISHOP));
+		return  (attack_bb_rook(veldK, b) & pieces(aanZet, QUEEN, ROOK))
+			| (attack_bb_bishop(veldK, b) & pieces(aanZet, QUEEN, BISHOP));
 	}
 }
 
 
-void Position::speel_zet(Move zet)
+void Position::do_move(Move zet)
 {
-	bool geeftSchaak = zet < Move(CASTLING) && !aftrek_schaak_mogelijk()
-		? st->schaakVelden[stuk_type(stuk_op_veld(van_veld(zet)))] & naar_veld(zet)
-		: geeft_schaak(zet);
+	bool geeftSchaak = zet < Move(CASTLING) && !discovered_check_possible()
+		? st->schaakVelden[piece_type(piece_on_square(from_square(zet)))] & to_square(zet)
+		: gives_check(zet);
 
-	speel_zet(zet, geeftSchaak);
+	do_move(zet, geeftSchaak);
 }
 
-void Position::speel_zet(Move zet, bool geeftSchaak)
+void Position::do_move(Move zet, bool geeftSchaak)
 {
 	assert(is_ok(zet));
 
@@ -583,45 +583,45 @@ void Position::speel_zet(Move zet, bool geeftSchaak)
 
 	Color ik = aanZet;
 	Color jij = ~ik;
-	Square van = van_veld(zet);
-	Square naar = naar_veld(zet);
-	Piece stuk = stuk_op_veld(van);
+	Square van = from_square(zet);
+	Square naar = to_square(zet);
+	Piece stuk = piece_on_square(van);
 	Piece slagstuk;
 
-	assert(stuk_kleur(stuk) == ik);
+	assert(piece_color(stuk) == ik);
 
-	if (zet_type(zet) == CASTLING)
+	if (move_type(zet) == CASTLING)
 	{
-		assert(stuk_type(stuk) == KING);
+		assert(piece_type(stuk) == KING);
 
 		Square vanT, naarT;
-		speel_rokade<true>(ik, van, naar, vanT, naarT);
+		do_castling<true>(ik, van, naar, vanT, naarT);
 
 		slagstuk = NO_PIECE;
-		Piece mijnToren = maak_stuk(ik, ROOK);
+		Piece mijnToren = make_piece(ik, ROOK);
 		st->psq += PST::psq[mijnToren][naarT] - PST::psq[mijnToren][vanT];
 		sleutel64 ^= Zobrist::psq[mijnToren][vanT] ^ Zobrist::psq[mijnToren][naarT];
 	}
 	else
-		slagstuk = zet_type(zet) == ENPASSANT ? maak_stuk(jij, PAWN) : stuk_op_veld(naar);
+		slagstuk = move_type(zet) == ENPASSANT ? make_piece(jij, PAWN) : piece_on_square(naar);
 
 	if (slagstuk)
 	{
-		assert(stuk_type(slagstuk) != KING);
-		assert(stuk_kleur(slagstuk) == jij);
+		assert(piece_type(slagstuk) != KING);
+		assert(piece_color(slagstuk) == jij);
 		Square slagveld = naar;
 
-		if (stuk_type(slagstuk) == PAWN)
+		if (piece_type(slagstuk) == PAWN)
 		{
-			if (zet_type(zet) == ENPASSANT)
+			if (move_type(zet) == ENPASSANT)
 			{
-				slagveld -= pion_vooruit(ik);
+				slagveld -= pawn_forward(ik);
 
-				assert(stuk_type(stuk) == PAWN);
+				assert(piece_type(stuk) == PAWN);
 				assert(naar == st->enpassantVeld);
-				assert(relatieve_rij(ik, naar) == RANK_6);
-				assert(stuk_op_veld(naar) == NO_PIECE);
-				assert(stuk_op_veld(slagveld) == maak_stuk(jij, PAWN));
+				assert(relative_rank(ik, naar) == RANK_6);
+				assert(piece_on_square(naar) == NO_PIECE);
+				assert(piece_on_square(slagveld) == make_piece(jij, PAWN));
 
 				bord[slagveld] = NO_PIECE;
 			}
@@ -633,14 +633,14 @@ void Position::speel_zet(Move zet, bool geeftSchaak)
 
 		st->fase -= StukFase[slagstuk];
 
-		verwijder_stuk(jij, slagstuk, slagveld);
+		remove_piece(jij, slagstuk, slagveld);
 
 		sleutel64 ^= Zobrist::psq[slagstuk][slagveld];
 		st->materiaalSleutel ^= Zobrist::psq[slagstuk][stukAantal[slagstuk]];
 		prefetch(threadInfo->materiaalTabel[st->materiaalSleutel ^ st->loperKleurSleutel]);
 
-		if (stuk_type(slagstuk) == BISHOP)
-			bereken_loper_kleur_sleutel();
+		if (piece_type(slagstuk) == BISHOP)
+			compute_bishop_color_key();
 
 		st->psq -= PST::psq[slagstuk][slagveld];
 
@@ -662,13 +662,13 @@ void Position::speel_zet(Move zet, bool geeftSchaak)
 		st->rokadeMogelijkheden &= ~rokade;
 	}
 
-	if (zet_type(zet) != CASTLING)
-		verplaats_stuk(ik, stuk, van, naar);
+	if (move_type(zet) != CASTLING)
+		move_piece(ik, stuk, van, naar);
 
-	if (stuk_type(stuk) == PAWN)
+	if (piece_type(stuk) == PAWN)
 	{
 		if ((int(naar) ^ int(van)) == 16
-			&& (aanval_van<PAWN>(naar - pion_vooruit(ik), ik) & stukken(jij, PAWN)))
+			&& (attack_from<PAWN>(naar - pawn_forward(ik), ik) & pieces(jij, PAWN)))
 		{
 			st->enpassantVeld = (van + naar) / 2;
 			sleutel64 ^= Zobrist::enpassant[lijn(st->enpassantVeld)];
@@ -676,21 +676,21 @@ void Position::speel_zet(Move zet, bool geeftSchaak)
 
 		else if (zet >= Move(PROMOTION_N))
 		{
-			Piece promotie = maak_stuk(ik, promotie_stuk(zet));
+			Piece promotie = make_piece(ik, promotion_piece(zet));
 
-			assert(relatieve_rij(ik, naar) == RANK_8);
-			assert(stuk_type(promotie) >= KNIGHT && stuk_type(promotie) <= QUEEN);
+			assert(relative_rank(ik, naar) == RANK_8);
+			assert(piece_type(promotie) >= KNIGHT && piece_type(promotie) <= QUEEN);
 
-			verwijder_stuk(ik, stuk, naar);
-			zet_stuk(ik, promotie, naar);
+			remove_piece(ik, stuk, naar);
+			put_piece(ik, promotie, naar);
 
 			sleutel64 ^= Zobrist::psq[stuk][naar] ^ Zobrist::psq[promotie][naar];
 			st->pionSleutel ^= Zobrist::psq[stuk][naar];
 			st->materiaalSleutel ^= Zobrist::psq[promotie][stukAantal[promotie] - 1]
 				^ Zobrist::psq[stuk][stukAantal[stuk]];
 
-			if (stuk_type(promotie) == BISHOP)
-				bereken_loper_kleur_sleutel();
+			if (piece_type(promotie) == BISHOP)
+				compute_bishop_color_key();
 
 			st->psq += PST::psq[promotie][naar] - PST::psq[stuk][naar];
 
@@ -711,7 +711,7 @@ void Position::speel_zet(Move zet, bool geeftSchaak)
 	st->psq += PST::psq[stuk][naar] - PST::psq[stuk][van];
 
 	st->geslagenStuk = slagstuk;
-	st->bewogenStuk = stuk_op_veld(naar);
+	st->bewogenStuk = piece_on_square(naar);
 	st->vorigeZet = zet;
 	st->counterZetWaarden = &numaInfo->counterZetStatistieken[stuk][naar];
 	st->evalPositioneel = NO_EVAL;
@@ -719,15 +719,15 @@ void Position::speel_zet(Move zet, bool geeftSchaak)
 	st->sleutel = sleutel64;
 
 	aanZet = ~aanZet;
-	st->schaakGevers = geeftSchaak ? aanvallers_naar(koning(jij)) & stukken(ik) : 0;
-	st->zetHerhaling = is_remise();
-	bereken_schaak_penningen();
+	st->schaakGevers = geeftSchaak ? attackers_to(koning(jij)) & pieces(ik) : 0;
+	st->zetHerhaling = is_draw();
+	compute_check_pins();
 
-	assert(stelling_is_ok());
+	assert(position_is_ok());
 }
 
 
-void Position::neem_zet_terug(Move zet)
+void Position::undo_move(Move zet)
 {
 	assert(is_ok(zet));
 	trace_cancel_move();
@@ -735,58 +735,58 @@ void Position::neem_zet_terug(Move zet)
 	aanZet = ~aanZet;
 
 	Color ik = aanZet;
-	Square van = van_veld(zet);
-	Square naar = naar_veld(zet);
-	Piece stuk = stuk_op_veld(naar);
+	Square van = from_square(zet);
+	Square naar = to_square(zet);
+	Piece stuk = piece_on_square(naar);
 
-	assert(leeg_veld(van) || zet_type(zet) == CASTLING);
-	assert(stuk_type(st->geslagenStuk) != KING);
+	assert(empty_square(van) || move_type(zet) == CASTLING);
+	assert(piece_type(st->geslagenStuk) != KING);
 	assert(stuk == st->bewogenStuk);
 
 	if (zet < Move(CASTLING))
 	{
-		verplaats_stuk(ik, stuk, naar, van);
+		move_piece(ik, stuk, naar, van);
 		if (st->geslagenStuk)
-			zet_stuk(~ik, st->geslagenStuk, naar);
+			put_piece(~ik, st->geslagenStuk, naar);
 	}
 	else
 	{
 		if (zet >= Move(PROMOTION_N))
 		{
-			assert(relatieve_rij(ik, naar) == RANK_8);
-			assert(stuk_type(stuk) == promotie_stuk(zet));
-			assert(stuk_type(stuk) >= KNIGHT && stuk_type(stuk) <= QUEEN);
+			assert(relative_rank(ik, naar) == RANK_8);
+			assert(piece_type(stuk) == promotion_piece(zet));
+			assert(piece_type(stuk) >= KNIGHT && piece_type(stuk) <= QUEEN);
 
-			verwijder_stuk(ik, stuk, naar);
-			stuk = maak_stuk(ik, PAWN);
-			zet_stuk(ik, stuk, naar);
+			remove_piece(ik, stuk, naar);
+			stuk = make_piece(ik, PAWN);
+			put_piece(ik, stuk, naar);
 		}
 
-		if (zet_type(zet) == CASTLING)
+		if (move_type(zet) == CASTLING)
 		{
 			Square vanT, naarT;
-			speel_rokade<false>(ik, van, naar, vanT, naarT);
+			do_castling<false>(ik, van, naar, vanT, naarT);
 		}
 		else
 		{
-			verplaats_stuk(ik, stuk, naar, van);
+			move_piece(ik, stuk, naar, van);
 
 			if (st->geslagenStuk)
 			{
 				Square slagveld = naar;
 
-				if (zet_type(zet) == ENPASSANT)
+				if (move_type(zet) == ENPASSANT)
 				{
-					slagveld -= pion_vooruit(ik);
+					slagveld -= pawn_forward(ik);
 
-					assert(stuk_type(stuk) == PAWN);
+					assert(piece_type(stuk) == PAWN);
 					assert(naar == (st - 1)->enpassantVeld);
-					assert(relatieve_rij(ik, naar) == RANK_6);
-					assert(stuk_op_veld(slagveld) == NO_PIECE);
-					assert(st->geslagenStuk == maak_stuk(~ik, PAWN));
+					assert(relative_rank(ik, naar) == RANK_6);
+					assert(piece_on_square(slagveld) == NO_PIECE);
+					assert(st->geslagenStuk == make_piece(~ik, PAWN));
 				}
 
-				zet_stuk(~ik, st->geslagenStuk, slagveld);
+				put_piece(~ik, st->geslagenStuk, slagveld);
 			}
 		}
 	}
@@ -794,35 +794,35 @@ void Position::neem_zet_terug(Move zet)
 
 	st--;
 
-	assert(stelling_is_ok());
+	assert(position_is_ok());
 }
 
 
 template<bool Do>
-void Position::speel_rokade(Color ik, Square van, Square naar, Square& vanT, Square& naarT)
+void Position::do_castling(Color ik, Square van, Square naar, Square& vanT, Square& naarT)
 {
-	vanT = rokade_toren_veld(naar);
-	naarT = relatief_veld(ik, vanT > van ? SQ_F1 : SQ_D1);
+	vanT = castling_rook_square(naar);
+	naarT = relative_square(ik, vanT > van ? SQ_F1 : SQ_D1);
 
 	if (!chess960)
 	{
-		verplaats_stuk(ik, maak_stuk(ik, KING), Do ? van : naar, Do ? naar : van);
-		verplaats_stuk(ik, maak_stuk(ik, ROOK), Do ? vanT : naarT, Do ? naarT : vanT);
+		move_piece(ik, make_piece(ik, KING), Do ? van : naar, Do ? naar : van);
+		move_piece(ik, make_piece(ik, ROOK), Do ? vanT : naarT, Do ? naarT : vanT);
 	}
 	else
 	{
-		verwijder_stuk(ik, maak_stuk(ik, KING), Do ? van : naar);
-		verwijder_stuk(ik, maak_stuk(ik, ROOK), Do ? vanT : naarT);
+		remove_piece(ik, make_piece(ik, KING), Do ? van : naar);
+		remove_piece(ik, make_piece(ik, ROOK), Do ? vanT : naarT);
 		bord[Do ? van : naar] = bord[Do ? vanT : naarT] = NO_PIECE;
-		zet_stuk(ik, maak_stuk(ik, KING), Do ? naar : van);
-		zet_stuk(ik, maak_stuk(ik, ROOK), Do ? naarT : vanT);
+		put_piece(ik, make_piece(ik, KING), Do ? naar : van);
+		put_piece(ik, make_piece(ik, ROOK), Do ? naarT : vanT);
 	}
 }
 
 
-void Position::speel_null_zet()
+void Position::do_null_move()
 {
-	assert(!schaak_gevers());
+	assert(!check_givers());
 
 	++knopen;
 	trace_do_move(0);
@@ -850,15 +850,15 @@ void Position::speel_null_zet()
 	st->evalFactor = (st - 1)->evalFactor;
 
 	aanZet = ~aanZet;
-	st->zetHerhaling = is_remise();
-	bereken_schaak_penningen();
+	st->zetHerhaling = is_draw();
+	compute_check_pins();
 
-	assert(stelling_is_ok());
+	assert(position_is_ok());
 }
 
-void Position::neem_null_terug()
+void Position::undo_null_move()
 {
-	assert(!schaak_gevers());
+	assert(!check_givers());
 	trace_cancel_move();
 
 	st--;
@@ -866,12 +866,12 @@ void Position::neem_null_terug()
 }
 
 
-Key64 Position::sleutel_na_zet(Move zet) const
+Key64 Position::key_after_move(Move zet) const
 {
-	Square van = van_veld(zet);
-	Square naar = naar_veld(zet);
-	Piece stuk = stuk_op_veld(van);
-	Piece slagstuk = stuk_op_veld(naar);
+	Square van = from_square(zet);
+	Square naar = to_square(zet);
+	Piece stuk = piece_on_square(van);
+	Piece slagstuk = piece_on_square(naar);
 	Key64 k = st->sleutel ^ Zobrist::aanZet;
 
 	if (slagstuk)
@@ -887,7 +887,7 @@ const SeeValue SeeValueSimple[PIECE_N] =
 	SEE_0, SEE_0, SEE_PAWN, SEE_KNIGHT, SEE_BISHOP, SEE_ROOK, SEE_QUEEN, SEE_0
 };
 
-const SeeValue* Position::see_waarden() const
+const SeeValue* Position::see_values() const
 {
 	return SeeValueSimple;
 }
@@ -1012,33 +1012,33 @@ SeeWaarde Stelling::see(Zet zet) const
 //template <bool UsePins>
 bool Position::see_test(Move zet, SeeValue limiet) const
 {
-	if (zet_type(zet) == CASTLING)
+	if (move_type(zet) == CASTLING)
 		return 0 >= limiet;
 
-	const SeeValue* see_waarde = see_waarden();
-	Square van = van_veld(zet);
-	Square naar = naar_veld(zet);
-	Bitboard bezet = stukken();
-	const Color ik = stuk_kleur(stuk_op_veld(van));
+	const SeeValue* see_waarde = see_values();
+	Square van = from_square(zet);
+	Square naar = to_square(zet);
+	Bitboard bezet = pieces();
+	const Color ik = piece_color(piece_on_square(van));
 
-	int waarde = see_waarde[stuk_op_veld(naar)] - limiet;
-	if (zet_type(zet) == ENPASSANT)
+	int waarde = see_waarde[piece_on_square(naar)] - limiet;
+	if (move_type(zet) == ENPASSANT)
 	{
-		bezet ^= naar - pion_vooruit(ik);
+		bezet ^= naar - pawn_forward(ik);
 		waarde += see_waarde[PAWN];
 	}
 	if (waarde < 0)
 		return false;
 
-	waarde -= see_waarde[stuk_op_veld(van)];
+	waarde -= see_waarde[piece_on_square(van)];
 	if (waarde >= 0)
 		return true;
 
 	bezet ^= van;
-	Bitboard aanvallers = aanvallers_naar(naar, bezet) & bezet;
+	Bitboard aanvallers = attackers_to(naar, bezet) & bezet;
 
 	do {
-		Bitboard mijnAanvallers = aanvallers & stukken(~ik);
+		Bitboard mijnAanvallers = aanvallers & pieces(~ik);
 		if (!mijnAanvallers)
 			return true;
 		//if (UsePins)
@@ -1057,30 +1057,30 @@ bool Position::see_test(Move zet, SeeValue limiet) const
 
 		Bitboard bb;
 		PieceType slagstuk;
-		if ((bb = mijnAanvallers & stukken(PAWN)))
+		if ((bb = mijnAanvallers & pieces(PAWN)))
 			slagstuk = PAWN;
-		else if ((bb = mijnAanvallers & stukken(KNIGHT)))
+		else if ((bb = mijnAanvallers & pieces(KNIGHT)))
 			slagstuk = KNIGHT;
-		else if ((bb = mijnAanvallers & stukken(BISHOP)))
+		else if ((bb = mijnAanvallers & pieces(BISHOP)))
 			slagstuk = BISHOP;
-		else if ((bb = mijnAanvallers & stukken(ROOK)))
+		else if ((bb = mijnAanvallers & pieces(ROOK)))
 			slagstuk = ROOK;
-		else if ((bb = mijnAanvallers & stukken(QUEEN)))
+		else if ((bb = mijnAanvallers & pieces(QUEEN)))
 			slagstuk = QUEEN;
 		else
-			return aanvallers & stukken(ik);
+			return aanvallers & pieces(ik);
 
 		waarde += see_waarde[slagstuk];
 		if (waarde < 0) 
 			return false;
 		bezet ^= (bb & -bb);
 		if (!(slagstuk & 1)) // PION, LOPER, DAME
-			aanvallers |= aanval_bb_loper(naar, bezet) & (stukken(BISHOP) | stukken(QUEEN));
+			aanvallers |= attack_bb_bishop(naar, bezet) & (pieces(BISHOP) | pieces(QUEEN));
 		if (slagstuk >= ROOK)
-			aanvallers |= aanval_bb_toren(naar, bezet) & (stukken(ROOK) | stukken(QUEEN));
+			aanvallers |= attack_bb_rook(naar, bezet) & (pieces(ROOK) | pieces(QUEEN));
 		aanvallers &= bezet;
 
-		mijnAanvallers = aanvallers & stukken(ik);
+		mijnAanvallers = aanvallers & pieces(ik);
 		if (!mijnAanvallers)
 			return false;
 		//if (UsePins)
@@ -1097,38 +1097,38 @@ bool Position::see_test(Move zet, SeeValue limiet) const
 			}
 		}
 		
-		if ((bb = mijnAanvallers & stukken(PAWN)))
+		if ((bb = mijnAanvallers & pieces(PAWN)))
 			slagstuk = PAWN;
-		else if ((bb = mijnAanvallers & stukken(KNIGHT)))
+		else if ((bb = mijnAanvallers & pieces(KNIGHT)))
 			slagstuk = KNIGHT;
-		else if ((bb = mijnAanvallers & stukken(BISHOP)))
+		else if ((bb = mijnAanvallers & pieces(BISHOP)))
 			slagstuk = BISHOP;
-		else if ((bb = mijnAanvallers & stukken(ROOK)))
+		else if ((bb = mijnAanvallers & pieces(ROOK)))
 			slagstuk = ROOK;
-		else if ((bb = mijnAanvallers & stukken(QUEEN)))
+		else if ((bb = mijnAanvallers & pieces(QUEEN)))
 			slagstuk = QUEEN;
 		else
-			return !(aanvallers & stukken(~ik));
+			return !(aanvallers & pieces(~ik));
 
 		waarde -= see_waarde[slagstuk];
 		if (waarde >= 0)
 			return true;
 		bezet ^= (bb & -bb);
 		if (!(slagstuk & 1)) // PION, LOPER, DAME
-			aanvallers |= aanval_bb_loper(naar, bezet) & (stukken(BISHOP) | stukken(QUEEN));
+			aanvallers |= attack_bb_bishop(naar, bezet) & (pieces(BISHOP) | pieces(QUEEN));
 		if (slagstuk >= ROOK)
-			aanvallers |= aanval_bb_toren(naar, bezet) & (stukken(ROOK) | stukken(QUEEN));
+			aanvallers |= attack_bb_rook(naar, bezet) & (pieces(ROOK) | pieces(QUEEN));
 		aanvallers &= bezet;
 	} while (true);
 }
 
 
-bool Position::is_remise() const
+bool Position::is_draw() const
 {
 	if (st->remise50Zetten >= 2 * Threads.vijftigZettenAfstand)
 	{
 		if (st->remise50Zetten == 100)
-			return !st->schaakGevers || MinstensEenLegaleZet(*this);
+			return !st->schaakGevers || AtLeastOneLegalMove(*this);
 		return true;
 	}
 
@@ -1150,7 +1150,7 @@ bool Position::is_remise() const
 }
 
 
-void Position::draaiBord()
+void Position::flipBoard()
 {
 	string f, token;
 	std::stringstream ss(fen());
@@ -1176,13 +1176,13 @@ void Position::draaiBord()
 	std::getline(ss, token);
 	f += token;
 
-	set(f, is_chess960(), mijn_thread());
+	set(f, is_chess960(), my_thread());
 
-	assert(stelling_is_ok());
+	assert(position_is_ok());
 }
 
 
-bool Position::stelling_is_ok(int* failedStep) const
+bool Position::position_is_ok(int* failedStep) const
 {
 	const bool Fast = true;
 
@@ -1195,34 +1195,34 @@ bool Position::stelling_is_ok(int* failedStep) const
 
 		if (step == Default)
 			if ((aanZet != WHITE && aanZet != BLACK)
-				|| stuk_op_veld(koning(WHITE)) != W_KING
-				|| stuk_op_veld(koning(BLACK)) != B_KING
-				|| (enpassant_veld() != SQ_NONE
-					&& relatieve_rij(aanZet, enpassant_veld()) != RANK_6))
+				|| piece_on_square(koning(WHITE)) != W_KING
+				|| piece_on_square(koning(BLACK)) != B_KING
+				|| (enpassant_square() != SQ_NONE
+					&& relative_rank(aanZet, enpassant_square()) != RANK_6))
 				return false;
 
 		if (step == King)
 			if (std::count(bord, bord + SQUARE_N, W_KING) != 1
 				|| std::count(bord, bord + SQUARE_N, B_KING) != 1
-				|| aanvallers_naar(koning(~aanZet)) & stukken(aanZet))
+				|| attackers_to(koning(~aanZet)) & pieces(aanZet))
 				return false;
 
 		if (step == Bitboards)
 		{
-			if ((stukken(WHITE) & stukken(BLACK))
-				|| (stukken(WHITE) | stukken(BLACK)) != stukken())
+			if ((pieces(WHITE) & pieces(BLACK))
+				|| (pieces(WHITE) | pieces(BLACK)) != pieces())
 				return false;
 
 			for (PieceType p1 = KING; p1 <= QUEEN; ++p1)
 				for (PieceType p2 = KING; p2 <= QUEEN; ++p2)
-					if (p1 != p2 && (stukken(p1) & stukken(p2)))
+					if (p1 != p2 && (pieces(p1) & pieces(p2)))
 						return false;
 		}
 
 		if (step == State)
 		{
 			PositionInfo si = *st;
-			set_stelling_info(&si);
+			set_position_info(&si);
 			if (std::memcmp(&si, st, sizeof(PositionInfo)))
 				return false;
 		}
@@ -1231,12 +1231,12 @@ bool Position::stelling_is_ok(int* failedStep) const
 			for (Color kleur = WHITE; kleur <= BLACK; ++kleur)
 				for (PieceType stuk = KING; stuk <= QUEEN; ++stuk)
 				{
-					if (stukAantal[maak_stuk(kleur, stuk)] != popcount(stukken(kleur, stuk)))
+					if (stukAantal[make_piece(kleur, stuk)] != popcount(pieces(kleur, stuk)))
 						return false;
 
-					for (int i = 0; i < stukAantal[maak_stuk(kleur, stuk)]; ++i)
-						if (bord[stukLijst[maak_stuk(kleur, stuk)][i]] != maak_stuk(kleur, stuk)
-							|| stukIndex[stukLijst[maak_stuk(kleur, stuk)][i]] != i)
+					for (int i = 0; i < stukAantal[make_piece(kleur, stuk)]; ++i)
+						if (bord[stukLijst[make_piece(kleur, stuk)][i]] != make_piece(kleur, stuk)
+							|| stukIndex[stukLijst[make_piece(kleur, stuk)][i]] != i)
 							return false;
 				}
 
@@ -1246,10 +1246,10 @@ bool Position::stelling_is_ok(int* failedStep) const
 				{
 					CastlingRight rokade = CastlingRight(WHITE_SHORT << (n + 2 * kleur));
 
-					if (!rokade_mogelijk(rokade))
+					if (!castling_possible(rokade))
 						continue;
 
-					if (stuk_op_veld(rokadeTorenVeld[rokade]) != maak_stuk(kleur, ROOK)
+					if (piece_on_square(rokadeTorenVeld[rokade]) != make_piece(kleur, ROOK)
 						|| rokadeMask[rokadeTorenVeld[rokade]] != rokade
 						|| (rokadeMask[koning(kleur)] & (rokade)) != rokade)
 						return false;
@@ -1260,16 +1260,16 @@ bool Position::stelling_is_ok(int* failedStep) const
 }
 
 
-std::string Position::valideer_stelling() const
+std::string Position::validate_position() const
 {
 	if (aantal(WHITE, KING) != 1)
 		return "Exactly one white king required";
 	if (aantal(BLACK, KING) != 1)
 		return "Exactly one black king required";
 
-	if (popcount(stukken(WHITE)) > 16)
+	if (popcount(pieces(WHITE)) > 16)
 		return "Too many white pieces";
-	if (popcount(stukken(BLACK)) > 16)
+	if (popcount(pieces(BLACK)) > 16)
 		return "Too many black pieces";
 
 	if (aantal(WHITE, PAWN) > 8)
@@ -1297,52 +1297,52 @@ std::string Position::valideer_stelling() const
 	if (aantal(BLACK, KNIGHT) + aantal(BLACK, PAWN) > 10)
 		return "Too many black knights";
 
-	if (stukken(PAWN) & (Rank1BB | Rank8BB))
+	if (pieces(PAWN) & (Rank1BB | Rank8BB))
 		return "Pawn at rank 1 or 8";
 
 	return "";
 }
 
-Square Position::bereken_dreiging() const
+Square Position::compute_threat() const
 {
 	if (!st->counterZetWaarden)
 		return SQ_NONE;
 
-	Square naar = naar_veld(st->vorigeZet);
+	Square naar = to_square(st->vorigeZet);
 	switch (st->bewogenStuk)
 	{
 	case W_PAWN:
-		if (Bitboard b = PionAanval[WHITE][naar] & stukken_uitgezonderd(BLACK, PAWN))
+		if (Bitboard b = PionAanval[WHITE][naar] & pieces_except(BLACK, PAWN))
 			return lsb(b);
 		break;
 	case B_PAWN:
-		if (Bitboard b = PionAanval[BLACK][naar] & stukken_uitgezonderd(WHITE, PAWN))
+		if (Bitboard b = PionAanval[BLACK][naar] & pieces_except(WHITE, PAWN))
 			return msb(b);
 		break;
 	case W_KNIGHT:
-		if (Bitboard b = LegeAanval[KNIGHT][naar] & stukken(BLACK, ROOK, QUEEN))
+		if (Bitboard b = LegeAanval[KNIGHT][naar] & pieces(BLACK, ROOK, QUEEN))
 			return lsb(b);
 		break;
 	case B_KNIGHT:
-		if (Bitboard b = LegeAanval[KNIGHT][naar] & stukken(WHITE, ROOK, QUEEN))
+		if (Bitboard b = LegeAanval[KNIGHT][naar] & pieces(WHITE, ROOK, QUEEN))
 			return msb(b);
 		break;
 	case W_BISHOP:
 		// bij L en T eventueel testen dat de dreiging al niet eerder bestond
 		// (vorigeZet in dezelfde richting als dreiging)
-		if (Bitboard b = aanval_bb_loper(naar, stukken()) & stukken(BLACK, ROOK, QUEEN))
+		if (Bitboard b = attack_bb_bishop(naar, pieces()) & pieces(BLACK, ROOK, QUEEN))
 			return lsb(b);
 		break;
 	case B_BISHOP:
-		if (Bitboard b = aanval_bb_loper(naar, stukken()) & stukken(WHITE, ROOK, QUEEN))
+		if (Bitboard b = attack_bb_bishop(naar, pieces()) & pieces(WHITE, ROOK, QUEEN))
 			return msb(b);
 		break;
 	case W_ROOK:
-		if (Bitboard b = aanval_bb_toren(naar, stukken()) & stukken(BLACK, QUEEN))
+		if (Bitboard b = attack_bb_rook(naar, pieces()) & pieces(BLACK, QUEEN))
 			return lsb(b);
 		break;
 	case B_ROOK:
-		if (Bitboard b = aanval_bb_toren(naar, stukken()) & stukken(WHITE, QUEEN))
+		if (Bitboard b = attack_bb_rook(naar, pieces()) & pieces(WHITE, QUEEN))
 			return msb(b);
 		break;
 	default:

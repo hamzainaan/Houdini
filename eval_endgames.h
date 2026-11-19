@@ -14,8 +14,8 @@ typedef ScaleFactor (*endgame_scalefactor_fx)(const Position& pos);
 
 class Endgames 
 {
-	void add_waarde(const char* pieces, endgame_value_fx, endgame_value_fx);
-	void add_schaalfactor(const char* pieces, endgame_scalefactor_fx, endgame_scalefactor_fx);
+	void add_value(const char* pieces, endgame_value_fx, endgame_value_fx);
+	void add_scalefactor(const char* pieces, endgame_scalefactor_fx, endgame_scalefactor_fx);
 
 	typedef std::map<Key64, int> FunctionIndexMap;
 
@@ -24,10 +24,10 @@ class Endgames
 	FunctionIndexMap mapSchaalFactor;
 public:
 	Endgames();
-	void initialisatie();
+	void initialize();
 
-	int probe_waarde(Key64 key);
-	int probe_schaalfactor(Key64 key, Color& sterkeZijde);
+	int probe_value(Key64 key);
+	int probe_scalefactor(Key64 key, Color& sterkeZijde);
 
 	endgame_value_fx waarde_functies[16];
 	endgame_scalefactor_fx factor_functies[32];

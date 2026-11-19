@@ -29,7 +29,7 @@ protected:
 template<int MaxPlus, int MaxMin>
 struct PieceSquareStats : PieceSquareTable<SortValueCompact>
 {
-	static int bereken_offset(Piece stuk, Square naar) { return 64 * int(stuk) + int(naar); }
+	static int compute_offset(Piece stuk, Square naar) { return 64 * int(stuk) + int(naar); }
 	SortValueCompact valueAtOffset(int offset) const { return *((const SortValueCompact*)tabel + offset); }
 
 	void fill(SortValue v)
@@ -98,11 +98,11 @@ private:
 
 struct CounterFollowUpMoveStats
 {
-	Move get(Piece stuk1, Square naar1, Piece stuk2, Square naar2) { return Move(tabel[stuk1][naar1][stuk_type(stuk2)][naar2]); }
+	Move get(Piece stuk1, Square naar1, Piece stuk2, Square naar2) { return Move(tabel[stuk1][naar1][piece_type(stuk2)][naar2]); }
 	void clear() { std::memset(tabel, 0, sizeof(tabel)); }
 	void update(Piece stuk1, Square naar1, Piece stuk2, Square naar2, Move zet)
 	{
-		tabel[stuk1][naar1][stuk_type(stuk2)][naar2] = zet;
+		tabel[stuk1][naar1][piece_type(stuk2)][naar2] = zet;
 	}
 
 private:
@@ -127,8 +127,8 @@ private:
 
 struct SpecialKillerStats
 {
-	static int index_mijn_stukken(const Position &pos, Color kleur);
-	static int index_jouw_stukken(const Position &pos, Color kleur, Square veld);
+	static int index_our_pieces(const Position &pos, Color kleur);
+	static int index_their_pieces(const Position &pos, Color kleur, Square veld);
 
 	Move get(Color kleur, int index) const { return tabel[kleur][index]; }
 	void clear() { std::memset(tabel, 0, sizeof(tabel)); }
@@ -155,7 +155,7 @@ namespace MoveSelection
 	void init_qsearch(const Position&, Move, Depth, Square);
 	void init_probcut(const Position&, Move, SeeValue);
 
-	Move geef_zet(const Position& pos);
+	Move next_move(const Position& pos);
 
 	template<MoveGeneration> void score(const Position& pos);
 }

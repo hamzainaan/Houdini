@@ -90,7 +90,7 @@ const int LIC3 = 0x6AEDF8EA;
 #endif
 
 
-void Lees_Licentie(char *ACTIVATIONKEY, char *HARDWAREKEY)
+void Read_License(char *ACTIVATIONKEY, char *HARDWAREKEY)
 {
 	HKEY hKey = 0;
 	char buf[256];
@@ -211,7 +211,7 @@ void Lees_Licentie(char *ACTIVATIONKEY, char *HARDWAREKEY)
 }
 
 
-void Lees_ChessOK_Licentie()
+void Read_ChessOK_License()
 {
 }
 
@@ -285,7 +285,7 @@ void do_decompress(Bytef *in, Bytef *out, char *ACTIVATIONKEY, char *HARDWAREKEY
 	in_len -= (uint8_t)(stream1[in_len - 1]);
 
 	// te traag --> debug poging aan de gang -> verstoor de werking
-	if (nu() >= Threads.programmaStart + 999)
+	if (now() >= Threads.programmaStart + 999)
 		in_len--;
 
 	out_len = *((uLongf *)stream1);
@@ -307,7 +307,7 @@ void do_decompress(Bytef *in, Bytef *out, char *ACTIVATIONKEY, char *HARDWAREKEY
 }
 
 
-void lees_licentie_tabellen()
+void read_license_tables()
 {
 	char ACTIVATIONKEY[64], HARDWAREKEY[512];
 
@@ -330,7 +330,7 @@ void lees_licentie_tabellen()
 		HARDWAREKEY[i] = i + 97;
 	HARDWAREKEY[32] = 0;
 #else
-	Lees_Licentie(ACTIVATIONKEY, HARDWAREKEY);
+	Read_License(ACTIVATIONKEY, HARDWAREKEY);
 #endif
 	if (!LICENSE_OK)
 		return;
@@ -388,7 +388,7 @@ unsigned int app_file_size()
 }
 
 
-int LmatWaarde1000()
+int LmatValue1000()
 {
 	return *((int *)(Lmat_Stream + 0x3e4));
 }

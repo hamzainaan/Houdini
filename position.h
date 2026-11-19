@@ -18,9 +18,9 @@ struct MoveEx;
 namespace PST 
 {
 	extern Score psq[PIECE_N][SQUARE_N];
-	void initialisatie();
-	void export_tabel();
-	void import_tabel();
+	void initialize();
+	void export_table();
+	void import_table();
 }
 
 struct AttackInfo 
@@ -92,7 +92,7 @@ static_assert(offsetof(struct PositionInfo, sleutel) == 48, "offset wrong");
 class Position 
 {
 public:
-	static void initialisatie();
+	static void initialize();
 	static void init_hash_move50(int FiftyMoveDistance);
 
 	Position() = default;
@@ -102,105 +102,105 @@ public:
 	Position& set(const std::string& fenStr, bool isChess960, Thread* th);
 	const std::string fen() const;
 
-	Bitboard stukken() const;
-	Bitboard stukken(PieceType stuk) const;
-	Bitboard stukken(PieceType stuk1, PieceType stuk2) const;
-	Bitboard stukken(Color kleur) const;
-	Bitboard stukken(Color kleur, PieceType stuk) const;
-	Bitboard stukken(Color kleur, PieceType stuk1, PieceType stuk2) const;
-	Bitboard stukken(Color kleur, PieceType stuk1, PieceType stuk2, PieceType stuk3) const;
-	Bitboard stukken_uitgezonderd(Color kleur, PieceType stuk) const;
-	Piece stuk_op_veld(Square veld) const;
-	Square enpassant_veld() const;
-	bool leeg_veld(Square veld) const;
+	Bitboard pieces() const;
+	Bitboard pieces(PieceType stuk) const;
+	Bitboard pieces(PieceType stuk1, PieceType stuk2) const;
+	Bitboard pieces(Color kleur) const;
+	Bitboard pieces(Color kleur, PieceType stuk) const;
+	Bitboard pieces(Color kleur, PieceType stuk1, PieceType stuk2) const;
+	Bitboard pieces(Color kleur, PieceType stuk1, PieceType stuk2, PieceType stuk3) const;
+	Bitboard pieces_except(Color kleur, PieceType stuk) const;
+	Piece piece_on_square(Square veld) const;
+	Square enpassant_square() const;
+	bool empty_square(Square veld) const;
 	int aantal(Color kleur, PieceType stuk) const;
 	int aantal(Piece stuk) const;
-	const Square* stuk_lijst(Color kleur, PieceType stuk) const;
-	Square stuk_veld(Color kleur, PieceType stuk) const;
+	const Square* piece_list(Color kleur, PieceType stuk) const;
+	Square piece_square(Color kleur, PieceType stuk) const;
 	Square koning(Color kleur) const;
-	int alle_stukken_aantal() const;
+	int all_pieces_count() const;
 
-	int rokade_mogelijkheden(Color kleur) const;
-	int rokade_mogelijk(CastlingRight rokade) const;
-	bool rokade_verhinderd(CastlingRight rokade) const;
-	Square rokade_toren_veld(Square koningVeld) const;
+	int castling_rights(Color kleur) const;
+	int castling_possible(CastlingRight rokade) const;
+	bool castling_impeded(CastlingRight rokade) const;
+	Square castling_rook_square(Square koningVeld) const;
 
-	Bitboard schaak_gevers() const;
-	Bitboard aftrek_schaak_mogelijk() const;
-	Bitboard gepende_stukken() const;
-	void bereken_schaak_penningen() const;
-	template<Color kleur> void bereken_penningen() const;
+	Bitboard check_givers() const;
+	Bitboard discovered_check_possible() const;
+	Bitboard pinned_pieces() const;
+	void compute_check_pins() const;
+	template<Color kleur> void compute_pins() const;
 
-	Bitboard aanvallers_naar(Square veld) const;
-	Bitboard aanvallers_naar(Square veld, Bitboard bezet) const;
-	Bitboard aanval_van(PieceType stukT, Square veld) const;
-	template<PieceType> Bitboard aanval_van(Square veld) const;
-	template<PieceType> Bitboard aanval_van(Square veld, Color kleur) const;
+	Bitboard attackers_to(Square veld) const;
+	Bitboard attackers_to(Square veld, Bitboard bezet) const;
+	Bitboard attack_from(PieceType stukT, Square veld) const;
+	template<PieceType> Bitboard attack_from(Square veld) const;
+	template<PieceType> Bitboard attack_from(Square veld, Color kleur) const;
 
-	bool legale_zet(Move zet) const;
-	bool geldige_zet(const Move zet) const;
-	bool is_slagzet(Move zet) const;
+	bool legal_move(Move zet) const;
+	bool valid_move(const Move zet) const;
+	bool is_capture(Move zet) const;
 	bool slag_of_promotie(Move zet) const;
-	bool geeft_schaak(Move zet) const;
-	bool vooruitgeschoven_pion(Move zet) const;
-	bool vrijpion_opmars(Move zet, Rank r) const;
-	Piece bewogen_stuk(Move zet) const;
-	bool materiaal_of_rokade_gewijzigd() const;
-	Square bereken_dreiging() const;
+	bool gives_check(Move zet) const;
+	bool advanced_pawn(Move zet) const;
+	bool passed_pawn_advance(Move zet, Rank r) const;
+	Piece moved_piece(Move zet) const;
+	bool material_or_castling_changed() const;
+	Square compute_threat() const;
 
-	bool is_vrijpion(Color kleur, Square veld) const;
-	bool ongelijke_lopers() const;
+	bool is_passed_pawn(Color kleur, Square veld) const;
+	bool opposite_bishops() const;
 
-	void speel_zet(Move zet, bool geeftSchaak);
-	void speel_zet(Move zet);
-	void neem_zet_terug(Move zet);
-	void speel_null_zet();
-	void neem_null_terug();
+	void do_move(Move zet, bool geeftSchaak);
+	void do_move(Move zet);
+	void undo_move(Move zet);
+	void do_null_move();
+	void undo_null_move();
 
-	const SeeValue* see_waarden() const;
+	const SeeValue* see_values() const;
 	//SeeWaarde see(Zet zet) const;
 	bool see_test(Move zet, SeeValue v) const;
 
 	Key64 sleutel() const;
-	Key64 sleutel_na_zet(Move zet) const;
-	Key64 uitzondering_sleutel(Move zet) const;
-	Key64 materiaal_sleutel() const;
-	Key64 loperkleur_sleutel() const;
-	Key64 pion_sleutel() const;
-	Key64 remise50_sleutel() const;
+	Key64 key_after_move(Move zet) const;
+	Key64 exclusion_key(Move zet) const;
+	Key64 material_key() const;
+	Key64 bishopcolor_key() const;
+	Key64 pawn_key() const;
+	Key64 draw50_key() const;
 
-	Color aan_zet() const;
-	GamePhase partij_fase() const;
-	int partij_ply() const;
-	void verhoog_partij_ply();
-	void verhoog_tb_hits();
+	Color side_to_move() const;
+	GamePhase game_phase() const;
+	int game_ply() const;
+	void increase_game_ply();
+	void increase_tb_hits();
 	bool is_chess960() const;
-	Thread* mijn_thread() const;
+	Thread* my_thread() const;
 	ThreadInfo* ti() const;
 	NumaInfo* ni() const;
-	uint64_t bezochte_knopen() const;
+	uint64_t visited_nodes() const;
 	uint64_t tb_hits() const;
-	int vijftig_zetten_teller() const;
+	int fifty_moves_counter() const;
 	Score psq_score() const;
-	MaterialValue niet_pion_materiaal(Color kleur) const;
+	MaterialValue non_pawn_material(Color kleur) const;
 	PositionInfo* info() const { return st; }
-	void kopieer_stelling(const Position* pos, Thread* th, PositionInfo* copyState);
+	void copy_position(const Position* pos, Thread* th, PositionInfo* copyState);
 
-	bool stelling_is_ok(int* failedStep = nullptr) const;
-	void draaiBord();
-	std::string valideer_stelling() const;
+	bool position_is_ok(int* failedStep = nullptr) const;
+	void flipBoard();
+	std::string validate_position() const;
 
 private:
-	void set_rokade_mogelijkheid(Color kleur, Square vanT);
-	void set_stelling_info(PositionInfo* si) const;
-	void bereken_loper_kleur_sleutel() const;
+	void set_castling_right(Color kleur, Square vanT);
+	void set_position_info(PositionInfo* si) const;
+	void compute_bishop_color_key() const;
 
-	void zet_stuk(Color kleur, Piece stuk, Square veld);
-	void verwijder_stuk(Color kleur, Piece stuk, Square veld);
-	void verplaats_stuk(Color kleur, Piece stuk, Square van, Square naar);
+	void put_piece(Color kleur, Piece stuk, Square veld);
+	void remove_piece(Color kleur, Piece stuk, Square veld);
+	void move_piece(Color kleur, Piece stuk, Square van, Square naar);
 	template<bool Do>
-	void speel_rokade(Color ik, Square van, Square naar, Square& vanT, Square& naarT);
-	bool is_remise() const;
+	void do_castling(Color ik, Square van, Square naar, Square& vanT, Square& naarT);
+	bool is_draw() const;
 
 	PositionInfo* st;
 	Color aanZet;
@@ -229,69 +229,69 @@ static_assert(sizeof(Position) == 14 * 64, "Stelling foute grootte");
 
 extern std::ostream& operator<<(std::ostream& os, const Position& pos);
 
-inline Color Position::aan_zet() const 
+inline Color Position::side_to_move() const 
 {
 	return aanZet;
 }
 
-inline bool Position::leeg_veld(Square veld) const
+inline bool Position::empty_square(Square veld) const
 {
 	return bord[veld] == NO_PIECE;
 }
 
-inline Piece Position::stuk_op_veld(Square veld) const
+inline Piece Position::piece_on_square(Square veld) const
 {
 	return bord[veld];
 }
 
-inline Piece Position::bewogen_stuk(Move zet) const
+inline Piece Position::moved_piece(Move zet) const
 {
-	return bord[van_veld(zet)];
+	return bord[from_square(zet)];
 }
 
-inline Bitboard Position::stukken() const
+inline Bitboard Position::pieces() const
 {
 	return stukBB[ALL_PIECES];
 }
 
-inline Bitboard Position::stukken(PieceType stuk) const
+inline Bitboard Position::pieces(PieceType stuk) const
 {
-	return stukBB[maak_stuk(WHITE, stuk)] | stukBB[maak_stuk(BLACK, stuk)];
+	return stukBB[make_piece(WHITE, stuk)] | stukBB[make_piece(BLACK, stuk)];
 }
 
-inline Bitboard Position::stukken(PieceType stuk1, PieceType stuk2) const
+inline Bitboard Position::pieces(PieceType stuk1, PieceType stuk2) const
 {
-	return stukken(stuk1) | stukken(stuk2);
+	return pieces(stuk1) | pieces(stuk2);
 }
 
-inline Bitboard Position::stukken(Color kleur) const
+inline Bitboard Position::pieces(Color kleur) const
 {
 	return kleurBB[kleur];
 }
 
-inline Bitboard Position::stukken(Color kleur, PieceType stuk) const
+inline Bitboard Position::pieces(Color kleur, PieceType stuk) const
 {
-	return stukBB[maak_stuk(kleur, stuk)];
+	return stukBB[make_piece(kleur, stuk)];
 }
 
-inline Bitboard Position::stukken(Color kleur, PieceType stuk1, PieceType stuk2) const
+inline Bitboard Position::pieces(Color kleur, PieceType stuk1, PieceType stuk2) const
 {
-	return stukken(kleur, stuk1) | stukken(kleur, stuk2);
+	return pieces(kleur, stuk1) | pieces(kleur, stuk2);
 }
 
-inline Bitboard Position::stukken(Color kleur, PieceType stuk1, PieceType stuk2, PieceType stuk3) const
+inline Bitboard Position::pieces(Color kleur, PieceType stuk1, PieceType stuk2, PieceType stuk3) const
 {
-	return stukken(kleur, stuk1) | stukken(kleur, stuk2) | stukken(kleur, stuk3);
+	return pieces(kleur, stuk1) | pieces(kleur, stuk2) | pieces(kleur, stuk3);
 }
 
-inline Bitboard Position::stukken_uitgezonderd(Color kleur, PieceType stuk) const
+inline Bitboard Position::pieces_except(Color kleur, PieceType stuk) const
 {
-	return kleurBB[kleur] ^ stukBB[maak_stuk(kleur, stuk)];
+	return kleurBB[kleur] ^ stukBB[make_piece(kleur, stuk)];
 }
 
 inline int Position::aantal(Color kleur, PieceType stuk) const
 {
-	return stukAantal[maak_stuk(kleur, stuk)];
+	return stukAantal[make_piece(kleur, stuk)];
 }
 
 inline int Position::aantal(Piece stuk) const
@@ -299,109 +299,109 @@ inline int Position::aantal(Piece stuk) const
 	return stukAantal[stuk];
 }
 
-inline int Position::alle_stukken_aantal() const
+inline int Position::all_pieces_count() const
 {
-	return popcount(stukken());
+	return popcount(pieces());
 }
 
-inline const Square* Position::stuk_lijst(Color kleur, PieceType stuk) const
+inline const Square* Position::piece_list(Color kleur, PieceType stuk) const
 {
-	return stukLijst[maak_stuk(kleur, stuk)];
+	return stukLijst[make_piece(kleur, stuk)];
 }
 
-inline Square Position::stuk_veld(Color kleur, PieceType stuk) const
+inline Square Position::piece_square(Color kleur, PieceType stuk) const
 {
-	assert(stukAantal[maak_stuk(kleur, stuk)] == 1);
-	return stukLijst[maak_stuk(kleur, stuk)][0];
+	assert(stukAantal[make_piece(kleur, stuk)] == 1);
+	return stukLijst[make_piece(kleur, stuk)][0];
 }
 
 inline Square Position::koning(Color kleur) const
 {
-	return stukLijst[maak_stuk(kleur, KING)][0];
+	return stukLijst[make_piece(kleur, KING)][0];
 }
 
-inline Square Position::enpassant_veld() const
+inline Square Position::enpassant_square() const
 {
 	return st->enpassantVeld;
 }
 
-inline int Position::rokade_mogelijk(CastlingRight rokade) const
+inline int Position::castling_possible(CastlingRight rokade) const
 {
 	return st->rokadeMogelijkheden & rokade;
 }
 
-inline int Position::rokade_mogelijkheden(Color kleur) const
+inline int Position::castling_rights(Color kleur) const
 {
 	return st->rokadeMogelijkheden & ((WHITE_SHORT | WHITE_LONG) << (2 * kleur));
 }
 
-inline bool Position::rokade_verhinderd(CastlingRight rokade) const
+inline bool Position::castling_impeded(CastlingRight rokade) const
 {
-	return stukken() & rokadePad[rokade];
+	return pieces() & rokadePad[rokade];
 }
 
-inline Square Position::rokade_toren_veld(Square koningVeld) const
+inline Square Position::castling_rook_square(Square koningVeld) const
 {
 	return rokadeTorenVeld[koningVeld];
 }
 
 template<PieceType StukT>
-inline Bitboard Position::aanval_van(Square veld) const
+inline Bitboard Position::attack_from(Square veld) const
 {
-	return StukT == BISHOP ? aanval_bb_loper(veld, stukken())
-		 : StukT == ROOK ? aanval_bb_toren(veld, stukken())
-		 : StukT == QUEEN ? aanval_van<ROOK>(veld) | aanval_van<BISHOP>(veld)
+	return StukT == BISHOP ? attack_bb_bishop(veld, pieces())
+		 : StukT == ROOK ? attack_bb_rook(veld, pieces())
+		 : StukT == QUEEN ? attack_from<ROOK>(veld) | attack_from<BISHOP>(veld)
 		 : LegeAanval[StukT][veld];
 }
 
 template<>
-inline Bitboard Position::aanval_van<PAWN>(Square veld, Color kleur) const
+inline Bitboard Position::attack_from<PAWN>(Square veld, Color kleur) const
 {
 	return PionAanval[kleur][veld];
 }
 
-inline Bitboard Position::aanval_van(PieceType stukT, Square veld) const
+inline Bitboard Position::attack_from(PieceType stukT, Square veld) const
 {
-	return aanval_bb(stukT, veld, stukken());
+	return attack_bb(stukT, veld, pieces());
 }
 
-inline Bitboard Position::aanvallers_naar(Square veld) const
+inline Bitboard Position::attackers_to(Square veld) const
 {
-	return aanvallers_naar(veld, stukken());
+	return attackers_to(veld, pieces());
 }
 
-inline Bitboard Position::schaak_gevers() const
+inline Bitboard Position::check_givers() const
 {
 	return st->schaakGevers;
 }
 
-inline Bitboard Position::aftrek_schaak_mogelijk() const
+inline Bitboard Position::discovered_check_possible() const
 {
-	return st->xRay[~aanZet] & stukken(aanZet);
+	return st->xRay[~aanZet] & pieces(aanZet);
 }
 
-inline Bitboard Position::gepende_stukken() const
+inline Bitboard Position::pinned_pieces() const
 {
-	return st->xRay[aanZet] & stukken(aanZet);
+	return st->xRay[aanZet] & pieces(aanZet);
 }
 
-inline bool Position::is_vrijpion(Color kleur, Square veld) const
+inline bool Position::is_passed_pawn(Color kleur, Square veld) const
 {
-	return !(stukken(~kleur, PAWN) & vrijpion_mask(kleur, veld));
+	return !(pieces(~kleur, PAWN) & passed_pawn_mask(kleur, veld));
 }
 
-inline bool Position::vooruitgeschoven_pion(Move zet) const
+inline bool Position::advanced_pawn(Move zet) const
 {
-	return stuk_type(bewogen_stuk(zet)) == PAWN
-		&& relatieve_rij(aanZet, naar_veld(zet)) >= RANK_6;
+	return piece_type(moved_piece(zet)) == PAWN
+		&& relative_rank(aanZet, to_square(zet)) >= RANK_6;
 }
 
-inline bool Position::vrijpion_opmars(Move zet, Rank r) const
+inline bool Position::passed_pawn_advance(Move zet, Rank r) const
 {
-	Piece stuk = bewogen_stuk(zet);
-	return stuk_type(stuk) == PAWN
-		&& relatieve_rij(aanZet, naar_veld(zet)) >= r
-		&& is_vrijpion(stuk_kleur(stuk), naar_veld(zet));
+	Piece stuk = moved_piece(zet);
+	return piece_type(stuk) == PAWN
+		&& relative_rank(aanZet, to_square(zet)) >= r
+		&& is_passed_pawn(piece_color(stuk), to_square(zet));
 }
 
 inline Key64 Position::sleutel() const
@@ -409,17 +409,17 @@ inline Key64 Position::sleutel() const
 	return st->sleutel;
 }
 
-inline Key64 Position::pion_sleutel() const
+inline Key64 Position::pawn_key() const
 {
 	return st->pionSleutel;
 }
 
-inline Key64 Position::materiaal_sleutel() const
+inline Key64 Position::material_key() const
 {
 	return st->materiaalSleutel;
 }
 
-inline Key64 Position::loperkleur_sleutel() const
+inline Key64 Position::bishopcolor_key() const
 {
 	return st->loperKleurSleutel;
 }
@@ -429,32 +429,32 @@ inline Score Position::psq_score() const
 	return st->psq;
 }
 
-inline MaterialValue Position::niet_pion_materiaal(Color kleur) const
+inline MaterialValue Position::non_pawn_material(Color kleur) const
 {
 	return st->nietPionMateriaal[kleur];
 }
 
-inline int Position::partij_ply() const
+inline int Position::game_ply() const
 {
 	return partijPly;
 }
 
-inline void Position::verhoog_partij_ply()
+inline void Position::increase_game_ply()
 {
 	++partijPly;
 }
 
-inline void Position::verhoog_tb_hits()
+inline void Position::increase_tb_hits()
 {
 	++tbHits;
 }
 
-inline int Position::vijftig_zetten_teller() const
+inline int Position::fifty_moves_counter() const
 {
 	return st->remise50Zetten;
 }
 
-inline uint64_t Position::bezochte_knopen() const
+inline uint64_t Position::visited_nodes() const
 {
 	return knopen;
 }
@@ -464,11 +464,11 @@ inline uint64_t Position::tb_hits() const
 	return tbHits;
 }
 
-inline bool Position::ongelijke_lopers() const
+inline bool Position::opposite_bishops() const
 {
 	return stukAantal[W_BISHOP] == 1
 		&& stukAantal[B_BISHOP] == 1
-		&& verschillende_kleur(stuk_veld(WHITE, BISHOP), stuk_veld(BLACK, BISHOP));
+		&& different_color(piece_square(WHITE, BISHOP), piece_square(BLACK, BISHOP));
 }
 
 inline bool Position::is_chess960() const
@@ -479,24 +479,24 @@ inline bool Position::is_chess960() const
 inline bool Position::slag_of_promotie(Move zet) const
 {
 	assert(is_ok(zet));
-	return zet < Move(CASTLING) ? !leeg_veld(naar_veld(zet)) : zet >= Move(ENPASSANT);
+	return zet < Move(CASTLING) ? !empty_square(to_square(zet)) : zet >= Move(ENPASSANT);
 }
 
-inline bool Position::is_slagzet(Move zet) const
+inline bool Position::is_capture(Move zet) const
 {
 
 	assert(is_ok(zet));
-	return (!leeg_veld(naar_veld(zet)) && zet_type(zet) != CASTLING) || zet_type(zet) == ENPASSANT;
+	return (!empty_square(to_square(zet)) && move_type(zet) != CASTLING) || move_type(zet) == ENPASSANT;
 	//return leeg_veld(naar_veld(zet)) ? zet_type(zet) == ENPASSANT : zet_type(zet) != ROKADE;
 }
 
-inline bool Position::materiaal_of_rokade_gewijzigd() const
+inline bool Position::material_or_castling_changed() const
 {
 	return st->materiaalSleutel != (st - 1)->materiaalSleutel
 		|| st->rokadeMogelijkheden != (st - 1)->rokadeMogelijkheden;
 }
 
-inline Thread* Position::mijn_thread() const
+inline Thread* Position::my_thread() const
 {
 	return mijnThread;
 }
@@ -511,7 +511,7 @@ inline NumaInfo* Position::ni() const
 	return numaInfo;
 }
 
-inline void Position::zet_stuk(Color kleur, Piece stuk, Square veld)
+inline void Position::put_piece(Color kleur, Piece stuk, Square veld)
 {
 	bord[veld] = stuk;
 	stukBB[stuk] |= veld;
@@ -520,7 +520,7 @@ inline void Position::zet_stuk(Color kleur, Piece stuk, Square veld)
 	stukLijst[stuk][stukIndex[veld]] = veld;
 }
 
-inline void Position::verwijder_stuk(Color kleur, Piece stuk, Square veld)
+inline void Position::remove_piece(Color kleur, Piece stuk, Square veld)
 {
 	stukBB[stuk] ^= veld;
 	kleurBB[kleur] ^= veld;
@@ -530,7 +530,7 @@ inline void Position::verwijder_stuk(Color kleur, Piece stuk, Square veld)
 	stukLijst[stuk][stukAantal[stuk]] = SQ_NONE;
 }
 
-inline void Position::verplaats_stuk(Color kleur, Piece stuk, Square van, Square naar)
+inline void Position::move_piece(Color kleur, Piece stuk, Square van, Square naar)
 {
 	Bitboard van_naar_bb = bbVeld[van] ^ bbVeld[naar];
 	stukBB[stuk] ^= van_naar_bb;

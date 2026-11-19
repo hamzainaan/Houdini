@@ -10,14 +10,14 @@ class Position;
 
 namespace Evaluation 
 {
-	void initialisatie();
+	void initialize();
 	void init_tune();
 
 	Value evaluatie(const Position& pos, Value alfa, Value beta);
-	Value evaluatie_na_nullzet(Value eval);
-	bool minstens_twee_mobiele_stukken(const Position& pos);
-	void export_tabel();
-	void import_tabel();
+	Value evaluation_after_nullmove(Value eval);
+	bool at_least_two_mobile_pieces(const Position& pos);
+	void export_table();
+	void import_table();
 	extern Score VeiligheidTabel[1024];
 }
 

@@ -197,7 +197,7 @@ const MaterialValue MateriaalWaarden[PIECE_N] =
 	MATL_0, MATL_0, MATL_0, MATL_KNIGHT, MATL_BISHOP, MATL_ROOK, MATL_QUEEN, MATL_0
 };
 
-inline Value WaardeVanMateriaal(MaterialValue v) { return Value(16 * (int)v); }
+inline Value ValueFromMaterial(MaterialValue v) { return Value(16 * (int)v); }
 
 const int StukFase[PIECE_N] =
 {
@@ -276,7 +276,7 @@ enum Score : int
 inline int ScoreMultiply(int x) { return x * 8 / 5; }
 inline Value ValueFromEval(EvalValue v) { return Value(v / 8); }
 
-inline Score maak_score(int mg, int eg)
+inline Score make_score(int mg, int eg)
 {
 	return Score((ScoreMultiply(mg) << 16) + ScoreMultiply(eg));
 }
@@ -286,13 +286,13 @@ inline Score remake_score(EvalValue mg, EvalValue eg)
 	return Score(((int)mg << 16) + (int)eg);
 }
 
-inline EvalValue mg_waarde(Score score)
+inline EvalValue mg_value(Score score)
 {
 	union { uint16_t u; int16_t s; } mg = { uint16_t(unsigned(score + 0x8000) >> 16) };
 	return EvalValue(mg.s);
 }
 
-inline EvalValue eg_waarde(Score score)
+inline EvalValue eg_value(Score score)
 {
 	union { uint16_t u; int16_t s; } eg = { uint16_t(unsigned(score)) };
 	return EvalValue(eg.s);
@@ -340,12 +340,12 @@ inline Score operator*(Score s1, Score s2);
 
 inline Score operator/(Score score, int i)
 {
-	return remake_score(mg_waarde(score) / i, eg_waarde(score) / i);
+	return remake_score(mg_value(score) / i, eg_value(score) / i);
 }
 
 inline Score score_muldiv(Score score, int mul, int div)
 {
-	return remake_score(mg_waarde(score) * mul / div, eg_waarde(score) * mul / div);
+	return remake_score(mg_value(score) * mul / div, eg_value(score) * mul / div);
 }
 
 inline Color operator~(Color kleur)
@@ -358,32 +358,32 @@ inline Square operator~(Square veld)
 	return Square(veld ^ 56);
 }
 
-inline Value geeft_mat(int ply)
+inline Value mate_in(int ply)
 {
 	return Value(MATE_VALUE - ply);
 }
 
-inline Value staat_mat(int ply)
+inline Value mated_in(int ply)
 {
 	return Value(-MATE_VALUE + ply);
 }
 
-inline Square maak_veld(File f, Rank r)
+inline Square make_square(File f, Rank r)
 {
 	return Square((r << 3) + f);
 }
 
-inline Piece maak_stuk(Color kleur, PieceType stuk)
+inline Piece make_piece(Color kleur, PieceType stuk)
 {
 	return Piece((kleur << 3) + stuk);
 }
 
-inline PieceType stuk_type(Piece stuk)
+inline PieceType piece_type(Piece stuk)
 {
 	return PieceType(stuk & 7);
 }
 
-inline Color stuk_kleur(Piece stuk)
+inline Color piece_color(Piece stuk)
 {
 	assert(stuk != NO_PIECE);
 	return Color(stuk >> 3);
@@ -399,75 +399,75 @@ inline Rank rij(Square veld)
 	return Rank(veld >> 3);
 }
 
-inline Square relatief_veld(Color kleur, Square veld)
+inline Square relative_square(Color kleur, Square veld)
 {
 	return Square(veld ^ (kleur * 56));
 }
 
-inline Rank relatieve_rij(Color kleur, Rank r)
+inline Rank relative_rank(Color kleur, Rank r)
 {
 	return Rank(r ^ (kleur * 7));
 }
 
-inline Rank relatieve_rij(Color kleur, Square veld)
+inline Rank relative_rank(Color kleur, Square veld)
 {
-	return relatieve_rij(kleur, rij(veld));
+	return relative_rank(kleur, rij(veld));
 }
 
-inline bool verschillende_kleur(Square v1, Square v2)
+inline bool different_color(Square v1, Square v2)
 {
 	int v = int(v1) ^ int(v2);
 	return ((v >> 3) ^ v) & 1;
 }
 
-inline Square pion_vooruit(Color kleur)
+inline Square pawn_forward(Color kleur)
 {
 	return kleur == WHITE ? UP : DOWN;
 }
 
-inline Square veld_voor(Color kleur, Square veld)
+inline Square square_in_front(Color kleur, Square veld)
 {
 	return kleur == WHITE ? veld + UP : veld + DOWN;
 }
 
-inline Square veld_achter(Color kleur, Square veld)
+inline Square square_behind(Color kleur, Square veld)
 {
 	return kleur == WHITE ? veld - UP : veld - DOWN;
 }
 
-inline Square van_veld(Move zet)
+inline Square from_square(Move zet)
 {
 	return Square((zet >> 6) & 0x3F);
 }
 
-inline Square naar_veld(Move zet)
+inline Square to_square(Move zet)
 {
 	return Square(zet & 0x3F);
 }
 
-inline MoveType zet_type(Move zet)
+inline MoveType move_type(Move zet)
 {
 	return MoveType(zet & (15 << 12));
 }
 
-inline PieceType promotie_stuk(Move zet)
+inline PieceType promotion_piece(Move zet)
 {
 	return PieceType(KNIGHT + (((zet >> 12) & 15) - (PROMOTION_N >> 12)));
 }
 
-inline PieceType stuk_van_zet(Move zet)
+inline PieceType piece_of_move(Move zet)
 {
 	assert(zet < Move(CASTLING));
 	return PieceType((zet >> 12) & 7);
 }
 
-inline Move maak_zet(PieceType stuk, Square van, Square naar)
+inline Move make_move(PieceType stuk, Square van, Square naar)
 {
 	//return Zet(naar + (van << 6) + (stuk << 12));
 	return Move(naar + (van << 6));
 }
 
-inline Move maak_zet(MoveType type, Square van, Square naar)
+inline Move make_move(MoveType type, Square van, Square naar)
 {
 	return Move(naar + (van << 6) + type);
 }

@@ -19,7 +19,7 @@ namespace Bitbases
 
 namespace Bitboards
 {
-	void initialisatie();
+	void initialize();
 }
 
 const Bitboard DarkSquares = 0xAA55AA55AA55AA55ULL;
@@ -91,7 +91,7 @@ inline Bitboard& operator^=(Bitboard& b, Square veld)
 	return b ^= bb(veld);
 }
 
-inline bool meer_dan_een(Bitboard b)
+inline bool more_than_one(Bitboard b)
 {
 #ifdef USE_PEXT
 	return blsr_u64(b);
@@ -102,17 +102,17 @@ inline bool meer_dan_een(Bitboard b)
 
 #undef bb
 
-inline Bitboard bb_rij(Square veld)
+inline Bitboard bb_rank(Square veld)
 {
 	return bbRij[rij(veld)];
 }
 
-inline Bitboard bb_lijn(Square veld)
+inline Bitboard bb_file(Square veld)
 {
 	return bbLijn[lijn(veld)];
 }
 
-inline Bitboard bb_lijn(File lijn)
+inline Bitboard bb_file(File lijn)
 {
 	return bbLijn[lijn];
 }
@@ -133,49 +133,49 @@ inline Bitboard shift_bb(Bitboard b) {
 		: 0;
 }
 
-inline Bitboard bb_aangrenzende_lijnen(File f)
+inline Bitboard bb_adjacent_files(File f)
 {
 	return bbAangrenzendeLijnen[f];
 }
 
-inline Bitboard bb_tussen(Square veld1, Square veld2)
+inline Bitboard bb_between(Square veld1, Square veld2)
 {
 	return bbTussen[veld1][veld2];
 }
 
-inline Bitboard bb_rijen_voorwaarts(Color kleur, Rank r)
+inline Bitboard bb_ranks_forward(Color kleur, Rank r)
 {
 	return bbRijenVoorwaarts[kleur][r];
 }
 
-inline Bitboard bb_rijen_voorwaarts(Color kleur, Square veld)
+inline Bitboard bb_ranks_forward(Color kleur, Square veld)
 {
 	return bbRijenVoorwaarts[kleur][rij(veld)];
 }
 
-inline Bitboard bb_voorwaarts(Color kleur, Square veld)
+inline Bitboard bb_forward(Color kleur, Square veld)
 {
 	return bbVoorwaarts[kleur][veld];
 }
 
-inline Bitboard pion_aanval_bereik(Color kleur, Square veld)
+inline Bitboard pawn_attack_range(Color kleur, Square veld)
 {
 	return PionAanvalBereik[kleur][veld];
 }
 
-inline Bitboard vrijpion_mask(Color kleur, Square veld)
+inline Bitboard passed_pawn_mask(Color kleur, Square veld)
 {
 	return VrijpionMask[kleur][veld];
 }
 
-inline bool op_een_lijn(Square veld1, Square veld2, Square veld3)
+inline bool on_a_line(Square veld1, Square veld2, Square veld3)
 {
 	return bbVerbinding[veld1][veld2] & veld3;
 }
 
-inline int afstand(Square x, Square y) { return VeldAfstand[x][y]; }
-inline int lijn_afstand(Square x, Square y) { return abs(lijn(x) - lijn(y)); }
-inline int rij_afstand(Square x, Square y) { return abs(rij(x) - rij(y)); }
+inline int distance(Square x, Square y) { return VeldAfstand[x][y]; }
+inline int file_distance(Square x, Square y) { return abs(lijn(x) - lijn(y)); }
+inline int rank_distance(Square x, Square y) { return abs(rij(x) - rij(y)); }
 
 extern Bitboard* LoperAanvalTabel[64];
 extern Bitboard LoperMask[64];
@@ -185,7 +185,7 @@ extern Bitboard* TorenAanvalTabel[64];
 extern Bitboard TorenMask[64];
 extern const Bitboard TorenMagics[64];
 
-inline Bitboard aanval_bb_loper(Square veld, Bitboard bezet)
+inline Bitboard attack_bb_bishop(Square veld, Bitboard bezet)
 {
 #ifdef USE_PEXT
 	return LoperAanvalTabel[veld][pext(bezet, LoperMask[veld])];
@@ -194,7 +194,7 @@ inline Bitboard aanval_bb_loper(Square veld, Bitboard bezet)
 #endif
 }
 
-inline Bitboard aanval_bb_toren(Square veld, Bitboard bezet)
+inline Bitboard attack_bb_rook(Square veld, Bitboard bezet)
 {
 #ifdef USE_PEXT
 	return TorenAanvalTabel[veld][pext(bezet, TorenMask[veld])];
@@ -204,15 +204,15 @@ inline Bitboard aanval_bb_toren(Square veld, Bitboard bezet)
 }
 
 
-inline Bitboard aanval_bb(PieceType stukT, Square veld, Bitboard bezet)
+inline Bitboard attack_bb(PieceType stukT, Square veld, Bitboard bezet)
 {
 	assert(stukT != PAWN);
 
 	switch (stukT)
 	{
-	case BISHOP: return aanval_bb_loper(veld, bezet);
-	case ROOK: return aanval_bb_toren(veld, bezet);
-	case QUEEN: return aanval_bb_loper(veld, bezet) | aanval_bb_toren(veld, bezet);
+	case BISHOP: return attack_bb_bishop(veld, bezet);
+	case ROOK: return attack_bb_rook(veld, bezet);
+	case QUEEN: return attack_bb_bishop(veld, bezet) | attack_bb_rook(veld, bezet);
 	default: return LegeAanval[stukT][veld];
 	}
 }
@@ -352,7 +352,7 @@ inline Square pop_lsb(Bitboard* b)
 	return veld;
 }
 
-inline Square voorste_veld(Color kleur, Bitboard b) { return kleur == WHITE ? msb(b) : lsb(b); }
-inline Square achterste_veld(Color kleur, Bitboard b) { return kleur == WHITE ? lsb(b) : msb(b); }
+inline Square frontmost_square(Color kleur, Bitboard b) { return kleur == WHITE ? msb(b) : lsb(b); }
+inline Square rearmost_square(Color kleur, Bitboard b) { return kleur == WHITE ? lsb(b) : msb(b); }
 
 #endif // #ifndef BITBOARD_H

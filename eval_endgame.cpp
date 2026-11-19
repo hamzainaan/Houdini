@@ -49,17 +49,17 @@ inline Bitboard bb2(Square s1, Square s2) { return (1ULL << s1) | (1ULL << s2); 
 inline Bitboard bb3(Square s1, Square s2, Square s3) { return (1ULL << s1) | (1ULL << s2) | (1ULL << s3); }
 inline Bitboard bb4(Square s1, Square s2, Square s3, Square s4) { return (1ULL << s1) | (1ULL << s2) | (1ULL << s3) | (1ULL << s4); }
 
-Bitboard aanval_koning_inc(Square s) { return StepAttacksBB[KING][s] | s; }
+Bitboard attack_king_inc(Square s) { return StepAttacksBB[KING][s] | s; }
 
 
 
-Value eindspel_waarde_theoretical_draw(const Position& pos, AttackInfo& ai, const Pawns::Entry *pionEntry, Value waarde)
+Value endgame_value_theoretical_draw(const Position& pos, AttackInfo& ai, const Pawns::Entry *pionEntry, Value waarde)
 {
 	//VAR->exacte_waarde = TRUE;
 	return VALUE_DRAW;
 }
 
-Value eindspel_waarde_minor_minor(const Position& pos, AttackInfo& ai, const Pawns::Entry *pionEntry, Value waarde)
+Value endgame_value_minor_minor(const Position& pos, AttackInfo& ai, const Pawns::Entry *pionEntry, Value waarde)
 {
 	// sommige stuk vs stuk posities kunnen mat zijn met de koning in de hoek
 	//VAR->exacte_waarde = ((pos.pieces(WHITE, KING) | pos.pieces(BLACK, KING)) & bb4(SQ_A1, SQ_H1, SQ_A8, SQ_H8)) == 0;
@@ -67,7 +67,7 @@ Value eindspel_waarde_minor_minor(const Position& pos, AttackInfo& ai, const Paw
 }
 
 
-Value eindspel_waarde_KPs_KPs(const Position& pos, AttackInfo& ai, const Pawns::Entry *pionEntry, Value waarde)
+Value endgame_value_KPs_KPs(const Position& pos, AttackInfo& ai, const Pawns::Entry *pionEntry, Value waarde)
 {/*
 	int v, ww, verste_witte_vrijpion, verste_zwarte_vrijpion;
 	Square veld, promotieveld, koningsveld;
@@ -213,7 +213,7 @@ return waarde;
 }
 
 
-Value eindspel_waarde_KB_KPP(const Position& pos, AttackInfo& ai, const Pawns::Entry *pionEntry, Value waarde)
+Value endgame_value_KB_KPP(const Position& pos, AttackInfo& ai, const Pawns::Entry *pionEntry, Value waarde)
 {
 	Square pion1, pion2, loper, koning;
 	Bitboard loper_dekking;
@@ -260,20 +260,20 @@ winst
 3k4/3P4/2K1B3/5P2/5b2/8/8/8 w - - 0 1
 */
 
-Value eindspel_waarde_KBPP_KB_opposite(const Position& pos, AttackInfo& ai, const Pawns::Entry *pionEntry, Value waarde)
+Value endgame_value_KBPP_KB_opposite(const Position& pos, AttackInfo& ai, const Pawns::Entry *pionEntry, Value waarde)
 {
 	Square pion1, pion2, loper, koning;
-	int lijn_afstand;
+	int file_distance;
 	Bitboard loper_dekking;
 
 	if (more_than_one(pos.pieces(WHITE, PAWN)) && waarde > 0)
 	{
 		pion1 = lsb(pos.pieces(WHITE, PAWN));
 		pion2 = msb(pos.pieces(WHITE, PAWN));
-		lijn_afstand = std::abs(file_of(pion1) - file_of(pion2));
-		if (lijn_afstand == 2 && rank_of(pion1) == 6 && rank_of(pion2) == 6)
+		file_distance = std::abs(file_of(pion1) - file_of(pion2));
+		if (file_distance == 2 && rank_of(pion1) == 6 && rank_of(pion2) == 6)
 			return waarde;
-		if (lijn_afstand <= 2)
+		if (file_distance <= 2)
 		{
 			loper = lsb(pos.pieces(BLACK, BISHOP));
 			koning = pos.square<KING>(BLACK);
@@ -283,12 +283,12 @@ Value eindspel_waarde_KBPP_KB_opposite(const Position& pos, AttackInfo& ai, cons
 				waarde = SC(4) * int(rank_of(pion1) + rank_of(pion2));
 			if (koning == pion2 + 8 && licht_veld(koning) ^ !licht_veld(loper) && loper_dekking & (pion1 + 8))
 				waarde = SC(4) * int(rank_of(pion1) + rank_of(pion2));
-			if (lijn_afstand <= 1 && pos.side_to_move() == BLACK && pos.attacks_from<KING>(koning) & loper_dekking & pion2
+			if (file_distance <= 1 && pos.side_to_move() == BLACK && pos.attacks_from<KING>(koning) & loper_dekking & pion2
 				&& !(pos.checkers() & !SquareBB[pion2]))
 				waarde = SC(10) * (2 - popcount(pos.pieces(BLACK, PAWN)));
-			if (pos.pieces(WHITE, PAWN) == bb2(SQ_A6, SQ_B6) && aanval_koning_inc(koning) & bb(SQ_B8) && loper_dekking & bb(SQ_A8))
+			if (pos.pieces(WHITE, PAWN) == bb2(SQ_A6, SQ_B6) && attack_king_inc(koning) & bb(SQ_B8) && loper_dekking & bb(SQ_A8))
 				waarde = SC(10) * (2 - popcount(pos.pieces(BLACK, PAWN)));
-			if (pos.pieces(WHITE, PAWN) == bb2(SQ_G6, SQ_H6) && aanval_koning_inc(koning) & bb(SQ_G8) && loper_dekking & bb(SQ_H8))
+			if (pos.pieces(WHITE, PAWN) == bb2(SQ_G6, SQ_H6) && attack_king_inc(koning) & bb(SQ_G8) && loper_dekking & bb(SQ_H8))
 				waarde = SC(10) * (2 - popcount(pos.pieces(BLACK, PAWN)));
 			if (rank_of(loper) == file_of(loper) && pion1 == SQ_G6 && (pion2 == SQ_H6 || pion2 == SQ_H7) && (koning == SQ_F8 || koning == SQ_G8))
 				waarde = SC(10) * (2 - popcount(pos.pieces(BLACK, PAWN)));
@@ -304,10 +304,10 @@ Value eindspel_waarde_KBPP_KB_opposite(const Position& pos, AttackInfo& ai, cons
 	{
 		pion1 = msb(pos.pieces(BLACK, PAWN));
 		pion2 = lsb(pos.pieces(BLACK, PAWN));
-		lijn_afstand = std::abs(file_of(pion1) - file_of(pion2));
-		if (lijn_afstand == 2 && rank_of(pion1) == 1 && rank_of(pion2) == 1)
+		file_distance = std::abs(file_of(pion1) - file_of(pion2));
+		if (file_distance == 2 && rank_of(pion1) == 1 && rank_of(pion2) == 1)
 			return waarde;
-		if (lijn_afstand <= 2)
+		if (file_distance <= 2)
 		{
 			loper = lsb(pos.pieces(WHITE, BISHOP));
 			koning = pos.square<KING>(WHITE);
@@ -317,12 +317,12 @@ Value eindspel_waarde_KBPP_KB_opposite(const Position& pos, AttackInfo& ai, cons
 				waarde = -SC(4) * (7 - rank_of(pion1) + 7 - rank_of(pion2));
 			if (koning == pion2 - 8 && licht_veld(koning) ^ !licht_veld(loper) && loper_dekking & (pion1 - 8))
 				waarde = -SC(4) * (7 - rank_of(pion1) + 7 - rank_of(pion2));
-			if (lijn_afstand <= 1 && pos.side_to_move() == WHITE && pos.attacks_from<KING>(koning) & loper_dekking & pion2
+			if (file_distance <= 1 && pos.side_to_move() == WHITE && pos.attacks_from<KING>(koning) & loper_dekking & pion2
 				&& !(pos.checkers() & !SquareBB[pion2]))
 				waarde = -SC(10) * (2 - popcount(pos.pieces(WHITE, PAWN)));
-			if (pos.pieces(BLACK, PAWN) == bb2(SQ_A3, SQ_B3) && aanval_koning_inc(koning) & bb(SQ_B1) && loper_dekking & bb(SQ_A1))
+			if (pos.pieces(BLACK, PAWN) == bb2(SQ_A3, SQ_B3) && attack_king_inc(koning) & bb(SQ_B1) && loper_dekking & bb(SQ_A1))
 				waarde = -SC(10) * (2 - popcount(pos.pieces(WHITE, PAWN)));
-			if (pos.pieces(BLACK, PAWN) == bb2(SQ_G3, SQ_H3) && aanval_koning_inc(koning) & bb(SQ_G1) && loper_dekking & bb(SQ_H1))
+			if (pos.pieces(BLACK, PAWN) == bb2(SQ_G3, SQ_H3) && attack_king_inc(koning) & bb(SQ_G1) && loper_dekking & bb(SQ_H1))
 				waarde = -SC(10) * (2 - popcount(pos.pieces(WHITE, PAWN)));
 			if (rank_of(loper) == file_of(loper) && pion1 == SQ_B3 && (pion2 == SQ_A3 || pion2 == SQ_A2) && (koning == SQ_C1 || koning == SQ_B1))
 				waarde = -SC(10) * (2 - popcount(pos.pieces(WHITE, PAWN)));
@@ -348,7 +348,7 @@ remise
 8/k7/Pb6/1K6/8/8/R7/8 w - - 0 1
 2k5/6R1/K7/P7/8/8/5b2/8 w - - 0 1
 */
-Value eindspel_waarde_KRP_KB(const Position& pos, AttackInfo& ai, const Pawns::Entry *pionEntry, Value waarde)
+Value endgame_value_KRP_KB(const Position& pos, AttackInfo& ai, const Pawns::Entry *pionEntry, Value waarde)
 {
 	Square pion, loper;
 
@@ -359,21 +359,21 @@ Value eindspel_waarde_KRP_KB(const Position& pos, AttackInfo& ai, const Pawns::E
 
 		if ((pion == SQ_C6 || pion == SQ_F6) 
 			&& (attacks_bb<BISHOP>(loper, pos.pieces()) & (pion + 8) || pos.checkers() || pos.side_to_move() == BLACK)
-			&& aanval_koning_inc(pos.square<KING>(BLACK)) & (pion + 8))
+			&& attack_king_inc(pos.square<KING>(BLACK)) & (pion + 8))
 			waarde = SC(50);
 
 		if (file_of(pion) == FILE_A && pion >= SQ_A5 && (pos.pieces(BLACK, BISHOP) & DarkSquares))
 		{
-			if (aanval_koning_inc(pos.square<KING>(BLACK)) & in_front_bb(WHITE, pion))
+			if (attack_king_inc(pos.square<KING>(BLACK)) & in_front_bb(WHITE, pion))
 				waarde = SC(50);
-			if (aanval_koning_inc(pos.square<KING>(BLACK)) & bb(SQ_B7) && attacks_bb<BISHOP>(loper, pos.pieces()) & bb(SQ_A7))
+			if (attack_king_inc(pos.square<KING>(BLACK)) & bb(SQ_B7) && attacks_bb<BISHOP>(loper, pos.pieces()) & bb(SQ_A7))
 				waarde = SC(50);
 		}
 		if (file_of(pion) == FILE_H && pion >= SQ_H5 && (pos.pieces(BLACK, BISHOP) & ~DarkSquares))
 		{
-			if (aanval_koning_inc(pos.square<KING>(BLACK)) & in_front_bb(WHITE, pion))
+			if (attack_king_inc(pos.square<KING>(BLACK)) & in_front_bb(WHITE, pion))
 				waarde = SC(50);
-			if (aanval_koning_inc(pos.square<KING>(BLACK)) & bb(SQ_G7) && attacks_bb<BISHOP>(loper, pos.pieces()) & bb(SQ_H7))
+			if (attack_king_inc(pos.square<KING>(BLACK)) & bb(SQ_G7) && attacks_bb<BISHOP>(loper, pos.pieces()) & bb(SQ_H7))
 				waarde = SC(50);
 		}
 	}
@@ -384,20 +384,20 @@ Value eindspel_waarde_KRP_KB(const Position& pos, AttackInfo& ai, const Pawns::E
 
 		if ((pion == SQ_C3 || pion == SQ_F3) 
 			&& (attacks_bb<BISHOP>(loper, pos.pieces()) & (pion - 8) || pos.checkers() || pos.side_to_move() == WHITE)
-			&& aanval_koning_inc(pos.square<KING>(WHITE)) & (pion - 8))
+			&& attack_king_inc(pos.square<KING>(WHITE)) & (pion - 8))
 			waarde = SC(-50);
 		if (file_of(pion) == FILE_A && pion <= SQ_A4 && (pos.pieces(WHITE, BISHOP) & ~DarkSquares))
 		{
-			if (aanval_koning_inc(pos.square<KING>(WHITE)) & in_front_bb(BLACK, pion))
+			if (attack_king_inc(pos.square<KING>(WHITE)) & in_front_bb(BLACK, pion))
 				waarde = SC(-50);
-			if (aanval_koning_inc(pos.square<KING>(WHITE)) & bb(SQ_B2) && attacks_bb<BISHOP>(loper, pos.pieces()) & bb(SQ_A2))
+			if (attack_king_inc(pos.square<KING>(WHITE)) & bb(SQ_B2) && attacks_bb<BISHOP>(loper, pos.pieces()) & bb(SQ_A2))
 				waarde = SC(-50);
 		}
 		if (file_of(pion) == FILE_H && pion <= SQ_H4 && (pos.pieces(WHITE, BISHOP) & DarkSquares))
 		{
-			if (aanval_koning_inc(pos.square<KING>(WHITE)) & in_front_bb(BLACK, pion))
+			if (attack_king_inc(pos.square<KING>(WHITE)) & in_front_bb(BLACK, pion))
 				waarde = SC(-50);
-			if (aanval_koning_inc(pos.square<KING>(WHITE)) & bb(SQ_G2) && attacks_bb<BISHOP>(loper, pos.pieces()) & bb(SQ_H2))
+			if (attack_king_inc(pos.square<KING>(WHITE)) & bb(SQ_G2) && attacks_bb<BISHOP>(loper, pos.pieces()) & bb(SQ_H2))
 				waarde = SC(-50);
 		}
 	}
@@ -407,32 +407,32 @@ Value eindspel_waarde_KRP_KB(const Position& pos, AttackInfo& ai, const Pawns::E
 
 // TODO: KRP_KBP zoals KRP_KB met een enkele onbelangrijke extra pion voor Loperpartij
 
-void ext_init_eindspel_functions()
+void ext_init_endgame_functions()
 {
 	eindspel_waarde_functies[endgame_none] = NULL;
-	eindspel_waarde_functies[endgame_white_minor] = &eindspel_waarde_white_minor;
-	eindspel_waarde_functies[endgame_black_minor] = &eindspel_waarde_black_minor;
-	eindspel_waarde_functies[endgame_white_pawn] = &eindspel_waarde_white_pawn;
-	eindspel_waarde_functies[endgame_black_pawn] = &eindspel_waarde_black_pawn;
-	eindspel_waarde_functies[endgame_theoretical_draw] = &eindspel_waarde_theoretical_draw;
-	eindspel_waarde_functies[endgame_minor_minor] = &eindspel_waarde_minor_minor;
-	eindspel_waarde_functies[endgame_KBN_K] = &eindspel_waarde_KBN_K;
-	eindspel_waarde_functies[endgame_KP_K] = &eindspel_waarde_KP_K;
-	eindspel_waarde_functies[endgame_KPs_KPs] = &eindspel_waarde_KPs_KPs;
-	eindspel_waarde_functies[endgame_KR_KP_white] = &eindspel_waarde_KR_KP_white;
-	eindspel_waarde_functies[endgame_KR_KP_black] = &eindspel_waarde_KR_KP_black;
-	eindspel_waarde_functies[endgame_KQ_KRP_white] = &eindspel_waarde_KQ_KRP_white;
-	eindspel_waarde_functies[endgame_KQ_KRP_black] = &eindspel_waarde_KQ_KRP_black;
-	eindspel_waarde_functies[endgame_KQ_KP] = &eindspel_waarde_KQ_KP;
-	eindspel_waarde_functies[endgame_KBP_KB_identical] = &eindspel_waarde_KBP_KB_identical;
-	eindspel_waarde_functies[endgame_KB_KP] = &eindspel_waarde_KB_KP;
-	eindspel_waarde_functies[endgame_KBP_KB_opposite] = &eindspel_waarde_KBP_KB_opposite;
-	eindspel_waarde_functies[endgame_KB_KPP] = &eindspel_waarde_KB_KPP;
-	eindspel_waarde_functies[endgame_KBPP_KB_opposite] = &eindspel_waarde_KBPP_KB_opposite;
-	eindspel_waarde_functies[endgame_KRP_KB] = &eindspel_waarde_KRP_KB;
+	eindspel_waarde_functies[endgame_white_minor] = &endgame_value_white_minor;
+	eindspel_waarde_functies[endgame_black_minor] = &endgame_value_black_minor;
+	eindspel_waarde_functies[endgame_white_pawn] = &endgame_value_white_pawn;
+	eindspel_waarde_functies[endgame_black_pawn] = &endgame_value_black_pawn;
+	eindspel_waarde_functies[endgame_theoretical_draw] = &endgame_value_theoretical_draw;
+	eindspel_waarde_functies[endgame_minor_minor] = &endgame_value_minor_minor;
+	eindspel_waarde_functies[endgame_KBN_K] = &endgame_value_KBN_K;
+	eindspel_waarde_functies[endgame_KP_K] = &endgame_value_KP_K;
+	eindspel_waarde_functies[endgame_KPs_KPs] = &endgame_value_KPs_KPs;
+	eindspel_waarde_functies[endgame_KR_KP_white] = &endgame_value_KR_KP_white;
+	eindspel_waarde_functies[endgame_KR_KP_black] = &endgame_value_KR_KP_black;
+	eindspel_waarde_functies[endgame_KQ_KRP_white] = &endgame_value_KQ_KRP_white;
+	eindspel_waarde_functies[endgame_KQ_KRP_black] = &endgame_value_KQ_KRP_black;
+	eindspel_waarde_functies[endgame_KQ_KP] = &endgame_value_KQ_KP;
+	eindspel_waarde_functies[endgame_KBP_KB_identical] = &endgame_value_KBP_KB_identical;
+	eindspel_waarde_functies[endgame_KB_KP] = &endgame_value_KB_KP;
+	eindspel_waarde_functies[endgame_KBP_KB_opposite] = &endgame_value_KBP_KB_opposite;
+	eindspel_waarde_functies[endgame_KB_KPP] = &endgame_value_KB_KPP;
+	eindspel_waarde_functies[endgame_KBPP_KB_opposite] = &endgame_value_KBPP_KB_opposite;
+	eindspel_waarde_functies[endgame_KRP_KB] = &endgame_value_KRP_KB;
 }
 
-endgame_kind bereken_eindspel_index(int WPion, int WP, int WL, int WLL, int WLD, int WT, int WD,
+endgame_kind compute_endgame_index(int WPion, int WP, int WL, int WLL, int WLD, int WT, int WD,
 	int ZPion, int ZP, int ZL, int ZLL, int ZLD, int ZT, int ZD)
 {
 	int WAantal = WD + WT + WL + WP;

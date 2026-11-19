@@ -13,12 +13,12 @@ namespace Material
 {
 	struct Tuple
 	{
-		GamePhase partij_fase() const { return GamePhase(partijFase); }
+		GamePhase game_phase() const { return GamePhase(partijFase); }
 
-		bool heeft_waarde_functie() const { return waardeFunctieIndex >= 0; }
-		Value waarde_uit_functie(const Position& pos) const;
+		bool has_value_function() const { return waardeFunctieIndex >= 0; }
+		Value value_from_function(const Position& pos) const;
 
-		ScaleFactor schaalfactor_uit_functie(const Position& pos, Color kleur) const;
+		ScaleFactor scalefactor_from_function(const Position& pos, Color kleur) const;
 
 		Key64 sleutel64;
 		int waardeFunctieIndex;

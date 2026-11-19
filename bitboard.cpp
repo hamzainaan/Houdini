@@ -211,7 +211,7 @@ Square msb(Bitboard b)
 
 const int KN_delta[][8] = { {}, { 9, 7, -7, -9, 8, 1, -1, -8 }, {}, { 17, 15, 10, 6, -6, -10, -15, -17 } };
 
-void Bitboards::initialisatie()
+void Bitboards::initialize()
 {
 #ifndef USE_POPCNT
 	for (unsigned i = 0; i < (1 << 16); ++i)
@@ -225,7 +225,7 @@ void Bitboards::initialisatie()
 	for (Square veld = SQ_A1; veld <= SQ_H8; ++veld)
 		BSFTable[bsf_index(bbVeld[s])] = veld;
 	for (Bitboard b = 2; b < 256; ++b)
-		MSBTable[b] = MSBTable[b - 1] + !meer_dan_een(b);
+		MSBTable[b] = MSBTable[b - 1] + !more_than_one(b);
 #endif
 
 	for (File lijn = FILE_A; lijn <= FILE_H; ++lijn)
@@ -244,7 +244,7 @@ void Bitboards::initialisatie()
 
 	for (Square veld1 = SQ_A1; veld1 <= SQ_H8; ++veld1)
 		for (Square veld2 = SQ_A1; veld2 <= SQ_H8; ++veld2)
-			VeldAfstand[veld1][veld2] = std::max(lijn_afstand(veld1, veld2), rij_afstand(veld1, veld2));
+			VeldAfstand[veld1][veld2] = std::max(file_distance(veld1, veld2), rank_distance(veld1, veld2));
 
 	for (Square veld = SQ_A1; veld <= SQ_H8; ++veld)
 	{
@@ -259,7 +259,7 @@ void Bitboards::initialisatie()
 			for (int i = 0; i < 8; ++i)
 			{
 				Square naar = veld + Square(KN_delta[stuk][i]);
-				if (naar >= SQ_A1 && naar <= SQ_H8 && afstand(veld, naar) < 3)
+				if (naar >= SQ_A1 && naar <= SQ_H8 && distance(veld, naar) < 3)
 					b |= naar;
 			}
 			LegeAanval[stuk][veld] = b;
@@ -283,8 +283,8 @@ void Bitboards::initialisatie()
 
 	for (Square veld1 = SQ_A1; veld1 <= SQ_H8; ++veld1)
 	{
-		LegeAanval[BISHOP][veld1] = aanval_bb_loper(veld1, 0);
-		LegeAanval[ROOK][veld1] = aanval_bb_toren(veld1, 0);
+		LegeAanval[BISHOP][veld1] = attack_bb_bishop(veld1, 0);
+		LegeAanval[ROOK][veld1] = attack_bb_rook(veld1, 0);
 		LegeAanval[QUEEN][veld1] = LegeAanval[BISHOP][veld1] | LegeAanval[ROOK][veld1];
 
 		for (PieceType stuk = BISHOP; stuk <= ROOK; ++stuk)
@@ -293,8 +293,8 @@ void Bitboards::initialisatie()
 				if (!(LegeAanval[stuk][veld1] & veld2))
 					continue;
 
-				bbVerbinding[veld1][veld2] = (aanval_bb(stuk, veld1, 0) & aanval_bb(stuk, veld2, 0)) | veld1 | veld2;
-				bbTussen[veld1][veld2] = aanval_bb(stuk, veld1, bbVeld[veld2]) & aanval_bb(stuk, veld2, bbVeld[veld1]);
+				bbVerbinding[veld1][veld2] = (attack_bb(stuk, veld1, 0) & attack_bb(stuk, veld2, 0)) | veld1 | veld2;
+				bbTussen[veld1][veld2] = attack_bb(stuk, veld1, bbVeld[veld2]) & attack_bb(stuk, veld2, bbVeld[veld1]);
 			}
 	}
 }

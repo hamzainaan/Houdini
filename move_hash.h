@@ -35,7 +35,7 @@ struct TTTuple
 	TTFlags limiet() const { return (TTFlags)(vlaggen8 & EXACT_VALUE); }
 	TTFlags dreiging() const { return (TTFlags)(vlaggen8 & ThreatMask); }
 
-	void bewaar(Key64 k, Value v, uint8_t vlaggen, Depth d, Move z, Value evaluatie, uint8_t gen)
+	void save(Key64 k, Value v, uint8_t vlaggen, Depth d, Move z, Value evaluatie, uint8_t gen)
 	{
 		int dd = d / PLY;
 		uint16_t k16 = k >> 48;
@@ -82,14 +82,14 @@ class TranspositionTable
 
 public:
 	~TranspositionTable() { free_large_page_mem(tabel); }
-	void nieuwe_generatie() { generatie8 = (generatie8 + 8) & GenerationMask; }
+	void new_generation() { generatie8 = (generatie8 + 8) & GenerationMask; }
 	uint8_t generatie() const { return generatie8; }
-	int tuple_vervang_waarde(TTTuple* t) const;
-	TTTuple* zoek_bestaand(const Key64 sleutel) const;
-	TTTuple* zoek_vervang(const Key64 sleutel) const;
-	int bereken_hashfull() const;
-	void verander_grootte(size_t mbSize);
-	void wis();
+	int tuple_replace_value(TTTuple* t) const;
+	TTTuple* find_existing(const Key64 sleutel) const;
+	TTTuple* find_replace(const Key64 sleutel) const;
+	int compute_hashfull() const;
+	void change_size(size_t mbSize);
+	void clear();
 	bool is_entry_in_use(const Key64 sleutel, Depth diepte) const;
 	void mark_entry_in_use(const Key64 sleutel, Depth diepte, uint8_t waarde);
 

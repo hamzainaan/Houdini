@@ -45,22 +45,22 @@ void test_large_pages();
 
 struct NumaInfo
 {
-	CounterMoveHistory counterZetStatistieken;
+	CounterMoveHistory counterMoveStatistics;
 };
 
 struct ThreadInfo
 {
-	Position rootStelling;
-	PositionInfo stellingInfo[1024];
-	MoveEx zettenLijst[8192];
+	Position rootPosition;
+	PositionInfo positionInfo[1024];
+	MoveEx moveList[8192];
 	MoveValueStats history;
 	MoveValueStats evasionHistory;
-	MaxGainStats maxWinstTabel;
-	CounterMoveStats counterZetten;
-	CounterFollowUpMoveStats counterfollowupZetten;
-	MoveValueStats slagGeschiedenis;
-	Material::Table materiaalTabel;
-	Pawns::Table pionnenTabel;
+	MaxGainStats maxGainTable;
+	CounterMoveStats counterMoves;
+	CounterFollowUpMoveStats counterfollowupMoves;
+	MoveValueStats captureHistory;
+	Material::Table materialTable;
+	Pawns::Table pawnsTable;
 };
 
 class Thread
@@ -68,7 +68,7 @@ class Thread
 	std::thread nativeThread;
 	Mutex mutex;
 	ConditionVariable sleepCondition;
-	bool exit, zoekenActief;
+	bool exit, searchActive;
 	int threadIndex;
 
 public:
@@ -76,18 +76,18 @@ public:
 	virtual ~Thread();
 	virtual void start_search();
 	void idle_loop();
-	void wake_up(bool activeer_zoeken);
+	void wake_up(bool activate_search);
 	void wait_for_search_finished();
 	void wait(std::atomic_bool& b);
 
 	ThreadInfo* ti;
 	NumaInfo* ni;
-	Position* rootStelling;
+	Position* rootPosition;
 
-	RootMoves rootZetten;
-	Depth afgewerkteDiepte, vorigeTactischeDiepte;
-	bool tactischeModus, tactischeModusGebruikt;
-	int actievePV;
+	RootMoves rootMoves;
+	Depth completedDepth, previousTacticalDepth;
+	bool tacticalMode, tacticalModeUsed;
+	int activePV;
 };
 
 
@@ -95,12 +95,12 @@ struct MainThread : public Thread
 {
 	virtual void start_search();
 
-	bool snelleZetToegelaten, snelleZetGespeeld, snelleZetEvaluatieBezig, snelleZetEvaluatieAfgebroken, failedLow;
-	int besteZetVerandert;
-	Value vorigeRootScore;
-	int interruptTeller;
+	bool quickMoveAllowed, quickMovePlayed, quickMoveEvaluationBusy, quickMoveEvaluationAborted, failedLow;
+	int bestMoveChanges;
+	Value previousRootScore;
+	int interruptCounter;
 	//bool snelleZetGetest;
-	Depth vorigeRootDiepte;
+	Depth previousRootDepth;
 };
 
 
@@ -110,8 +110,8 @@ struct ThreadPool
 	void exit();
 
 	int threadCount;
-	TimePoint programmaStart;
-	int totaleAnalyseTijd;
+	TimePoint programStart;
+	int totalAnalysisTime;
 	Thread* threads[MAX_THREADS];
 	MainThread* main() { return static_cast<MainThread*>(threads[0]); }
 	void start_search_task(Position&, const TimeLimit&);
@@ -121,21 +121,21 @@ struct ThreadPool
 	void clear_counter_move_history();
 
 	int activeThreadCount; // kan verschillend zijn, bij SpeelSterkte < 100 wordt maar 1 thread gebruikt
-	int geknoeiMetExe;
-	Color contemptKleur;
-	int stukContempt;
-	Value rootContemptWaarde;
+	int tamperedWithExe;
+	Color contemptColor;
+	int pieceContempt;
+	Value rootContemptValue;
 	Endgames endgames;
-	Position* rootStelling;
-	RootMoves rootZetten;
-	PositionInfo* rootStellingInfo;
-	bool analyseModus;
-	int tactischeModusIndex;
-	int vijftigZettenAfstand;
+	Position* rootPosition;
+	RootMoves rootMoves;
+	PositionInfo* rootPositionInfo;
+	bool analysisMode;
+	int tacticalModeIndex;
+	int fiftyMovesDistance;
 	int multiPV, multiPV_cp, multiPVmax;
-	int speelSterkte;
-	uint64_t speelSterkteMaxKnopen;
-	bool dummyNullMoveDreiging, dummyProbCut;
+	int playStrength;
+	uint64_t playStrengthMaxNodes;
+	bool dummyNullMoveThreat, dummyProbCut;
 	bool hideRedundantOutput;
 
 #ifdef USE_NUMA
@@ -148,9 +148,9 @@ private:
 public:
 	unsigned long NUMA_highest_node;
 	NumaInfo* NUMA_data[MAX_NUMA_NODES];
-	int numa_node_voor_thread[MAX_THREADS];
+	int numa_node_for_thread[MAX_THREADS];
 	void set_thread_affinity(int thread_id);
-	void change_numa(bool aan);
+	void change_numa(bool on);
 	void change_numa_offset(int offset);
 #endif
 };

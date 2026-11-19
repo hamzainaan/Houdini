@@ -34,7 +34,7 @@ namespace
 
 				if (begin == end)
 					return begin;
-				else if (begin->waarde > v)
+				else if (begin->value > v)
 					begin++;
 				else
 					break;
@@ -44,7 +44,7 @@ namespace
 			{
 				if (begin == end)
 					return begin;
-				else if (!(end->waarde > v))
+				else if (!(end->value > v))
 					end--;
 				else
 					break;
@@ -58,17 +58,17 @@ namespace
 
 	void partial_insertion_sort(MoveEx* begin, MoveEx* end, SortValue v)
 	{
-		MoveEx *gesorteerdTot = begin + 1;
+		MoveEx *sortedUntil = begin + 1;
 		for (MoveEx *p = begin + 1; p < end; ++p)
 		{
-			if (p->waarde >= v)
+			if (p->value >= v)
 			{
 				MoveEx tmp = *p, *q;
-				*p = *gesorteerdTot;
-				for (q = gesorteerdTot; q != begin && *(q - 1) < tmp; --q)
+				*p = *sortedUntil;
+				for (q = sortedUntil; q != begin && *(q - 1) < tmp; --q)
 					*q = *(q - 1);
 				*q = tmp;
-				++gesorteerdTot;
+				++sortedUntil;
 			}
 		}
 	}
@@ -77,13 +77,13 @@ namespace
 	{
 		MoveEx* i = left;
 		MoveEx* j = right;
-		SortValue pivot = left->waarde;
+		SortValue pivot = left->value;
 
 		while (true)
 		{
-			while (i->waarde > pivot)
+			while (i->value > pivot)
 				i++;
-			while (j->waarde < pivot)
+			while (j->value < pivot)
 				j--;
 			if (i >= j)
 				break;
@@ -109,11 +109,11 @@ namespace
 	{
 		MoveEx* best = begin;
 		for (MoveEx* z = begin + 1; z < end; z++)
-			if (z->waarde > best->waarde)
+			if (z->value > best->value)
 				best = z;
-		Move zet = best->zet;
+		Move move = best->move;
 		*best = *begin;
-		return zet;
+		return move;
 	}
 
 	const int PieceOrder[PIECE_N] =
@@ -151,84 +151,84 @@ namespace
 
 namespace MoveSelection
 {
-	void init_search(const Position& pos, Move ttZet, Depth diepte, bool alleen_rustige_schaakzetten)
+	void init_search(const Position& pos, Move ttMove, Depth depth, bool only_quiet_checks)
 	{
-		assert(diepte >= PLY);
+		assert(depth >= PLY);
 		PositionInfo* st = pos.info();
-		st->mp_diepte = diepte;
-		st->mp_alleen_rustige_schaakzetten = alleen_rustige_schaakzetten;
-		st->mp_ttZet = ttZet && pos.valid_move(ttZet) ? ttZet : NO_MOVE;
+		st->mp_depth = depth;
+		st->mp_only_quiet_checks = only_quiet_checks;
+		st->mp_ttMove = ttMove && pos.valid_move(ttMove) ? ttMove : NO_MOVE;
 
 		if (pos.check_givers())
-			st->mp_etappe = st->mp_ttZet ? EVADE_CHECK : EVASIONS_GEN;
+			st->mp_stage = st->mp_ttMove ? EVADE_CHECK : EVASIONS_GEN;
 		else
 		{
-			st->mp_etappe = st->mp_ttZet ? NORMAL_SEARCH : GOOD_CAPTURES_GEN;
-			if (st->counterZetWaarden)
+			st->mp_stage = st->mp_ttMove ? NORMAL_SEARCH : GOOD_CAPTURES_GEN;
+			if (st->counterMoveValues)
 			{
-				st->mp_counterZet = Move(pos.ti()->counterZetten.get(st->bewogenStuk, to_square(st->vorigeZet)));
-				if (!st->mp_ttZet && (st - 1)->counterZetWaarden
-					&& (!st->mp_counterZet || !pos.valid_move(st->mp_counterZet) || pos.slag_of_promotie(st->mp_counterZet)))
+				st->mp_counterMove = Move(pos.ti()->counterMoves.get(st->movedPiece, to_square(st->previousMove)));
+				if (!st->mp_ttMove && (st - 1)->counterMoveValues
+					&& (!st->mp_counterMove || !pos.valid_move(st->mp_counterMove) || pos.capture_or_promotion(st->mp_counterMove)))
 				{
-					st->mp_counterZet = pos.ti()->counterfollowupZetten.get((st - 1)->bewogenStuk, to_square((st - 1)->vorigeZet),
-						st->bewogenStuk, to_square(st->vorigeZet));
+					st->mp_counterMove = pos.ti()->counterfollowupMoves.get((st - 1)->movedPiece, to_square((st - 1)->previousMove),
+						st->movedPiece, to_square(st->previousMove));
 				}
 			}
 			else
-				st->mp_counterZet = NO_MOVE;
+				st->mp_counterMove = NO_MOVE;
 		}
 	}
 
-	void init_qsearch(const Position& pos, Move ttZet, Depth diepte, Square veld)
+	void init_qsearch(const Position& pos, Move ttMove, Depth depth, Square square)
 	{
-		assert(diepte <= DEPTH_0);
+		assert(depth <= DEPTH_0);
 		PositionInfo* st = pos.info();
 
 		if (pos.check_givers())
-			st->mp_etappe = EVADE_CHECK;
+			st->mp_stage = EVADE_CHECK;
 
-		else if (diepte == DEPTH_0)
-			st->mp_etappe = QSEARCH_WITH_CHECKS;
+		else if (depth == DEPTH_0)
+			st->mp_stage = QSEARCH_WITH_CHECKS;
 
 		//else if (diepte == -PLY && delta < Waarde(50))
 		//	st->mp_etappe = QSEARCH_MET_DAMESCHAAK;
 
-		else if (diepte >= -4 * PLY)
-			st->mp_etappe = QSEARCH_WITHOUT_CHECKS;
+		else if (depth >= -4 * PLY)
+			st->mp_stage = QSEARCH_WITHOUT_CHECKS;
 
 		else
 		{
-			st->mp_etappe = RECAPTURE_GEN;
-			st->mp_slagVeld = veld;
+			st->mp_stage = RECAPTURE_GEN;
+			st->mp_captureSquare = square;
 			return;
 		}
 
-		st->mp_ttZet = ttZet && pos.valid_move(ttZet) ? ttZet : NO_MOVE;
-		if (!st->mp_ttZet)
-			++st->mp_etappe;
+		st->mp_ttMove = ttMove && pos.valid_move(ttMove) ? ttMove : NO_MOVE;
+		if (!st->mp_ttMove)
+			++st->mp_stage;
 	}
 
-	void init_probcut(const Position& pos, Move ttZet, SeeValue limiet)
+	void init_probcut(const Position& pos, Move ttMove, SeeValue bound)
 	{
 		assert(!pos.check_givers());
 		PositionInfo* st = pos.info();
-		st->mp_threshold = limiet + SeeValue(1);
+		st->mp_threshold = bound + SeeValue(1);
 
-		st->mp_ttZet = ttZet
-			&& pos.valid_move(ttZet)
-			&& pos.slag_of_promotie(ttZet)
-			&& pos.see_test(ttZet, st->mp_threshold) ? ttZet : NO_MOVE;
+		st->mp_ttMove = ttMove
+			&& pos.valid_move(ttMove)
+			&& pos.capture_or_promotion(ttMove)
+			&& pos.see_test(ttMove, st->mp_threshold) ? ttMove : NO_MOVE;
 
-		st->mp_etappe = st->mp_ttZet ? PROBCUT : PROBCUT_GEN;
+		st->mp_stage = st->mp_ttMove ? PROBCUT : PROBCUT_GEN;
 	}
 
 	template<>
 	void score<GEN_CAPTURES_OR_PROMOTIONS>(const Position& pos)
 	{
 		PositionInfo* st = pos.info();
-		for (MoveEx *z = st->mp_huidigeZet; z < st->mp_eindeLijst; z++)
-			z->waarde = SortValue(CaptureSortValues[pos.piece_on_square(to_square(z->zet))]
-				- 200 * relative_rank(pos.side_to_move(), to_square(z->zet)));
+		for (MoveEx *z = st->mp_currentMove; z < st->mp_endList; z++)
+			z->value = SortValue(CaptureSortValues[pos.piece_on_square(to_square(z->move))]
+				- 200 * relative_rank(pos.side_to_move(), to_square(z->move)));
 	}
 
 	template<>
@@ -237,23 +237,23 @@ namespace MoveSelection
 		const MoveValueStats& history = pos.ti()->history;
 
 		PositionInfo* st = pos.info();
-		const CounterMoveValues* cm = st->counterZetWaarden ? st->counterZetWaarden : &pos.ni()->counterZetStatistieken[NO_PIECE][SQ_A1];
-		const CounterMoveValues* fm = (st - 1)->counterZetWaarden ? (st - 1)->counterZetWaarden : &pos.ni()->counterZetStatistieken[NO_PIECE][SQ_A1];
-		const CounterMoveValues* f2 = (st - 3)->counterZetWaarden ? (st - 3)->counterZetWaarden : &pos.ni()->counterZetStatistieken[NO_PIECE][SQ_A1];
+		const CounterMoveValues* cm = st->counterMoveValues ? st->counterMoveValues : &pos.ni()->counterMoveStatistics[NO_PIECE][SQ_A1];
+		const CounterMoveValues* fm = (st - 1)->counterMoveValues ? (st - 1)->counterMoveValues : &pos.ni()->counterMoveStatistics[NO_PIECE][SQ_A1];
+		const CounterMoveValues* f2 = (st - 3)->counterMoveValues ? (st - 3)->counterMoveValues : &pos.ni()->counterMoveStatistics[NO_PIECE][SQ_A1];
 
-		Square dreiging = st->mp_diepte < 6 * PLY ? pos.compute_threat() : SQ_NONE;
+		Square threat = st->mp_depth < 6 * PLY ? pos.compute_threat() : SQ_NONE;
 
-		for (MoveEx *z = st->mp_huidigeZet; z < st->mp_eindeLijst; z++)
+		for (MoveEx *z = st->mp_currentMove; z < st->mp_endList; z++)
 		{
-			int offset = MoveValueStats::compute_offset(pos.moved_piece(z->zet), to_square(z->zet));
-			z->waarde = SortValue(history.valueAtOffset(offset))
+			int offset = MoveValueStats::compute_offset(pos.moved_piece(z->move), to_square(z->move));
+			z->value = SortValue(history.valueAtOffset(offset))
 				+ SortValue(cm->valueAtOffset(offset))
 				+ SortValue(fm->valueAtOffset(offset))
 				+ SortValue(f2->valueAtOffset(offset));
-			z->waarde += SortValue(8 * pos.ti()->maxWinstTabel.get(pos.moved_piece(z->zet), z->zet));
+			z->value += SortValue(8 * pos.ti()->maxGainTable.get(pos.moved_piece(z->move), z->move));
 
-			if (from_square(z->zet) == dreiging)
-				z->waarde += SortValue(9000 - 1000 * (st->mp_diepte / PLY));
+			if (from_square(z->move) == threat)
+				z->value += SortValue(9000 - 1000 * (st->mp_depth / PLY));
 		}
 	}
 
@@ -263,17 +263,17 @@ namespace MoveSelection
 		PositionInfo* st = pos.info();
 		const MoveValueStats& history = pos.ti()->evasionHistory;
 
-		for (MoveEx *z = st->mp_huidigeZet; z < st->mp_eindeLijst; z++)
+		for (MoveEx *z = st->mp_currentMove; z < st->mp_endList; z++)
 		{
-			if (pos.is_capture(z->zet))
-				z->waarde = SortValue(CaptureSortValues[pos.piece_on_square(to_square(z->zet))]
-					- PieceOrder[pos.moved_piece(z->zet)]) + SORT_MAX;
+			if (pos.is_capture(z->move))
+				z->value = SortValue(CaptureSortValues[pos.piece_on_square(to_square(z->move))]
+					- PieceOrder[pos.moved_piece(z->move)]) + SORT_MAX;
 			//else if (z->zet == st->mp_counterZet)
 			//	z->waarde = SorteerWaarde(99999);
 			else
 			{
-				int offset = MoveValueStats::compute_offset(pos.moved_piece(z->zet), to_square(z->zet));
-				z->waarde = SortValue(history.valueAtOffset(offset));
+				int offset = MoveValueStats::compute_offset(pos.moved_piece(z->move), to_square(z->move));
+				z->value = SortValue(history.valueAtOffset(offset));
 			}
 		}
 	}
@@ -283,224 +283,224 @@ namespace MoveSelection
 	{
 		PositionInfo* st = pos.info();
 
-		switch (st->mp_etappe)
+		switch (st->mp_stage)
 		{
 		case NORMAL_SEARCH: case EVADE_CHECK:
 		case QSEARCH_WITH_CHECKS: case QSEARCH_WITHOUT_CHECKS: 
 		//case QSEARCH_MET_DAMESCHAAK:
 		case PROBCUT:
-			st->mp_eindeLijst = (st - 1)->mp_eindeLijst;
-			++st->mp_etappe;
-			return st->mp_ttZet;
+			st->mp_endList = (st - 1)->mp_endList;
+			++st->mp_stage;
+			return st->mp_ttMove;
 
 		case GOOD_CAPTURES_GEN:
-			st->mp_huidigeZet = (st - 1)->mp_eindeLijst;
-			st->mp_eindeSlechteSlag = st->mp_huidigeZet;
-			st->mp_uitgesteld_aantal = 0;
-			st->mp_eindeLijst = generateMoves<GEN_CAPTURES_OR_PROMOTIONS>(pos, st->mp_huidigeZet);
+			st->mp_currentMove = (st - 1)->mp_endList;
+			st->mp_endBadCapture = st->mp_currentMove;
+			st->mp_postponed_count = 0;
+			st->mp_endList = generateMoves<GEN_CAPTURES_OR_PROMOTIONS>(pos, st->mp_currentMove);
 			score<GEN_CAPTURES_OR_PROMOTIONS>(pos);
-			st->mp_etappe = GOOD_CAPTURES;
+			st->mp_stage = GOOD_CAPTURES;
 
 		case GOOD_CAPTURES:
-			while (st->mp_huidigeZet < st->mp_eindeLijst)
+			while (st->mp_currentMove < st->mp_endList)
 			{
-				Move zet = find_best_move(st->mp_huidigeZet++, st->mp_eindeLijst);
-				if (zet != st->mp_ttZet)
+				Move move = find_best_move(st->mp_currentMove++, st->mp_endList);
+				if (move != st->mp_ttMove)
 				{
-					if (pos.see_test(zet, SEE_0))
-						return zet;
+					if (pos.see_test(move, SEE_0))
+						return move;
 
-					*st->mp_eindeSlechteSlag++ = zet;
+					*st->mp_endBadCapture++ = move;
 				}
 			}
 
 			// first killer
-			st->mp_etappe = KILLERS;
+			st->mp_stage = KILLERS;
 			{
-				Move zet = st->killers[0];
-				if (zet && zet != st->mp_ttZet && pos.valid_move(zet) && !pos.slag_of_promotie(zet))
-					return zet;
+				Move move = st->killers[0];
+				if (move && move != st->mp_ttMove && pos.valid_move(move) && !pos.capture_or_promotion(move))
+					return move;
 			}
 
 		case KILLERS:
 			// second killer
-			st->mp_etappe = KILLERS1;
+			st->mp_stage = KILLERS1;
 			{
-				Move zet = st->killers[1];
-				if (zet && zet != st->mp_ttZet && pos.valid_move(zet) && !pos.slag_of_promotie(zet))
-					return zet;
+				Move move = st->killers[1];
+				if (move && move != st->mp_ttMove && pos.valid_move(move) && !pos.capture_or_promotion(move))
+					return move;
 			}
 
 		case KILLERS1:
 			// counter move
-			st->mp_etappe = BxN_CAPTURES_GEN;
+			st->mp_stage = BxN_CAPTURES_GEN;
 			{
-				Move zet = st->mp_counterZet;
-				if (zet && zet != st->mp_ttZet && zet != st->killers[0]
-					&& zet != st->killers[1]
-					&& pos.valid_move(zet) && !pos.slag_of_promotie(zet))
-					return zet;
+				Move move = st->mp_counterMove;
+				if (move && move != st->mp_ttMove && move != st->killers[0]
+					&& move != st->killers[1]
+					&& pos.valid_move(move) && !pos.capture_or_promotion(move))
+					return move;
 			}
 
 		case BxN_CAPTURES_GEN:
-			st->mp_huidigeZet = (st - 1)->mp_eindeLijst;
-			st->mp_etappe = BxN_CAPTURES;
+			st->mp_currentMove = (st - 1)->mp_endList;
+			st->mp_stage = BxN_CAPTURES;
 
 		case BxN_CAPTURES:
-			while (st->mp_huidigeZet < st->mp_eindeSlechteSlag)
+			while (st->mp_currentMove < st->mp_endBadCapture)
 			{
-				Move zet = *st->mp_huidigeZet++;
-				if (piece_type(pos.piece_on_square(to_square(zet))) == KNIGHT && piece_type(pos.piece_on_square(from_square(zet))) == BISHOP)
+				Move move = *st->mp_currentMove++;
+				if (piece_type(pos.piece_on_square(to_square(move))) == KNIGHT && piece_type(pos.piece_on_square(from_square(move))) == BISHOP)
 				{
-					*(st->mp_huidigeZet - 1) = NO_MOVE;
-					return zet;
+					*(st->mp_currentMove - 1) = NO_MOVE;
+					return move;
 				}
 			}
 
 		//case RUSTIGE_ZETTEN_GEN:
-			st->mp_huidigeZet = st->mp_eindeSlechteSlag;
-			if (st->mp_alleen_rustige_schaakzetten && st->zetNummer >= 1)
+			st->mp_currentMove = st->mp_endBadCapture;
+			if (st->mp_only_quiet_checks && st->moveNumber >= 1)
 			{
-				MoveEx* z = st->mp_huidigeZet;
+				MoveEx* z = st->mp_currentMove;
 				z = generateMoves<GEN_QUIET_CHECKS>(pos, z);
 				z = generateMoves<GEN_PAWN_ADVANCES>(pos, z);
-				st->mp_eindeLijst = z;
+				st->mp_endList = z;
 				score<GEN_QUIET_MOVES>(pos);
-				insertion_sort(st->mp_huidigeZet, st->mp_eindeLijst);
+				insertion_sort(st->mp_currentMove, st->mp_endList);
 			}
 			else
 			{
-				st->mp_eindeLijst = generateMoves<GEN_QUIET_MOVES>(pos, st->mp_huidigeZet);
+				st->mp_endList = generateMoves<GEN_QUIET_MOVES>(pos, st->mp_currentMove);
 				score<GEN_QUIET_MOVES>(pos);
 
-				MoveEx* sort_until = st->mp_eindeLijst;
+				MoveEx* sort_until = st->mp_endList;
 				// op lage diepte: sorteer enkel maar de positieve zetten; dus eerst een partitie maken
-				if (st->mp_diepte < 6 * PLY)
-					sort_until = partition_moves(st->mp_huidigeZet, st->mp_eindeLijst, SortValue(6000 - 6000 * (st->mp_diepte / PLY)));
-				insertion_sort(st->mp_huidigeZet, sort_until);
+				if (st->mp_depth < 6 * PLY)
+					sort_until = partition_moves(st->mp_currentMove, st->mp_endList, SortValue(6000 - 6000 * (st->mp_depth / PLY)));
+				insertion_sort(st->mp_currentMove, sort_until);
 				//if (st->mp_diepte < 8 * PLY)
 				//	partial_insertion_sort(st->mp_huidigeZet, st->mp_eindeLijst, SorteerWaarde(2000 - 3000 * (st->mp_diepte / PLY)));
 				//else
 				//	insertion_sort(st->mp_huidigeZet, sorteer_tot);
 				//partial_insertion_sort(st->mp_huidigeZet, st->mp_eindeLijst, SorteerWaarde(4000 - 4000 * (st->mp_diepte / PLY)));
 			}
-			st->mp_etappe = QUIET_MOVES;
+			st->mp_stage = QUIET_MOVES;
 
 		case QUIET_MOVES:
-			while (st->mp_huidigeZet < st->mp_eindeLijst)
+			while (st->mp_currentMove < st->mp_endList)
 			{
-				Move zet = *st->mp_huidigeZet++;
-				if (zet != st->mp_ttZet
-					&& zet != st->killers[0]
-					&& zet != st->killers[1]
-					&& zet != st->mp_counterZet)
+				Move move = *st->mp_currentMove++;
+				if (move != st->mp_ttMove
+					&& move != st->killers[0]
+					&& move != st->killers[1]
+					&& move != st->mp_counterMove)
 				{
-					return zet;
+					return move;
 				}
 			}
 
-			st->mp_huidigeZet = (st - 1)->mp_eindeLijst;
-			st->mp_eindeLijst = st->mp_eindeSlechteSlag;
-			st->mp_etappe = BAD_CAPTURES;
+			st->mp_currentMove = (st - 1)->mp_endList;
+			st->mp_endList = st->mp_endBadCapture;
+			st->mp_stage = BAD_CAPTURES;
 
 		case BAD_CAPTURES:
-			while (st->mp_huidigeZet < st->mp_eindeLijst)
+			while (st->mp_currentMove < st->mp_endList)
 			{
-				Move zet = *st->mp_huidigeZet++;
-				if (zet)
-					return zet;
+				Move move = *st->mp_currentMove++;
+				if (move)
+					return move;
 			}
-			if (!st->mp_uitgesteld_aantal)
+			if (!st->mp_postponed_count)
 				return NO_MOVE;
 
-			st->mp_etappe = POSTPONED_MOVES;
-			st->mp_uitgesteld_huidig = 0;
+			st->mp_stage = POSTPONED_MOVES;
+			st->mp_postponed_current = 0;
 
 		case POSTPONED_MOVES:
-			if (st->mp_uitgesteld_huidig != st->mp_uitgesteld_aantal)
-				return Move(st->mp_uitgesteld[st->mp_uitgesteld_huidig++]);
+			if (st->mp_postponed_current != st->mp_postponed_count)
+				return Move(st->mp_postponed[st->mp_postponed_current++]);
 			return NO_MOVE;
 
 		case EVASIONS_GEN:
-			st->mp_huidigeZet = (st - 1)->mp_eindeLijst;
-			st->mp_eindeLijst = generateMoves<GEN_EVASIONS>(pos, st->mp_huidigeZet);
+			st->mp_currentMove = (st - 1)->mp_endList;
+			st->mp_endList = generateMoves<GEN_EVASIONS>(pos, st->mp_currentMove);
 			score<GEN_EVASIONS>(pos);
-			st->mp_etappe = EVASIONS_LOOP;
+			st->mp_stage = EVASIONS_LOOP;
 
 		case EVASIONS_LOOP:
-			while (st->mp_huidigeZet < st->mp_eindeLijst)
+			while (st->mp_currentMove < st->mp_endList)
 			{
-				Move zet = find_best_move(st->mp_huidigeZet++, st->mp_eindeLijst);
-				if (zet != st->mp_ttZet)
-					return zet;
+				Move move = find_best_move(st->mp_currentMove++, st->mp_endList);
+				if (move != st->mp_ttMove)
+					return move;
 			}
 			return NO_MOVE;
 
 		case QSEARCH_1: case QSEARCH_2: 
 		//case QSEARCH_3:
-			st->mp_huidigeZet = (st - 1)->mp_eindeLijst;
-			st->mp_eindeLijst = generateMoves<GEN_CAPTURES_OR_PROMOTIONS>(pos, st->mp_huidigeZet);
+			st->mp_currentMove = (st - 1)->mp_endList;
+			st->mp_endList = generateMoves<GEN_CAPTURES_OR_PROMOTIONS>(pos, st->mp_currentMove);
 			score<GEN_CAPTURES_OR_PROMOTIONS>(pos);
-			++st->mp_etappe;
+			++st->mp_stage;
 
 		case QSEARCH_1_CAPTURES: case QSEARCH_2_CAPTURES: 
 		//case QSEARCH_3_SLAGZETTEN:
-			while (st->mp_huidigeZet < st->mp_eindeLijst)
+			while (st->mp_currentMove < st->mp_endList)
 			{
-				Move zet = find_best_move(st->mp_huidigeZet++, st->mp_eindeLijst);
-				if (zet != st->mp_ttZet)
-					return zet;
+				Move move = find_best_move(st->mp_currentMove++, st->mp_endList);
+				if (move != st->mp_ttMove)
+					return move;
 			}
 
-			if (st->mp_etappe == QSEARCH_2_CAPTURES)
+			if (st->mp_stage == QSEARCH_2_CAPTURES)
 				return NO_MOVE;
 
-			st->mp_huidigeZet = (st - 1)->mp_eindeLijst;
+			st->mp_currentMove = (st - 1)->mp_endList;
 			//if (st->mp_etappe == QSEARCH_3_SLAGZETTEN)
 			//	st->mp_eindeLijst = genereerZetten<GEN_DAME_SCHAAK>(pos, st->mp_huidigeZet);
 			//else
-				st->mp_eindeLijst = generateMoves<GEN_QUIET_CHECKS>(pos, st->mp_huidigeZet);
+				st->mp_endList = generateMoves<GEN_QUIET_CHECKS>(pos, st->mp_currentMove);
 			//score<GEN_RUSTIGE_ZETTEN>(pos);
-			++st->mp_etappe;
+			++st->mp_stage;
 
 		case QSEARCH_CHECKS: 
 		//case QSEARCH_DAMESCHAAKZETTEN:
-			while (st->mp_huidigeZet < st->mp_eindeLijst)
+			while (st->mp_currentMove < st->mp_endList)
 			{
-				Move zet = *st->mp_huidigeZet++;
+				Move move = *st->mp_currentMove++;
 				//Zet zet = vind_beste_zet(st->mp_huidigeZet++, st->mp_eindeLijst);
-				if (zet != st->mp_ttZet)
-					return zet;
+				if (move != st->mp_ttMove)
+					return move;
 			}
 			return NO_MOVE;
 
 		case PROBCUT_GEN:
-			st->mp_huidigeZet = (st - 1)->mp_eindeLijst;
-			st->mp_eindeLijst = generateMoves<GEN_CAPTURES_OR_PROMOTIONS>(pos, st->mp_huidigeZet);
+			st->mp_currentMove = (st - 1)->mp_endList;
+			st->mp_endList = generateMoves<GEN_CAPTURES_OR_PROMOTIONS>(pos, st->mp_currentMove);
 			score<GEN_CAPTURES_OR_PROMOTIONS>(pos);
-			st->mp_etappe = PROBCUT_CAPTURES;
+			st->mp_stage = PROBCUT_CAPTURES;
 
 		case PROBCUT_CAPTURES:
-			while (st->mp_huidigeZet < st->mp_eindeLijst)
+			while (st->mp_currentMove < st->mp_endList)
 			{
-				Move zet = find_best_move(st->mp_huidigeZet++, st->mp_eindeLijst);
-				if (zet != st->mp_ttZet && pos.see_test(zet, st->mp_threshold))
-					return zet;
+				Move move = find_best_move(st->mp_currentMove++, st->mp_endList);
+				if (move != st->mp_ttMove && pos.see_test(move, st->mp_threshold))
+					return move;
 			}
 			return NO_MOVE;
 
 		case RECAPTURE_GEN:
-			st->mp_huidigeZet = (st - 1)->mp_eindeLijst;
-			st->mp_eindeLijst = generateCapturesOnSquare(pos, st->mp_huidigeZet, st->mp_slagVeld);
+			st->mp_currentMove = (st - 1)->mp_endList;
+			st->mp_endList = generateCapturesOnSquare(pos, st->mp_currentMove, st->mp_captureSquare);
 			score<GEN_CAPTURES_OR_PROMOTIONS>(pos);
-			st->mp_etappe = RECAPTURE_MOVES;
+			st->mp_stage = RECAPTURE_MOVES;
 
 		case RECAPTURE_MOVES:
-			while (st->mp_huidigeZet < st->mp_eindeLijst)
+			while (st->mp_currentMove < st->mp_endList)
 			{
-				Move zet = find_best_move(st->mp_huidigeZet++, st->mp_eindeLijst);
-				if (to_square(zet) == st->mp_slagVeld)
-					return zet;
+				Move move = find_best_move(st->mp_currentMove++, st->mp_endList);
+				if (to_square(move) == st->mp_captureSquare)
+					return move;
 			}
 			return NO_MOVE;
 
@@ -512,13 +512,13 @@ namespace MoveSelection
 }
 
 
-int SpecialKillerStats::index_our_pieces(const Position &pos, Color kleur)
+int SpecialKillerStats::index_our_pieces(const Position &pos, Color color)
 {
-	return hash_bitboard(pos.pieces(kleur));
+	return hash_bitboard(pos.pieces(color));
 }
 
-int SpecialKillerStats::index_their_pieces(const Position &pos, Color kleur, Square to)
+int SpecialKillerStats::index_their_pieces(const Position &pos, Color color, Square to)
 {
-	return hash_bitboard(pos.pieces(kleur, piece_type(pos.piece_on_square(to))));
+	return hash_bitboard(pos.pieces(color, piece_type(pos.piece_on_square(to))));
 }
 

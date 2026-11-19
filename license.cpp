@@ -30,7 +30,7 @@ char Eval_Stream[1280] =
 char Pawn_Stream[1024] =
 { 'H', 'A', 'L', '_', 'P', 'A', 'W', 'N' };
 
-char Veil_Stream[1792] =
+char Safety_Stream[1792] =
 { 'H', 'A', 'L', '_', 'V', 'E', 'I', 'L' };
 
 char Lmat_Stream[20480] =
@@ -285,7 +285,7 @@ void do_decompress(Bytef *in, Bytef *out, char *ACTIVATIONKEY, char *HARDWAREKEY
 	in_len -= (uint8_t)(stream1[in_len - 1]);
 
 	// te traag --> debug poging aan de gang -> verstoor de werking
-	if (now() >= Threads.programmaStart + 999)
+	if (now() >= Threads.programStart + 999)
 		in_len--;
 
 	out_len = *((uLongf *)stream1);
@@ -343,9 +343,9 @@ void read_license_tables()
 	*((int *)(Stat_Stream + 8)) = in_len;
 
 	f = fopen("R:\\Schaak\\h6-veilig-import.dat", "rb");
-	in_len = (int)fread(Veil_Stream + 12, 1, sizeof(Veil_Stream) - 12, f);
+	in_len = (int)fread(Safety_Stream + 12, 1, sizeof(Safety_Stream) - 12, f);
 	fclose(f);
-	*((int *)(Veil_Stream + 8)) = in_len;
+	*((int *)(Safety_Stream + 8)) = in_len;
 
 	f = fopen("R:\\Schaak\\h6-lmr-import.dat", "rb");
 	in_len = (int)fread(Lmat_Stream + 12, 1, sizeof(Lmat_Stream) - 12, f);
@@ -360,11 +360,11 @@ void read_license_tables()
 	if (!LICENSE_OK)
 		return;
 
-	do_decompress((Bytef *)Lmat_Stream + 8, (Bytef *)Search::LMReducties, ACTIVATIONKEY, HARDWAREKEY, sizeof(Search::LMReducties));
+	do_decompress((Bytef *)Lmat_Stream + 8, (Bytef *)Search::LMReductions, ACTIVATIONKEY, HARDWAREKEY, sizeof(Search::LMReductions));
 	if (!LICENSE_OK)
 		return;
 
-	do_decompress((Bytef *)Veil_Stream + 8, (Bytef *)Evaluation::VeiligheidTabel, ACTIVATIONKEY, HARDWAREKEY, sizeof(Evaluation::VeiligheidTabel));
+	do_decompress((Bytef *)Safety_Stream + 8, (Bytef *)Evaluation::SafetyTable, ACTIVATIONKEY, HARDWAREKEY, sizeof(Evaluation::SafetyTable));
 }
 
 

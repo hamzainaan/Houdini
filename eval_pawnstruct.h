@@ -13,62 +13,62 @@ namespace Pawns
 	struct Tuple
 	{
 		Score pawns_score() const { return score; }
-		Bitboard pion_aanval(Color kleur) const { return pionAanval[kleur]; }
-		Bitboard vrijpionnen(Color kleur) const { return vrijPionnen[kleur]; }
-		Bitboard safe_from_pawn(Color kleur) const { return veiligVoorPion[kleur]; }
-		int pawn_range(Color kleur) const { return pionBereik[kleur]; }
+		Bitboard pawn_attack(Color color) const { return pawnAttack[color]; }
+		Bitboard passed_pawns(Color color) const { return passedPawns[color]; }
+		Bitboard safe_from_pawn(Color color) const { return safeFromPawn[color]; }
+		int pawn_range(Color color) const { return pawnRange[color]; }
 
-		int half_open_file(Color kleur, File f) const
+		int half_open_file(Color color, File f) const
 		{
-			return halfOpenLijnen[kleur] & (1 << f);
+			return halfOpenFiles[color] & (1 << f);
 		}
 
-		int semiopen_side(Color kleur, File f, bool leftSide) const
+		int semiopen_side(Color color, File f, bool leftSide) const
 		{
-			return halfOpenLijnen[kleur] & (leftSide ? (1 << f) - 1 : ~((1 << (f + 1)) - 1));
+			return halfOpenFiles[color] & (leftSide ? (1 << f) - 1 : ~((1 << (f + 1)) - 1));
 		}
 
-		int pawns_on_color(Color kleur, Square veld) const
+		int pawns_on_color(Color color, Square square) const
 		{
-			return pionnenOpKleur[kleur][!!(DarkSquares & veld)];
+			return pawnsOnColor[color][!!(DarkSquares & square)];
 		}
 
-		int pawns_not_on_color(Color kleur, Square veld) const
+		int pawns_not_on_color(Color color, Square square) const
 		{
-			return pionnenOpKleur[kleur][!(DarkSquares & veld)];
+			return pawnsOnColor[color][!(DarkSquares & square)];
 		}
 
 		template<Color Us>
-		Score koning_veiligheid(const Position& pos)
+		Score king_safety(const Position& pos)
 		{
-			if (koningVeld[Us] != pos.koning(Us) || rokadeMogelijkheden[Us] != pos.castling_rights(Us))
-				koningVeiligheid[Us] = compute_king_safety<Us>(pos);
-			return koningVeiligheid[Us];
+			if (kingSquare[Us] != pos.king(Us) || castlingRights[Us] != pos.castling_rights(Us))
+				kingSafety[Us] = compute_king_safety<Us>(pos);
+			return kingSafety[Us];
 		}
 
 		template<Color Us>
 		Score compute_king_safety(const Position& pos);
 
-		Key64 sleutel64;
-		Bitboard vrijPionnen[COLOR_N];
-		Bitboard pionAanval[COLOR_N];
-		Bitboard veiligVoorPion[COLOR_N];
+		Key64 key64;
+		Bitboard passedPawns[COLOR_N];
+		Bitboard pawnAttack[COLOR_N];
+		Bitboard safeFromPawn[COLOR_N];
 		Score score;
-		Score koningVeiligheid[COLOR_N];
-		uint8_t koningVeld[COLOR_N];
-		uint8_t rokadeMogelijkheden[COLOR_N];
-		uint8_t halfOpenLijnen[COLOR_N];
-		uint8_t pionBereik[COLOR_N];
-		int asymmetrie;
-		uint8_t pionnenOpKleur[COLOR_N][COLOR_N]; // [kleur][kleur veld]
-		int gemiddeldeLijn, nPionnen;
-		bool conversie_moeilijk;
+		Score kingSafety[COLOR_N];
+		uint8_t kingSquare[COLOR_N];
+		uint8_t castlingRights[COLOR_N];
+		uint8_t halfOpenFiles[COLOR_N];
+		uint8_t pawnRange[COLOR_N];
+		int asymmetry;
+		uint8_t pawnsOnColor[COLOR_N][COLOR_N]; // [kleur][kleur veld]
+		int averageFile, nPawns;
+		bool conversion_difficult;
 		int safety[COLOR_N];
-		int lijn_breedte;
+		int file_width;
 		//int open_lijnen;
 		char padding[20]; // Align to 128 bytes
 	};
-	static_assert(offsetof(struct Tuple, halfOpenLijnen) == 72, "offset wrong");
+	static_assert(offsetof(struct Tuple, halfOpenFiles) == 72, "offset wrong");
 	static_assert(sizeof(Tuple) == 128, "Pawn Entry size incorrect");
 
 	typedef HashTable<Tuple, PAWN_HASH_SIZE> Table;

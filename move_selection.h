@@ -11,37 +11,37 @@
 template<typename T>
 struct PieceSquareTable
 {
-	const T* operator[](Piece stuk) const { return tabel[stuk]; }
-	T* operator[](Piece stuk) { return tabel[stuk]; }
-	void clear() { std::memset(tabel, 0, sizeof(tabel)); }
+	const T* operator[](Piece piece) const { return table[piece]; }
+	T* operator[](Piece piece) { return table[piece]; }
+	void clear() { std::memset(table, 0, sizeof(table)); }
 
-	T get(Piece stuk, Square naar) { return tabel[stuk][naar]; }
-	void update(Piece stuk, Square naar, T v)
+	T get(Piece piece, Square to) { return table[piece][to]; }
+	void update(Piece piece, Square to, T v)
 	{
-		tabel[stuk][naar] = v;
+		table[piece][to] = v;
 	}
 
 protected:
-	T tabel[PIECE_N][SQUARE_N];
+	T table[PIECE_N][SQUARE_N];
 };
 
 
 template<int MaxPlus, int MaxMin>
 struct PieceSquareStats : PieceSquareTable<SortValueCompact>
 {
-	static int compute_offset(Piece stuk, Square naar) { return 64 * int(stuk) + int(naar); }
-	SortValueCompact valueAtOffset(int offset) const { return *((const SortValueCompact*)tabel + offset); }
+	static int compute_offset(Piece piece, Square to) { return 64 * int(piece) + int(to); }
+	SortValueCompact valueAtOffset(int offset) const { return *((const SortValueCompact*)table + offset); }
 
 	void fill(SortValue v)
 	{
 		int vv = (uint16_t(v) << 16) | uint16_t(v);
-		std::fill((int *)tabel, (int *)((char *)tabel + sizeof(tabel)), vv);
+		std::fill((int *)table, (int *)((char *)table + sizeof(table)), vv);
 	}
 
 	void updatePlus(int offset, SortValue v)
 	{
 		//v = v * 2 * MaxPlus / (MaxPlus + MaxMin);
-		SortValueCompact& elem = *((SortValueCompact*)tabel + offset);
+		SortValueCompact& elem = *((SortValueCompact*)table + offset);
 		elem -= elem * int(v) / MaxPlus;
 		elem += v;
 	}
@@ -49,7 +49,7 @@ struct PieceSquareStats : PieceSquareTable<SortValueCompact>
 	void updateMinus(int offset, SortValue v)
 	{
 		//v = v * 2 * MaxMin / (MaxPlus + MaxMin);
-		SortValueCompact& elem = *((SortValueCompact*)tabel + offset);
+		SortValueCompact& elem = *((SortValueCompact*)table + offset);
 		elem -= elem * int(v) / MaxMin;
 		elem -= v;
 	}
@@ -59,85 +59,85 @@ struct PieceSquareStats : PieceSquareTable<SortValueCompact>
 template<typename T>
 struct ColorSquareStats
 {
-	const T* operator[](Color kleur) const { return tabel[kleur]; }
-	T* operator[](Color kleur) { return tabel[kleur]; }
-	void clear() { std::memset(tabel, 0, sizeof(tabel)); }
+	const T* operator[](Color color) const { return table[color]; }
+	T* operator[](Color color) { return table[color]; }
+	void clear() { std::memset(table, 0, sizeof(table)); }
 
 private:
-	T tabel[COLOR_N][SQUARE_N];
+	T table[COLOR_N][SQUARE_N];
 };
 
 
 struct CounterMoveFullStats
 {
-	Move get(Color kleur, Move zet) { return Move(tabel[kleur][zet & 0xfff]); }
-	void clear() { std::memset(tabel, 0, sizeof(tabel)); }
-	void update(Color kleur, Move zet1, Move zet)
+	Move get(Color color, Move move) { return Move(table[color][move & 0xfff]); }
+	void clear() { std::memset(table, 0, sizeof(table)); }
+	void update(Color color, Move move1, Move move)
 	{
-		tabel[kleur][zet1 & 0xfff] = zet;
+		table[color][move1 & 0xfff] = move;
 	}
 
 private:
-	MoveCompact tabel[COLOR_N][64 * 64];
+	MoveCompact table[COLOR_N][64 * 64];
 };
 
 
 struct CounterMoveFullPieceStats
 {
-	Move get(Piece stuk, Move zet) { return Move(tabel[stuk][zet & 0xfff]); }
-	void clear() { std::memset(tabel, 0, sizeof(tabel)); }
-	void update(Piece stuk, Move zet1, Move zet)
+	Move get(Piece piece, Move move) { return Move(table[piece][move & 0xfff]); }
+	void clear() { std::memset(table, 0, sizeof(table)); }
+	void update(Piece piece, Move move1, Move move)
 	{
-		tabel[stuk][zet1 & 0xfff] = zet;
+		table[piece][move1 & 0xfff] = move;
 	}
 
 private:
-	MoveCompact tabel[PIECE_N][64 * 64];
+	MoveCompact table[PIECE_N][64 * 64];
 };
 
 
 struct CounterFollowUpMoveStats
 {
-	Move get(Piece stuk1, Square naar1, Piece stuk2, Square naar2) { return Move(tabel[stuk1][naar1][piece_type(stuk2)][naar2]); }
-	void clear() { std::memset(tabel, 0, sizeof(tabel)); }
-	void update(Piece stuk1, Square naar1, Piece stuk2, Square naar2, Move zet)
+	Move get(Piece piece1, Square to1, Piece piece2, Square to2) { return Move(table[piece1][to1][piece_type(piece2)][to2]); }
+	void clear() { std::memset(table, 0, sizeof(table)); }
+	void update(Piece piece1, Square to1, Piece piece2, Square to2, Move move)
 	{
-		tabel[stuk1][naar1][piece_type(stuk2)][naar2] = zet;
+		table[piece1][to1][piece_type(piece2)][to2] = move;
 	}
 
 private:
-	MoveCompact tabel[PIECE_N][SQUARE_N][PIECE_TYPE_N][SQUARE_N];
+	MoveCompact table[PIECE_N][SQUARE_N][PIECE_TYPE_N][SQUARE_N];
 };
 
 
 struct MaxGainStats
 {
-	Value get(Piece stuk, Move zet) const { return tabel[stuk][zet & 0x0fff]; }
-	void clear() { std::memset(tabel, 0, sizeof(tabel)); }
-	void update(Piece stuk, Move zet, Value gain) 
+	Value get(Piece piece, Move move) const { return table[piece][move & 0x0fff]; }
+	void clear() { std::memset(table, 0, sizeof(table)); }
+	void update(Piece piece, Move move, Value gain) 
 	{
-		Value* pGain = &tabel[stuk][zet & 0x0fff];
+		Value* pGain = &table[piece][move & 0x0fff];
 		*pGain += Value((gain - *pGain + 8) >> 4);
 	}
 
 private:
-	Value tabel[PIECE_N][64 * 64];
+	Value table[PIECE_N][64 * 64];
 };
 
 
 struct SpecialKillerStats
 {
-	static int index_our_pieces(const Position &pos, Color kleur);
-	static int index_their_pieces(const Position &pos, Color kleur, Square veld);
+	static int index_our_pieces(const Position &pos, Color color);
+	static int index_their_pieces(const Position &pos, Color color, Square square);
 
-	Move get(Color kleur, int index) const { return tabel[kleur][index]; }
-	void clear() { std::memset(tabel, 0, sizeof(tabel)); }
-	void update(Color kleur, int index, Move zet) 
+	Move get(Color color, int index) const { return table[color][index]; }
+	void clear() { std::memset(table, 0, sizeof(table)); }
+	void update(Color color, int index, Move move) 
 	{
-		tabel[kleur][index] = zet;
+		table[color][index] = move;
 	}
 private:
-	Move tabel[COLOR_N][65536];
+	Move table[COLOR_N][65536];
 };
 
 

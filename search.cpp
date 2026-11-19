@@ -28,10 +28,10 @@ EngineTest *Chessbase_License;
 
 namespace Search
 {
-	SignalsType Signalen;
-	TimeLimit Klok;
+	SignalsType Signals;
+	TimeLimit Clock;
 	bool Running;
-	uint8_t LMReducties[2][2][64 * (int)PLY][64]; // [pv][vooruitgang][diepte][zet]
+	uint8_t LMReductions[2][2][64 * (int)PLY][64]; // [pv][vooruitgang][diepte][zet]
 }
 
 // diepte opgeteld bij EGTB_ProbeDepth
@@ -66,102 +66,102 @@ namespace
 	}
 	
 	const Value margin1[7] = { Value(0), Value(112), Value(243), Value(376), Value(510), Value(646), Value(784) };
-	inline Value futility_marge1(Depth d) 
+	inline Value futility_margin1(Depth d) 
 	{ 
 		return margin1[(unsigned int)d / PLY];
 	}
 	
-	inline Value futility_marge2(Depth d)
+	inline Value futility_margin2(Depth d)
 	{
 		return Value(204 + 160 * int((unsigned int)d / PLY));
 	}
 
-	int LateZetAantal[2][32] =   // [vooruitgang][diepte/2]
+	int LateMoveCountTable[2][32] =   // [vooruitgang][diepte/2]
 	{
 		{ 0, 0, 3, 3, 4, 5, 6,  7,  8, 10, 12, 15, 17, 20, 23, 26, 30, 33, 37, 40, 44, 49, 53, 58, 63, 68,  73,  78,  83,  88,  94, 100 },
 		{ 0, 0, 5, 5, 6, 7, 9, 11, 14, 17, 20, 23, 27, 31, 35, 40, 45, 50, 55, 60, 65, 71, 77, 84, 91, 98, 105, 112, 119, 127, 135, 143 }
 	};
-	inline int late_move_count(Depth d, bool vooruitgang)
+	inline int late_move_count(Depth d, bool progress)
 	{
-		return LateZetAantal[vooruitgang][(unsigned int)d / (PLY / 2)];
+		return LateMoveCountTable[progress][(unsigned int)d / (PLY / 2)];
 	}
 
-	inline Depth lmr_reductie(bool pv, bool vg, Depth d, int n)
+	inline Depth lmr_reduction(bool pv, bool prog, Depth d, int n)
 	{
-		return Depth(LMReducties[pv][vg][std::min((int)d, 64 * (int)PLY - 1)][std::min(n, 63)]);
+		return Depth(LMReductions[pv][prog][std::min((int)d, 64 * (int)PLY - 1)][std::min(n, 63)]);
 	}
 
-	SortValue counterZetBonus[MAX_PLY];
-	inline SortValue counter_zet_bonus(Depth d) { return counterZetBonus[(unsigned int)d / PLY]; }
-	inline SortValue history_bonus(Depth d) { return counterZetBonus[(unsigned int)d / PLY]; }
+	SortValue counterMoveBonus[MAX_PLY];
+	inline SortValue counter_move_bonus(Depth d) { return counterMoveBonus[(unsigned int)d / PLY]; }
+	inline SortValue history_bonus(Depth d) { return counterMoveBonus[(unsigned int)d / PLY]; }
 
-	inline Depth counter_diepte(Depth d, uint64_t knopen)
+	inline Depth counter_depth(Depth d, uint64_t nodes)
 	{
 		//return d;
-		return (int)msb(knopen) > (int)d / 9 ? d + PLY : d;
+		return (int)msb(nodes) > (int)d / 9 ? d + PLY : d;
 	}
 
 	struct EasyMoveManager
 	{
 		void clear()
 		{
-			sleutelNaTweeZetten = 0;
-			derdeZetStabiel = 0;
+			keyAfterTwoMoves = 0;
+			thirdMoveStable = 0;
 			pv[0] = pv[1] = pv[2] = NO_MOVE;
 		}
 
-		Move expected_move(Key64 sleutel) const
+		Move expected_move(Key64 key) const
 		{
-			return sleutelNaTweeZetten == sleutel ? pv[2] : NO_MOVE;
+			return keyAfterTwoMoves == key ? pv[2] : NO_MOVE;
 		}
 
-		void verversPv(Position& pos, const PrincipalVariation& pvNieuw)
+		void refreshPv(Position& pos, const PrincipalVariation& pvNew)
 		{
-			assert(pvNieuw.size() >= 3);
+			assert(pvNew.size() >= 3);
 
-			derdeZetStabiel = (pvNieuw[2] == pv[2]) ? derdeZetStabiel + 1 : 0;
+			thirdMoveStable = (pvNew[2] == pv[2]) ? thirdMoveStable + 1 : 0;
 
-			if (pvNieuw[0] != pv[0] || pvNieuw[1] != pv[1] || pvNieuw[2] != pv[2])
+			if (pvNew[0] != pv[0] || pvNew[1] != pv[1] || pvNew[2] != pv[2])
 			{
-				pv[0] = pvNieuw[0];
-				pv[1] = pvNieuw[1];
-				pv[2] = pvNieuw[2];
+				pv[0] = pvNew[0];
+				pv[1] = pvNew[1];
+				pv[2] = pvNew[2];
 
-				pos.do_move(pvNieuw[0]);
-				pos.do_move(pvNieuw[1]);
-				sleutelNaTweeZetten = pos.sleutel();
-				pos.undo_move(pvNieuw[1]);
-				pos.undo_move(pvNieuw[0]);
+				pos.do_move(pvNew[0]);
+				pos.do_move(pvNew[1]);
+				keyAfterTwoMoves = pos.key();
+				pos.undo_move(pvNew[1]);
+				pos.undo_move(pvNew[0]);
 			}
 		}
 
-		int derdeZetStabiel;
-		Key64 sleutelNaTweeZetten;
+		int thirdMoveStable;
+		Key64 keyAfterTwoMoves;
 		Move pv[3];
 	};
 
-	EasyMoveManager GemakkelijkeZet;
-	Value RemiseWaarde[COLOR_N];
-	uint64_t vorigeInfoTijd;
+	EasyMoveManager EasyMove;
+	Value DrawValue[COLOR_N];
+	uint64_t previousInfoTime;
 
 	template <NodeType NT>
-	Value search(Position& pos, Value alpha, Value beta, Depth diepte, bool cutNode);
+	Value search(Position& pos, Value alpha, Value beta, Depth depth, bool cutNode);
 
-	template <NodeType NT, bool staatSchaak>
-	Value qsearch(Position& pos, Value alfa, Value beta, Depth diepte);
+	template <NodeType NT, bool inCheck>
+	Value qsearch(Position& pos, Value alpha, Value beta, Depth depth);
 
 	Value value_to_tt(Value v, int ply);
 	Value value_from_tt(Value v, int ply);
-	void copy_PV(Move* pv, Move zet, Move* pvLager);
-	void update_stats(const Position& pos, bool staatSchaak, Move zet, Depth diepte, Move* rustigeZetten, int rustigAantal);
-	void update_stats_quiet(const Position& pos, bool staatSchaak, Depth diepte, Move* rustigeZetten, int rustigAantal);
-	void update_stats_minus(const Position& pos, bool staatSchaak, Move zet, Depth diepte);
+	void copy_PV(Move* pv, Move move, Move* pvLower);
+	void update_stats(const Position& pos, bool inCheck, Move move, Depth depth, Move* quietMoves, int quietCount);
+	void update_stats_quiet(const Position& pos, bool inCheck, Depth depth, Move* quietMoves, int quietCount);
+	void update_stats_minus(const Position& pos, bool inCheck, Move move, Depth depth);
 	void time_control();
 
 	Depth ComputeEgtbUsefulness(const Position& pos);
-	void FilterRootMoves(Position& pos, RootMoves& rootZetten);
+	void FilterRootMoves(Position& pos, RootMoves& rootMoves);
 
-	const Value QSearchFutilityWaarde[PIECE_N] = {
+	const Value QSearchFutilityValue[PIECE_N] = {
 		Value(102), VALUE_0, Value(308), Value(818), Value(827), Value(1186), Value(2228), VALUE_0,
 		Value(102), VALUE_0, Value(308), Value(818), Value(827), Value(1186), Value(2228), VALUE_0
 	};
@@ -169,14 +169,14 @@ namespace
 	const Value LazyMarginQSearchLow = Value(480) + VALUE_1;
 	const Value LazyMarginQSearchHigh = Value(480);
 
-	PolyglotBook openingBoek;
+	PolyglotBook openingBook;
 
 } // namespace
 
 
 void Search::initialize()
 {
-	std::memset(LMReducties, 0, sizeof(LMReducties));
+	std::memset(LMReductions, 0, sizeof(LMReductions));
 
 #if !defined(USE_LICENSE) && !defined(IMPORT_TABLES)
 	for (int d = PLY; d < 64 * PLY; ++d)
@@ -187,10 +187,10 @@ void Search::initialize()
 				continue;
 			Depth r = Depth(std::lround(rr));
 
-			LMReducties[false][1][d][n] = uint8_t(r);
-			LMReducties[false][0][d][n] = uint8_t(r + (r < 2 * PLY ? 0 * PLY : PLY));
-			LMReducties[true][1][d][n] = uint8_t(std::max(r - PLY, DEPTH_0));
-			LMReducties[true][0][d][n] = LMReducties[true][1][d][n];
+			LMReductions[false][1][d][n] = uint8_t(r);
+			LMReductions[false][0][d][n] = uint8_t(r + (r < 2 * PLY ? 0 * PLY : PLY));
+			LMReductions[true][1][d][n] = uint8_t(std::max(r - PLY, DEPTH_0));
+			LMReductions[true][0][d][n] = LMReductions[true][1][d][n];
 
 			//Reductions[false][1][d][n] = Depth(r - 1);
 			//Reductions[false][0][d][n] = Depth(r + 2);
@@ -202,7 +202,7 @@ void Search::initialize()
 	// kwadratische functie met initiële helling  (1,1) -> (2,6) -> (3,13)
 	for (int d = 1; d < MAX_PLY; ++d)
 	{
-		counterZetBonus[d] = SortValue(std::min(8192, 24 * (d * d + 2 * d - 2)));
+		counterMoveBonus[d] = SortValue(std::min(8192, 24 * (d * d + 2 * d - 2)));
 		//counterZetBonus[d] = SorteerWaarde(std::min(8192, 24 * (d * d + 6 * d - 6)));
 	}
 }
@@ -210,8 +210,8 @@ void Search::initialize()
 
 void Search::clear_all()
 {
-	if (!UciOpties["Never Clear Hash"])
-		HoofdHash.clear();
+	if (!UciOptions["Never Clear Hash"])
+		MainHash.clear();
 	Threads.clear_counter_move_history();
 
 	for (int i = 0; i < Threads.threadCount; ++i)
@@ -219,16 +219,16 @@ void Search::clear_all()
 		Thread* th = Threads.threads[i];
 		th->ti->history.clear();
 		th->ti->evasionHistory.clear();
-		th->ti->maxWinstTabel.clear();
-		th->ti->counterZetten.clear();
-		th->ti->counterfollowupZetten.clear();
-		th->ti->slagGeschiedenis.clear();
+		th->ti->maxGainTable.clear();
+		th->ti->counterMoves.clear();
+		th->ti->counterfollowupMoves.clear();
+		th->ti->captureHistory.clear();
 	}
 
-	Threads.main()->vorigeRootScore = HIGHEST_VALUE;
-	Threads.main()->vorigeRootDiepte = 999 * PLY;
-	Threads.main()->snelleZetToegelaten = false;
-	openingBoek.new_game();
+	Threads.main()->previousRootScore = HIGHEST_VALUE;
+	Threads.main()->previousRootDepth = 999 * PLY;
+	Threads.main()->quickMoveAllowed = false;
+	openingBook.new_game();
 }
 
 
@@ -260,27 +260,27 @@ template uint64_t Search::perft<true>(Position&, Depth);
 */
 
 
-void compute_EGTB_mate_PV(Position& pos, Value verwachte_score, PrincipalVariation& pv)
+void compute_EGTB_mate_PV(Position& pos, Value expected_score, PrincipalVariation& pv)
 {
 	Value score = NO_VALUE;
 
-	for (const auto& zet : LegalMoveList(pos))
+	for (const auto& move : LegalMoveList(pos))
 	{
-		pos.do_move(zet);
+		pos.do_move(move);
 
-		int aantal_stukken = pos.all_pieces_count();
-		if (aantal_stukken <= EGTB::MaxPieces_dtm)
+		int num_pieces = pos.all_pieces_count();
+		if (num_pieces <= EGTB::MaxPieces_dtm)
 			score = EGTB::EGTB_probe_dtm(pos, -MATE_VALUE, MATE_VALUE);
 
-		if (score == verwachte_score)
+		if (score == expected_score)
 		{
-			pv.add(zet);
+			pv.add(move);
 			compute_EGTB_mate_PV(pos, -score, pv);
-			pos.undo_move(zet);
+			pos.undo_move(move);
 			return;
 		}
 		else
-			pos.undo_move(zet);
+			pos.undo_move(move);
 	}
 	return;
 }
@@ -288,35 +288,35 @@ void compute_EGTB_mate_PV(Position& pos, Value verwachte_score, PrincipalVariati
 
 void choose_not_too_strong_move(Thread* thread)
 {
-	Value max_waarde, random_score;
+	Value max_value, random_score;
 	static PRNG rng(now());
 
 	int max_index = 0;
-	if (Threads.speelSterkte <= 10)
-		random_score = Value(2 * (200 - 10 * Threads.speelSterkte));
-	else if (Threads.speelSterkte <= 30)
-		random_score = Value(2 * (120 - 2 * Threads.speelSterkte));
-	else if (Threads.speelSterkte <= 60)
-		random_score = Value(2 * (90 - Threads.speelSterkte));
+	if (Threads.playStrength <= 10)
+		random_score = Value(2 * (200 - 10 * Threads.playStrength));
+	else if (Threads.playStrength <= 30)
+		random_score = Value(2 * (120 - 2 * Threads.playStrength));
+	else if (Threads.playStrength <= 60)
+		random_score = Value(2 * (90 - Threads.playStrength));
 	else
-		random_score = Value(2 * (60 - Threads.speelSterkte / 2));
+		random_score = Value(2 * (60 - Threads.playStrength / 2));
 
-	max_waarde = VALUE_0; // avoid warning
+	max_value = VALUE_0; // avoid warning
 	for (int PV_index = 0; PV_index < Threads.multiPV; PV_index++)
 	{
-		RootMove zet = thread->rootZetten[PV_index];
-		if (zet.pv[0] == NO_MOVE)
+		RootMove move = thread->rootMoves[PV_index];
+		if (move.pv[0] == NO_MOVE)
 			break;
-		Value waarde = zet.score;
-		waarde += random_score * (rng.rand<unsigned>() & 1023) / 1024;
-		if (PV_index == 0 || waarde > max_waarde)
+		Value value = move.score;
+		value += random_score * (rng.rand<unsigned>() & 1023) / 1024;
+		if (PV_index == 0 || value > max_value)
 		{
-			max_waarde = waarde;
+			max_value = value;
 			max_index = PV_index;
 		}
 	}
 	if (max_index != 0)
-		std::swap(thread->rootZetten[0], thread->rootZetten[max_index]);
+		std::swap(thread->rootMoves[0], thread->rootMoves[max_index]);
 }
 
 #define PONDER_SMART_HASH
@@ -324,17 +324,17 @@ void choose_not_too_strong_move(Thread* thread)
 void Search::adjust_time_after_ponderhit()
 {
 #ifdef PONDER_SMART_HASH
-	HoofdHash.new_generation();
+	MainHash.new_generation();
 #endif
-	if (Klok.uses_time_calculation())
-		Tijdscontrole.adjustment_after_ponderhit();
+	if (Clock.uses_time_calculation())
+		TimeControl.adjustment_after_ponderhit();
 }
 
 
 void Search::export_table()
 {
 	FILE *f = fopen("R:\\Schaak\\h6-lmr-export.dat", "wb");
-	fwrite(LMReducties, 1, sizeof(LMReducties), f);
+	fwrite(LMReductions, 1, sizeof(LMReductions), f);
 	fclose(f);
 }
 
@@ -342,7 +342,7 @@ void Search::export_table()
 void Search::import_table()
 {
 	FILE *f = fopen("R:\\Schaak\\h6-lmr-export.dat", "rb");
-	fread(LMReducties, 1, sizeof(LMReducties), f);
+	fread(LMReductions, 1, sizeof(LMReductions), f);
 	fclose(f);
 }
 
@@ -350,11 +350,11 @@ void Search::import_table()
 void MainThread::start_search()
 {
 	Running = true;
-	rootStelling->copy_position(Threads.rootStelling, nullptr, nullptr);
-	const Color ik = rootStelling->side_to_move();
-	Tijdscontrole.initialize(Klok, ik, rootStelling->game_ply());
-	vorigeInfoTijd = 0;
-	interruptTeller = 0;
+	rootPosition->copy_position(Threads.rootPosition, nullptr, nullptr);
+	const Color us = rootPosition->side_to_move();
+	TimeControl.initialize(Clock, us, rootPosition->game_ply());
+	previousInfoTime = 0;
+	interruptCounter = 0;
 
 #ifdef USE_LICENSE
 #ifdef CHESSBASE
@@ -363,98 +363,98 @@ void MainThread::start_search()
 #endif
 #endif
 
-	Threads.contemptKleur = ik;
-	Threads.analyseModus = !Klok.uses_time_calculation();
-	Threads.tactischeModusIndex = UciOpties["Tactical Mode"];
+	Threads.contemptColor = us;
+	Threads.analysisMode = !Clock.uses_time_calculation();
+	Threads.tacticalModeIndex = UciOptions["Tactical Mode"];
 	for (int i = 0; i < Threads.threadCount; ++i)
-		Threads.threads[i]->tactischeModus = Threads.tactischeModusIndex < 2 ? Threads.tactischeModusIndex : (i % Threads.tactischeModusIndex) == 0;
+		Threads.threads[i]->tacticalMode = Threads.tacticalModeIndex < 2 ? Threads.tacticalModeIndex : (i % Threads.tacticalModeIndex) == 0;
 
 #if 1
-	Threads.vijftigZettenAfstand = UciOpties["FiftyMoveDistance"];
-	Threads.vijftigZettenAfstand = std::min(50, std::max(Threads.vijftigZettenAfstand, rootStelling->fifty_moves_counter() / 2 + 5));
-	Threads.stukContempt = (Threads.analyseModus && !UciOpties["Analysis Contempt"]) ? 0 : int(UciOpties["Contempt"]);
-	if (Threads.stukContempt)
+	Threads.fiftyMovesDistance = UciOptions["FiftyMoveDistance"];
+	Threads.fiftyMovesDistance = std::min(50, std::max(Threads.fiftyMovesDistance, rootPosition->fifty_moves_counter() / 2 + 5));
+	Threads.pieceContempt = (Threads.analysisMode && !UciOptions["Analysis Contempt"]) ? 0 : int(UciOptions["Contempt"]);
+	if (Threads.pieceContempt)
 	{
-		if (Threads.analyseModus)
-			Threads.contemptKleur = WHITE;
+		if (Threads.analysisMode)
+			Threads.contemptColor = WHITE;
 
-		int tempContempt = Threads.stukContempt;
-		Threads.stukContempt = 0;
-		Value v1 = Evaluation::evaluatie(*rootStelling, NO_VALUE, NO_VALUE);
-		Threads.stukContempt = tempContempt;
-		Value v2 = Evaluation::evaluatie(*rootStelling, NO_VALUE, NO_VALUE);
+		int tempContempt = Threads.pieceContempt;
+		Threads.pieceContempt = 0;
+		Value v1 = Evaluation::evaluation(*rootPosition, NO_VALUE, NO_VALUE);
+		Threads.pieceContempt = tempContempt;
+		Value v2 = Evaluation::evaluation(*rootPosition, NO_VALUE, NO_VALUE);
 		if (abs(v1) < WIN_VALUE && abs(v2) < WIN_VALUE)
-			Threads.rootContemptWaarde = v2 - v1;
+			Threads.rootContemptValue = v2 - v1;
 		else
-			Threads.rootContemptWaarde = VALUE_0;
+			Threads.rootContemptValue = VALUE_0;
 	}
-	Threads.multiPV = Threads.multiPVmax = UciOpties["MultiPV"];
-	Threads.multiPV_cp = UciOpties["MultiPV_cp"];
+	Threads.multiPV = Threads.multiPVmax = UciOptions["MultiPV"];
+	Threads.multiPV_cp = UciOptions["MultiPV_cp"];
 	if (Threads.multiPV_cp > 0)
 		Threads.multiPV = 2;  // beginwaarde, wordt bijgewerkt door algoritme
-	if (UciOpties["UCI_LimitStrength"])
-		Threads.speelSterkte = UCI::strength_for_elo(int(UciOpties["UCI_Elo"]) - 200);
+	if (UciOptions["UCI_LimitStrength"])
+		Threads.playStrength = UCI::strength_for_elo(int(UciOptions["UCI_Elo"]) - 200);
 	else
-		Threads.speelSterkte = UciOpties["Strength"];
+		Threads.playStrength = UciOptions["Strength"];
 #else
-	Threads.vijftigZettenAfstand = 50;
-	Threads.stukContempt = Threads.analyseModus ? 0 : 3;
+	Threads.fiftyMovesDistance = 50;
+	Threads.pieceContempt = Threads.analysisMode ? 0 : 3;
 	Threads.multiPV = 1;
 	Threads.multiPV_cp = 0;
-	Threads.speelSterkte = 100;
+	Threads.playStrength = 100;
 #endif
-	Threads.hideRedundantOutput = UciOpties["Hide Redundant Output"];
+	Threads.hideRedundantOutput = UciOptions["Hide Redundant Output"];
 
 	Threads.activeThreadCount = Threads.threadCount;
-	Threads.speelSterkteMaxKnopen = 0;
-	if (Threads.speelSterkte != 100)
+	Threads.playStrengthMaxNodes = 0;
+	if (Threads.playStrength != 100)
 	{
 		Threads.activeThreadCount = 1;
 		Threads.multiPV_cp = 0;
-		Threads.speelSterkteMaxKnopen = 600 << (Threads.speelSterkte / 5);
-		if (Threads.speelSterkte <= 10)
-			Threads.multiPV = 20 - Threads.speelSterkte / 2;
+		Threads.playStrengthMaxNodes = 600 << (Threads.playStrength / 5);
+		if (Threads.playStrength <= 10)
+			Threads.multiPV = 20 - Threads.playStrength / 2;
 		else
-			Threads.multiPV = 15 - Threads.speelSterkte / 8;
+			Threads.multiPV = 15 - Threads.playStrength / 8;
 	}
 
-	if (Threads.analyseModus)
+	if (Threads.analysisMode)
 	{
-		RemiseWaarde[ik] = DRAW_VALUE;
-		RemiseWaarde[~ik] = DRAW_VALUE;
+		DrawValue[us] = DRAW_VALUE;
+		DrawValue[~us] = DRAW_VALUE;
 	}
 	else
 	{
-		RemiseWaarde[ik] = DRAW_VALUE - DEFAULT_DRAW_VALUE * rootStelling->game_phase() / MIDDLEGAME_PHASE;
-		RemiseWaarde[~ik] = DRAW_VALUE + DEFAULT_DRAW_VALUE * rootStelling->game_phase() / MIDDLEGAME_PHASE;
+		DrawValue[us] = DRAW_VALUE - DEFAULT_DRAW_VALUE * rootPosition->game_phase() / MIDDLEGAME_PHASE;
+		DrawValue[~us] = DRAW_VALUE + DEFAULT_DRAW_VALUE * rootPosition->game_phase() / MIDDLEGAME_PHASE;
 	}
 
 #ifdef PONDER_SMART_HASH
-	if (!Klok.ponder)
+	if (!Clock.ponder)
 #endif
-		HoofdHash.new_generation();
+		MainHash.new_generation();
 	TB_RootInTB = false;
-	EGTB::UseRule50 = UciOpties["EGTB Fifty Move Rule"];
-	TB_ProbeDepth = UciOpties["EGTB Probe Depth"] * PLY;
+	EGTB::UseRule50 = UciOptions["EGTB Fifty Move Rule"];
+	TB_ProbeDepth = UciOptions["EGTB Probe Depth"] * PLY;
 	TB_Cardinality = std::max(EGTB::MaxPieces_wdl, std::max(EGTB::MaxPieces_dtm, EGTB::MaxPieces_dtz));
 
-	rootZetten.zetAantal = 0;
-	for (const auto& zet : LegalMoveList(*rootStelling))
-		if (Klok.zoekZetten.empty() || Klok.zoekZetten.find(zet) >= 0)
-			rootZetten.add(RootMove(zet));
+	rootMoves.moveCount = 0;
+	for (const auto& move : LegalMoveList(*rootPosition))
+		if (Clock.searchMoves.empty() || Clock.searchMoves.find(move) >= 0)
+			rootMoves.add(RootMove(move));
 
-	if (!Threads.analyseModus && UciOpties["Own Book"])
+	if (!Threads.analysisMode && UciOptions["Own Book"])
 	{
-		string boekBestand = UciOpties["Book File"];
-		if (!boekBestand.empty() && boekBestand != "<empty>")
+		string bookFile = UciOptions["Book File"];
+		if (!bookFile.empty() && bookFile != "<empty>")
 		{
-			Move boekZet = openingBoek.probe(*rootStelling, boekBestand, UciOpties["Best Book Line"]);
-			if (boekZet)
+			Move bookMove = openingBook.probe(*rootPosition, bookFile, UciOptions["Best Book Line"]);
+			if (bookMove)
 			{
-				int n = rootZetten.find(boekZet);
+				int n = rootMoves.find(bookMove);
 				if (n >= 0)
 				{
-					std::swap(rootZetten[0], rootZetten[n]);
+					std::swap(rootMoves[0], rootMoves[n]);
 					Threads.activeThreadCount = 1;  // enkel MainThread heeft een geïnitialiseerde stelling
 					goto NO_ANALYSIS;
 				}
@@ -468,62 +468,62 @@ void MainThread::start_search()
 	// goede test positie: 
 	// position fen r5kr/2qp1pp1/2b1pn2/p1b4p/1pN1P3/2PB3P/PP1BQPP1/R3R1K1 w - - 1 18 moves a1c1 c5f8 b2b3 d7d5 e4d5 c6d5 
 	// c4e3 d5c6 c1c2 c7b6 c3b4 a5b4 e1c1 c6b7 e3c4 b6c5 d2f4 c5d4 f4e3 d4d5 f2f3 b7a6 c1d1 a8e8 e2f2 d5b7 e3d4 h8h6 d4e3
-	if (Threads.analyseModus)
+	if (Threads.analysisMode)
 	{
-		PositionInfo* st = rootStelling->info();
-		int e = std::min(st->remise50Zetten, st->afstandTotNullzet);
+		PositionInfo* st = rootPosition->info();
+		int e = std::min(st->draw50Moves, st->distanceToNullMove);
 		while (e > 0)
 		{
 			st--;
 			e--;
 			PositionInfo* stst = st;
-			bool gevonden = false;
+			bool found = false;
 			for (int i = 2; i <= e; i += 2)
 			{
 				stst = stst - 2;
-				if (stst->sleutel == st->sleutel)
+				if (stst->key == st->key)
 				{
-					gevonden = true;
+					found = true;
 					break;
 				}
 			}
 
 			// position has occurred only once, remove it from the list
-			if (!gevonden)
-				st->sleutel = 0;
+			if (!found)
+				st->key = 0;
 		}
 	}
 
-	if (rootZetten.zetAantal == 0)
+	if (rootMoves.moveCount == 0)
 	{
-		rootZetten.add(RootMove(NO_MOVE));
-		rootZetten[0].score = rootStelling->check_givers() ? -MATE_VALUE : DRAW_VALUE;
-		rootZetten[0].diepte = MAIN_THREAD_INC;
+		rootMoves.add(RootMove(NO_MOVE));
+		rootMoves[0].score = rootPosition->check_givers() ? -MATE_VALUE : DRAW_VALUE;
+		rootMoves[0].depth = MAIN_THREAD_INC;
 		Threads.activeThreadCount = 1;  // enkel MainThread heeft een geïnitialiseerde stelling
-		sync_cout << UCI::pv(*rootStelling, -HIGHEST_VALUE, HIGHEST_VALUE, 999, 0) << sync_endl;
+		sync_cout << UCI::pv(*rootPosition, -HIGHEST_VALUE, HIGHEST_VALUE, 999, 0) << sync_endl;
 	}
 	else
 	{
-		if (rootStelling->all_pieces_count() <= TB_Cardinality
-			&& !rootStelling->castling_possible(ALL_CASTLING)
-			&& Threads.speelSterkte == 100)
+		if (rootPosition->all_pieces_count() <= TB_Cardinality
+			&& !rootPosition->castling_possible(ALL_CASTLING)
+			&& Threads.playStrength == 100)
 		{
-			FilterRootMoves(*rootStelling, rootZetten);
+			FilterRootMoves(*rootPosition, rootMoves);
 
-			if (TB_RootInTB && rootZetten.zetAantal == 1)
+			if (TB_RootInTB && rootMoves.moveCount == 1)
 			{
-				rootZetten[0].diepte = MAIN_THREAD_INC;
-				rootZetten[0].score = TB_Score;
+				rootMoves[0].depth = MAIN_THREAD_INC;
+				rootMoves[0].score = TB_Score;
 
-				if (Threads.analyseModus && abs(TB_Score) > LONGEST_MATE_VALUE)
+				if (Threads.analysisMode && abs(TB_Score) > LONGEST_MATE_VALUE)
 				{
-					rootStelling->do_move(rootZetten[0].pv[0]);
-					compute_EGTB_mate_PV(*rootStelling, TB_Score, rootZetten[0].pv);
-					rootStelling->undo_move(rootZetten[0].pv[0]);
-					rootZetten[0].diepte = MAIN_THREAD_INC * rootZetten[0].pv.size();
+					rootPosition->do_move(rootMoves[0].pv[0]);
+					compute_EGTB_mate_PV(*rootPosition, TB_Score, rootMoves[0].pv);
+					rootPosition->undo_move(rootMoves[0].pv[0]);
+					rootMoves[0].depth = MAIN_THREAD_INC * rootMoves[0].pv.size();
 				}
-				if (Tijdscontrole.elapsed() > 100)
-					sync_cout << UCI::pv(*rootStelling, -HIGHEST_VALUE, HIGHEST_VALUE, 999, 0) << sync_endl;
+				if (TimeControl.elapsed() > 100)
+					sync_cout << UCI::pv(*rootPosition, -HIGHEST_VALUE, HIGHEST_VALUE, 999, 0) << sync_endl;
 				Threads.activeThreadCount = 1;  // enkel MainThread heeft een geïnitialiseerde stelling
 				goto NO_ANALYSIS;
 			}
@@ -531,13 +531,13 @@ void MainThread::start_search()
 
 		open_tracefile();
 
-		Threads.multiPVmax = std::min(Threads.multiPVmax, rootZetten.zetAantal);
-		Threads.multiPV = std::min(Threads.multiPV, rootZetten.zetAantal);
+		Threads.multiPVmax = std::min(Threads.multiPVmax, rootMoves.moveCount);
+		Threads.multiPV = std::min(Threads.multiPV, rootMoves.moveCount);
 
 		if (Threads.activeThreadCount > 1)
 		{
-			Threads.rootZetten = rootZetten;
-			Threads.rootStellingInfo = rootStelling->info();
+			Threads.rootMoves = rootMoves;
+			Threads.rootPositionInfo = rootPosition->info();
 		}
 
 		for (int i = 1; i < Threads.activeThreadCount; ++i)
@@ -549,23 +549,23 @@ void MainThread::start_search()
 	}
 NO_ANALYSIS:
 
-	if (!Signalen.stopAnalyse && (Klok.ponder || Klok.infinite))
+	if (!Signals.stopAnalysis && (Clock.ponder || Clock.infinite))
 	{
-		if (Tijdscontrole.elapsed() <= 102)
-			sync_cout << UCI::pv(*rootStelling, -HIGHEST_VALUE, HIGHEST_VALUE, 999, 0) << sync_endl;
+		if (TimeControl.elapsed() <= 102)
+			sync_cout << UCI::pv(*rootPosition, -HIGHEST_VALUE, HIGHEST_VALUE, 999, 0) << sync_endl;
 
 		// diepte = 1 -> some GUIs will not show the output, repeat it with diepte 99
-		if (rootZetten[0].diepte == MAIN_THREAD_INC)
+		if (rootMoves[0].depth == MAIN_THREAD_INC)
 		{
-			rootZetten[0].diepte = 99 * MAIN_THREAD_INC;
-			sync_cout << UCI::pv(*rootStelling, -HIGHEST_VALUE, HIGHEST_VALUE, 999, 0) << sync_endl;
+			rootMoves[0].depth = 99 * MAIN_THREAD_INC;
+			sync_cout << UCI::pv(*rootPosition, -HIGHEST_VALUE, HIGHEST_VALUE, 999, 0) << sync_endl;
 		}
 
-		Signalen.stopBijPonderhit = true;
-		wait(Signalen.stopAnalyse);
+		Signals.stopOnPonderhit = true;
+		wait(Signals.stopAnalysis);
 	}
 
-	Signalen.stopAnalyse = true;
+	Signals.stopAnalysis = true;
 
 	for (int i = 1; i < Threads.activeThreadCount; ++i)
 		Threads.threads[i]->wait_for_search_finished();
@@ -573,20 +573,20 @@ NO_ANALYSIS:
 	// kies beste thread (hogere diepte EN betere score)
 	Thread* bestThread = this;
 
-	if (Threads.speelSterkte != 100)
+	if (Threads.playStrength != 100)
 		choose_not_too_strong_move(this);
 
-	else if (!this->snelleZetGespeeld
+	else if (!this->quickMovePlayed
 		&& Threads.multiPV == 1
-		&& !Klok.depth
-		&&  rootZetten[0].pv[0] != NO_MOVE)
+		&& !Clock.depth
+		&&  rootMoves[0].pv[0] != NO_MOVE)
 	{
 		for (int i = 1; i < Threads.activeThreadCount; ++i)
 		{
 			Thread* th = Threads.threads[i];
-			if (th->rootZetten[0].score > bestThread->rootZetten[0].score
+			if (th->rootMoves[0].score > bestThread->rootMoves[0].score
 				//&& (th->afgewerkteDiepte > bestThread->afgewerkteDiepte || th->rootZetten[0].score > LANGSTE_MAT_WAARDE))
-				&& th->afgewerkteDiepte > bestThread->afgewerkteDiepte)
+				&& th->completedDepth > bestThread->completedDepth)
 				bestThread = th;
 		}
 	}
@@ -595,16 +595,16 @@ NO_ANALYSIS:
 	//if (bestThread->rootZetten[0].pv.size() == 1)
 	//	bestThread->rootZetten[0].vervolledig_pv_met_tt(*bestThread->rootStelling);
 
-	vorigeRootScore = bestThread->rootZetten[0].score;
-	vorigeRootDiepte = bestThread->rootZetten[0].diepte;
+	previousRootScore = bestThread->rootMoves[0].score;
+	previousRootDepth = bestThread->rootMoves[0].depth;
 
-	if (bestThread != this || Tijdscontrole.elapsed() <= 102 || Signalen.stopBijPonderhit)
+	if (bestThread != this || TimeControl.elapsed() <= 102 || Signals.stopOnPonderhit)
 	{
 		// gebruik diepte van de main Thread (om geen sprongen te hebben in de output)
-		bestThread->rootZetten[0].diepte = rootZetten[0].diepte;
-		sync_cout << UCI::pv(*bestThread->rootStelling, -HIGHEST_VALUE, HIGHEST_VALUE, 999, 0) << sync_endl;
+		bestThread->rootMoves[0].depth = rootMoves[0].depth;
+		sync_cout << UCI::pv(*bestThread->rootPosition, -HIGHEST_VALUE, HIGHEST_VALUE, 999, 0) << sync_endl;
 	}
-	sync_cout << "bestmove " << UCI::zet(bestThread->rootZetten[0].pv[0], *rootStelling);
+	sync_cout << "bestmove " << UCI::move(bestThread->rootMoves[0].pv[0], *rootPosition);
 
 #ifdef USE_LICENSE
 #ifdef CHESSBASE
@@ -616,12 +616,12 @@ NO_ANALYSIS:
 		memset(PST::psq, 0, sizeof(PST::psq));
 #endif
 
-	if (bestThread->rootZetten[0].pv.size() > 1 || bestThread->rootZetten[0].find_ponder_move_in_tt(*rootStelling))
-		std::cout << " ponder " << UCI::zet(bestThread->rootZetten[0].pv[1], *rootStelling);
+	if (bestThread->rootMoves[0].pv.size() > 1 || bestThread->rootMoves[0].find_ponder_move_in_tt(*rootPosition))
+		std::cout << " ponder " << UCI::move(bestThread->rootMoves[0].pv[1], *rootPosition);
 
 	std::cout << sync_endl;
 
-	Threads.totaleAnalyseTijd += int(Tijdscontrole.elapsed());
+	Threads.totalAnalysisTime += int(TimeControl.elapsed());
 
 	Running = false;
 }
@@ -629,370 +629,370 @@ NO_ANALYSIS:
 
 void Thread::start_search()
 {
-	Value besteWaarde, alfa, beta, delta_alfa, delta_beta;
-	Move snelleZet = NO_MOVE;
+	Value bestValue, alpha, beta, delta_alpha, delta_beta;
+	Move quickMove = NO_MOVE;
 	MainThread* mainThread = (this == Threads.main() ? Threads.main() : nullptr);
 	//Diepte last_smart_fail_high_diepte = 15 * PLY;
 
 	if (!mainThread)
 	{
-		rootStelling->copy_position(Threads.rootStelling, this, Threads.rootStellingInfo);
-		rootZetten = Threads.rootZetten;
+		rootPosition->copy_position(Threads.rootPosition, this, Threads.rootPositionInfo);
+		rootMoves = Threads.rootMoves;
 	}
 
-	PositionInfo* st = rootStelling->info();
+	PositionInfo* st = rootPosition->info();
 
 	std::memset(st + 1, 0, 2 * sizeof(PositionInfo));
 	st->killers[0] = st->killers[1] = NO_MOVE;
-	st->vorigeZet = NO_MOVE;
-	(st - 2)->stellingWaarde = VALUE_0;
-	(st - 1)->stellingWaarde = VALUE_0;
-	(st - 1)->evalPositioneel = NO_EVAL;
-	(st - 1)->zetNummer = 0;
-	(st - 4)->counterZetWaarden = (st - 3)->counterZetWaarden = (st - 2)->counterZetWaarden = (st - 1)->counterZetWaarden = st->counterZetWaarden = nullptr;
-	(st - 1)->mp_eindeLijst = rootStelling->ti()->zettenLijst;
+	st->previousMove = NO_MOVE;
+	(st - 2)->positionValue = VALUE_0;
+	(st - 1)->positionValue = VALUE_0;
+	(st - 1)->evalPositional = NO_EVAL;
+	(st - 1)->moveNumber = 0;
+	(st - 4)->counterMoveValues = (st - 3)->counterMoveValues = (st - 2)->counterMoveValues = (st - 1)->counterMoveValues = st->counterMoveValues = nullptr;
+	(st - 1)->mp_endList = rootPosition->ti()->moveList;
 	//(st - 1)->statsWaarde = SORT_MAX;
 
 	for (int n = 0; n <= MAX_PLY; n++)
 	{
-		(st + n)->doeGeenVroegePruning = false;
-		(st + n)->uitgeslotenZet = NO_MOVE;
-		(st + n)->lmr_reductie = 0;
+		(st + n)->doNoEarlyPruning = false;
+		(st + n)->excludedMove = NO_MOVE;
+		(st + n)->lmr_reduction = 0;
 		(st + n)->ply = n + 1;
 	}
 
-	besteWaarde = delta_alfa = delta_beta = alfa = -HIGHEST_VALUE;
+	bestValue = delta_alpha = delta_beta = alpha = -HIGHEST_VALUE;
 	beta = HIGHEST_VALUE;
-	afgewerkteDiepte = 0 * PLY;
+	completedDepth = 0 * PLY;
 
 	if (mainThread)
 	{
-		snelleZet = GemakkelijkeZet.expected_move(rootStelling->sleutel());
-		GemakkelijkeZet.clear();
-		mainThread->snelleZetGespeeld = mainThread->failedLow = false;
-		mainThread->snelleZetEvaluatieBezig = mainThread->snelleZetEvaluatieAfgebroken = false;
-		mainThread->besteZetVerandert = 0;
+		quickMove = EasyMove.expected_move(rootPosition->key());
+		EasyMove.clear();
+		mainThread->quickMovePlayed = mainThread->failedLow = false;
+		mainThread->quickMoveEvaluationBusy = mainThread->quickMoveEvaluationAborted = false;
+		mainThread->bestMoveChanges = 0;
 		//mainThread->snelleZetGetest = false;
 
 		// st->pionSleutel op 0 zetten om later de maximale zoekdiepte te berekenen voor "seldepth" UCI output
 		for (int i = 1; i <= MAX_PLY; i++)
-			(st + i)->pionSleutel = 0;
+			(st + i)->pawnKey = 0;
 	}
 
 	// snelle zet
-	if (mainThread && !TB_RootInTB && !Klok.ponder && Threads.speelSterkte == 100 && !Threads.analyseModus
-		&& mainThread->snelleZetToegelaten && mainThread->vorigeRootDiepte >= 12 * PLY && Threads.multiPV == 1)
+	if (mainThread && !TB_RootInTB && !Clock.ponder && Threads.playStrength == 100 && !Threads.analysisMode
+		&& mainThread->quickMoveAllowed && mainThread->previousRootDepth >= 12 * PLY && Threads.multiPV == 1)
 	{
-		TTTuple* ttt = HoofdHash.find_existing(rootStelling->sleutel());
-		if (ttt && ttt->limiet() == EXACT_VALUE)
+		TTTuple* ttt = MainHash.find_existing(rootPosition->key());
+		if (ttt && ttt->bound() == EXACT_VALUE)
 		{
-			Value ttWaarde = value_from_tt(ttt->waarde(), st->ply);
-			Move ttZet = ttt->zet();
-			Depth ttDiepte = ttt->diepte();
+			Value ttValue = value_from_tt(ttt->value(), st->ply);
+			Move ttMove = ttt->move();
+			Depth ttDepth = ttt->depth();
 
-			if (ttDiepte >= mainThread->vorigeRootDiepte - 3 * PLY
-				&& ttZet
-				&& rootStelling->legal_move(ttZet)
-				&& abs(ttWaarde) < WIN_VALUE)
+			if (ttDepth >= mainThread->previousRootDepth - 3 * PLY
+				&& ttMove
+				&& rootPosition->legal_move(ttMove)
+				&& abs(ttValue) < WIN_VALUE)
 			{
-				Depth depth_singular = std::max(mainThread->vorigeRootDiepte / 2, mainThread->vorigeRootDiepte - 8 * PLY);
-				Value v_singular = ttWaarde - Value(102);
-				st->uitgeslotenZet = ttZet;
-				st->stellingWaarde = Evaluation::evaluatie(*rootStelling, NO_VALUE, NO_VALUE);
-				mainThread->snelleZetEvaluatieBezig = true;
-				Value v = search<NonPV>(*rootStelling, v_singular - VALUE_1, v_singular, depth_singular, false);
-				mainThread->snelleZetEvaluatieBezig = false;
-				st->uitgeslotenZet = NO_MOVE;
+				Depth depth_singular = std::max(mainThread->previousRootDepth / 2, mainThread->previousRootDepth - 8 * PLY);
+				Value v_singular = ttValue - Value(102);
+				st->excludedMove = ttMove;
+				st->positionValue = Evaluation::evaluation(*rootPosition, NO_VALUE, NO_VALUE);
+				mainThread->quickMoveEvaluationBusy = true;
+				Value v = search<NonPV>(*rootPosition, v_singular - VALUE_1, v_singular, depth_singular, false);
+				mainThread->quickMoveEvaluationBusy = false;
+				st->excludedMove = NO_MOVE;
 
-				if (!mainThread->snelleZetEvaluatieAfgebroken && v < v_singular)
+				if (!mainThread->quickMoveEvaluationAborted && v < v_singular)
 				{
-					Signalen.stopAnalyse = true;
-					rootZetten[0].score = ttWaarde;
-					rootZetten[0].pv.resize(1);
-					rootZetten[0].pv[0] = ttZet;
-					rootZetten[0].complete_pv_with_tt(*rootStelling);
-					rootZetten[0].diepte = ttDiepte;
-					mainThread->snelleZetToegelaten = false;
-					mainThread->snelleZetGespeeld = true;
-					GemakkelijkeZet.clear();
-					afgewerkteDiepte = mainThread->vorigeRootDiepte - 2 * PLY;
-					sync_cout << UCI::pv(*rootStelling, -HIGHEST_VALUE, HIGHEST_VALUE, 999, 0) << sync_endl;
+					Signals.stopAnalysis = true;
+					rootMoves[0].score = ttValue;
+					rootMoves[0].pv.resize(1);
+					rootMoves[0].pv[0] = ttMove;
+					rootMoves[0].complete_pv_with_tt(*rootPosition);
+					rootMoves[0].depth = ttDepth;
+					mainThread->quickMoveAllowed = false;
+					mainThread->quickMovePlayed = true;
+					EasyMove.clear();
+					completedDepth = mainThread->previousRootDepth - 2 * PLY;
+					sync_cout << UCI::pv(*rootPosition, -HIGHEST_VALUE, HIGHEST_VALUE, 999, 0) << sync_endl;
 					return;
 				}
-				mainThread->snelleZetEvaluatieAfgebroken = false;
+				mainThread->quickMoveEvaluationAborted = false;
 			}
 		}
 	}
 	if (mainThread)
-		mainThread->snelleZetToegelaten = true;
+		mainThread->quickMoveAllowed = true;
 
 	// in tactische modus hebben we de initiele score van elke zet nodig
-	if (tactischeModus)
+	if (tacticalMode)
 	{
-		vorigeTactischeDiepte = 0 * PLY;
+		previousTacticalDepth = 0 * PLY;
 
 		// bereken de initiele score van elke zet
-		st->mp_eindeLijst = (st - 1)->mp_eindeLijst;
+		st->mp_endList = (st - 1)->mp_endList;
 		Move pv[MAX_PLY + 1];
 
-		for (int i = 0; i < rootZetten.zetAantal; i++)
+		for (int i = 0; i < rootMoves.moveCount; i++)
 		{
-			Move zet = rootZetten[i].pv[0];
-			rootStelling->do_move(zet);
-			(st + 1)->doeGeenVroegePruning = true;
+			Move move = rootMoves[i].pv[0];
+			rootPosition->do_move(move);
+			(st + 1)->doNoEarlyPruning = true;
 			(st + 1)->pv = pv;
 			(st + 1)->pv[0] = NO_MOVE;
-			rootZetten[i].startWaarde = -::search<PV>(*rootStelling, -HIGHEST_VALUE, HIGHEST_VALUE, PLY, false);
-			(st + 1)->doeGeenVroegePruning = false;
-			rootStelling->undo_move(zet);
+			rootMoves[i].startValue = -::search<PV>(*rootPosition, -HIGHEST_VALUE, HIGHEST_VALUE, PLY, false);
+			(st + 1)->doNoEarlyPruning = false;
+			rootPosition->undo_move(move);
 		}
 	}
 
-	int zoekIteratie = 0;
-	Depth rootDiepte = PLY / 2;
+	int searchIteration = 0;
+	Depth rootDepth = PLY / 2;
 
-	while (++zoekIteratie < 100)
+	while (++searchIteration < 100)
 	{
-		rootDiepte += mainThread ? MAIN_THREAD_INC : OTHER_THREAD_INC;
+		rootDepth += mainThread ? MAIN_THREAD_INC : OTHER_THREAD_INC;
 
 		if (mainThread)
 		{
-			if (Klok.depth && zoekIteratie - 1 >= Klok.depth)
-				Signalen.stopAnalyse = true;
+			if (Clock.depth && searchIteration - 1 >= Clock.depth)
+				Signals.stopAnalysis = true;
 
-			if (Threads.speelSterkte != 100 && Threads.visited_nodes() >= Threads.speelSterkteMaxKnopen)
-				Signalen.stopAnalyse = true;
+			if (Threads.playStrength != 100 && Threads.visited_nodes() >= Threads.playStrengthMaxNodes)
+				Signals.stopAnalysis = true;
 		}
 
-		if (Signalen.stopAnalyse)
+		if (Signals.stopAnalysis)
 			break;
 
 		if (mainThread)
 		{
-			mainThread->besteZetVerandert /= 2;
+			mainThread->bestMoveChanges /= 2;
 			mainThread->failedLow = false;
 		}
 
-		if (mainThread && Tijdscontrole.elapsed() > 1000)
-			sync_cout << "info depth " << zoekIteratie << sync_endl;
+		if (mainThread && TimeControl.elapsed() > 1000)
+			sync_cout << "info depth " << searchIteration << sync_endl;
 
-		for (int i = 0; i < rootZetten.zetAantal; i++)
-			rootZetten[i].vorigeScore = rootZetten[i].score;
+		for (int i = 0; i < rootMoves.moveCount; i++)
+			rootMoves[i].previousScore = rootMoves[i].score;
 
-		for (actievePV = 0; actievePV < Threads.multiPV && !Signalen.stopAnalyse; ++actievePV)
+		for (activePV = 0; activePV < Threads.multiPV && !Signals.stopAnalysis; ++activePV)
 		{
-			Move prevBestMove = rootZetten[actievePV].pv[0];
+			Move prevBestMove = rootMoves[activePV].pv[0];
 			int failHighCount = 0;
 
-			if (rootDiepte >= 5 * PLY)
+			if (rootDepth >= 5 * PLY)
 			{
-				delta_alfa = Value(14 + (threadIndex & 7));
+				delta_alpha = Value(14 + (threadIndex & 7));
 				delta_beta = Value(14 - (threadIndex & 7));
-				alfa = std::max(rootZetten[actievePV].vorigeScore - delta_alfa, -HIGHEST_VALUE);
-				beta = std::min(rootZetten[actievePV].vorigeScore + delta_beta, HIGHEST_VALUE);
+				alpha = std::max(rootMoves[activePV].previousScore - delta_alpha, -HIGHEST_VALUE);
+				beta = std::min(rootMoves[activePV].previousScore + delta_beta, HIGHEST_VALUE);
 			}
 
 			while (true)
 			{
-				if (alfa < -20 * VALUE_PAWN)
-					alfa = -HIGHEST_VALUE;
+				if (alpha < -20 * VALUE_PAWN)
+					alpha = -HIGHEST_VALUE;
 				if (beta > 20 * VALUE_PAWN)
 					beta = HIGHEST_VALUE;
 
 //#define SMART_FAIL_HIGH
 #ifdef SMART_FAIL_HIGH
-				if (failHighCount == 2 && Threads.analyseModus && rootZetten[actievePV].pv[0] != prevBestMove 
-					&& rootDiepte > last_smart_fail_high_diepte)
+				if (failHighCount == 2 && Threads.analysisMode && rootMoves[activePV].pv[0] != prevBestMove 
+					&& rootDepth > last_smart_fail_high_depth)
 				{
-					last_smart_fail_high_diepte = rootDiepte;
-					bool showOutput = mainThread && Tijdscontrole.elapsed() > 4000;
+					last_smart_fail_high_depth = rootDepth;
+					bool showOutput = mainThread && TimeControl.elapsed() > 4000;
 					if (showOutput)
-						sync_cout << "info string smart fail high - attempt reducing search depth to " << zoekIteratie - 5 << sync_endl;
+						sync_cout << "info string smart fail high - attempt reducing search depth to " << searchIteration - 5 << sync_endl;
 
-					Move m = rootZetten[actievePV].pv[0];
+					Move m = rootMoves[activePV].pv[0];
 					Move pv[MAX_PLY + 1];
 					(st + 1)->pv = pv;
 
-					rootStelling->do_move(m);
+					rootPosition->do_move(m);
 
-					for (int diepte_offset = 5; diepte_offset >= 1; diepte_offset -= 2)
+					for (int depth_offset = 5; depth_offset >= 1; depth_offset -= 2)
 					{
-						besteWaarde = -::search<PV>(*rootStelling, -beta, -alfa, rootDiepte - PLY - diepte_offset * PLY, false);
+						bestValue = -::search<PV>(*rootPosition, -beta, -alpha, rootDepth - PLY - depth_offset * PLY, false);
 
-						if (Signalen.stopAnalyse)
+						if (Signals.stopAnalysis)
 							break;
 
-						if (besteWaarde > alfa)
+						if (bestValue > alpha)
 						{
 							if (showOutput)
 								sync_cout << "info string smart fail high successful" << sync_endl;
-							rootDiepte -= diepte_offset * PLY;
-							zoekIteratie -= diepte_offset;
+							rootDepth -= depth_offset * PLY;
+							searchIteration -= depth_offset;
 							break;
 						}
 					};
 
-					rootStelling->undo_move(m);
-					if (Signalen.stopAnalyse)
+					rootPosition->undo_move(m);
+					if (Signals.stopAnalysis)
 						break;
 				}
 #endif
 
-				tactischeModusGebruikt = false;
+				tacticalModeUsed = false;
 
-				besteWaarde = ::search<PV>(*rootStelling, alfa, beta, rootDiepte, false);
+				bestValue = ::search<PV>(*rootPosition, alpha, beta, rootDepth, false);
 
-				std::stable_sort(rootZetten.zetten + actievePV, rootZetten.zetten + rootZetten.zetAantal);
+				std::stable_sort(rootMoves.moves + activePV, rootMoves.moves + rootMoves.moveCount);
 
-				if (Signalen.stopAnalyse)
+				if (Signals.stopAnalysis)
 					break;
 
-				if (tactischeModusGebruikt)
-					vorigeTactischeDiepte = rootDiepte;
+				if (tacticalModeUsed)
+					previousTacticalDepth = rootDepth;
 
 				// fail high wordt enkel maar opgelost in de mainThread, als er nog tijd over is
-				bool failHighOplossen = mainThread;
+				bool failHighResolve = mainThread;
 
-				if (mainThread && besteWaarde >= beta
-					&& rootZetten[actievePV].pv[0] == prevBestMove
-					&& !Threads.analyseModus
-					&& Tijdscontrole.elapsed() > Tijdscontrole.optimum() * 124 / 1024)
+				if (mainThread && bestValue >= beta
+					&& rootMoves[activePV].pv[0] == prevBestMove
+					&& !Threads.analysisMode
+					&& TimeControl.elapsed() > TimeControl.optimum() * 124 / 1024)
 				{
-					bool speelGemakkelijkeZet = rootZetten[0].pv[0] == snelleZet && mainThread->besteZetVerandert < 31;
+					bool playEasyMove = rootMoves[0].pv[0] == quickMove && mainThread->bestMoveChanges < 31;
 
-					if (speelGemakkelijkeZet)
-						failHighOplossen = false;
+					if (playEasyMove)
+						failHighResolve = false;
 
-					else if (Tijdscontrole.elapsed() > Tijdscontrole.optimum() * 420 / 1024)
+					else if (TimeControl.elapsed() > TimeControl.optimum() * 420 / 1024)
 					{
-						int verbeteringFactor = std::max(420, std::min(1304,
-							652 + 160 * mainThread->failedLow - 12 * int(besteWaarde - mainThread->vorigeRootScore)));
-						int onstabielFactor = 1024 + mainThread->besteZetVerandert;
-						if (Tijdscontrole.elapsed() > Tijdscontrole.optimum() * onstabielFactor / 1024 * verbeteringFactor / 1024)
-							failHighOplossen = false;
+						int improvementFactor = std::max(420, std::min(1304,
+							652 + 160 * mainThread->failedLow - 12 * int(bestValue - mainThread->previousRootScore)));
+						int unstableFactor = 1024 + mainThread->bestMoveChanges;
+						if (TimeControl.elapsed() > TimeControl.optimum() * unstableFactor / 1024 * improvementFactor / 1024)
+							failHighResolve = false;
 					}
 				}
 
-				if (besteWaarde <= alfa)
+				if (bestValue <= alpha)
 				{
-					beta = (alfa + beta) / 2;
-					alfa = std::max(besteWaarde - delta_alfa, -HIGHEST_VALUE);
+					beta = (alpha + beta) / 2;
+					alpha = std::max(bestValue - delta_alpha, -HIGHEST_VALUE);
 					failHighCount = 0;
 
 					if (mainThread)
 					{
 						mainThread->failedLow = true;
-						Signalen.stopBijPonderhit = false;
+						Signals.stopOnPonderhit = false;
 					}
 				}
-				else if (besteWaarde >= beta && (failHighOplossen || besteWaarde >= VALUE_PAWN * 8))
+				else if (bestValue >= beta && (failHighResolve || bestValue >= VALUE_PAWN * 8))
 				{
-					alfa = (alfa + beta) / 2;
-					beta = std::min(besteWaarde + delta_beta, HIGHEST_VALUE);
+					alpha = (alpha + beta) / 2;
+					beta = std::min(bestValue + delta_beta, HIGHEST_VALUE);
 					++failHighCount;
 				}
 				else
 					break;
 
-				delta_alfa += delta_alfa / 4 + Value(4);
+				delta_alpha += delta_alpha / 4 + Value(4);
 				delta_beta += delta_beta / 4 + Value(4);
 
-				assert(alfa >= -HIGHEST_VALUE && beta <= HIGHEST_VALUE);
+				assert(alpha >= -HIGHEST_VALUE && beta <= HIGHEST_VALUE);
 			}
 
-			std::stable_sort(rootZetten.zetten + 0, rootZetten.zetten + actievePV + 1);
+			std::stable_sort(rootMoves.moves + 0, rootMoves.moves + activePV + 1);
 
 			if (mainThread)
 			{
-				if (Threads.multiPV_cp > 0 && actievePV >= 1)
+				if (Threads.multiPV_cp > 0 && activePV >= 1)
 				{
-					if (rootZetten[0].score - rootZetten[actievePV].score > 2 * Threads.multiPV_cp)
-						Threads.multiPV = actievePV + 1;
+					if (rootMoves[0].score - rootMoves[activePV].score > 2 * Threads.multiPV_cp)
+						Threads.multiPV = activePV + 1;
 					else
-						Threads.multiPV = actievePV + 2;
+						Threads.multiPV = activePV + 2;
 					Threads.multiPV = std::min(Threads.multiPV, Threads.multiPVmax);
 				}
 
 				if (!Threads.hideRedundantOutput &&
-					((actievePV + 1 == Threads.multiPV && Tijdscontrole.elapsed() > 100) || Tijdscontrole.elapsed() > 4000))
-					sync_cout << UCI::pv(*rootStelling, alfa, beta, actievePV, actievePV) << sync_endl;
+					((activePV + 1 == Threads.multiPV && TimeControl.elapsed() > 100) || TimeControl.elapsed() > 4000))
+					sync_cout << UCI::pv(*rootPosition, alpha, beta, activePV, activePV) << sync_endl;
 			}
 		}
 
-		if (!Signalen.stopAnalyse)
-			afgewerkteDiepte = rootDiepte;
+		if (!Signals.stopAnalysis)
+			completedDepth = rootDepth;
 
 		if (!mainThread)
 			continue;
 
-		if (Klok.mate
-			&& besteWaarde >= LONGEST_MATE_VALUE
-			&& MATE_VALUE - besteWaarde <= 2 * Klok.mate)
-			Signalen.stopAnalyse = true;
+		if (Clock.mate
+			&& bestValue >= LONGEST_MATE_VALUE
+			&& MATE_VALUE - bestValue <= 2 * Clock.mate)
+			Signals.stopAnalysis = true;
 
-		if (!Threads.analyseModus && !Klok.ponder && besteWaarde > MATE_VALUE - 32
-			&& rootDiepte >= (MATE_VALUE - besteWaarde + 10) * PLY)
-			Signalen.stopAnalyse = true;
+		if (!Threads.analysisMode && !Clock.ponder && bestValue > MATE_VALUE - 32
+			&& rootDepth >= (MATE_VALUE - bestValue + 10) * PLY)
+			Signals.stopAnalysis = true;
 
-		if (!Threads.analyseModus && !Klok.ponder && besteWaarde < -MATE_VALUE + 32
-			&& rootDiepte >= (MATE_VALUE + besteWaarde + 10) * PLY)
-			Signalen.stopAnalyse = true;
+		if (!Threads.analysisMode && !Clock.ponder && bestValue < -MATE_VALUE + 32
+			&& rootDepth >= (MATE_VALUE + bestValue + 10) * PLY)
+			Signals.stopAnalysis = true;
 
-		if (!Threads.analyseModus)
+		if (!Threads.analysisMode)
 		{
-			if (!Signalen.stopAnalyse && !Signalen.stopBijPonderhit)
+			if (!Signals.stopAnalysis && !Signals.stopOnPonderhit)
 			{
-				int verbeteringFactor = std::max(420, std::min(1304,
-					652 + 160 * mainThread->failedLow - 12 * int(besteWaarde - mainThread->vorigeRootScore)));
-				int onstabielFactor = 1024 + mainThread->besteZetVerandert;
+				int improvementFactor = std::max(420, std::min(1304,
+					652 + 160 * mainThread->failedLow - 12 * int(bestValue - mainThread->previousRootScore)));
+				int unstableFactor = 1024 + mainThread->bestMoveChanges;
 
-				bool speelGemakkelijkeZet = rootZetten[0].pv[0] == snelleZet
-					&& mainThread->besteZetVerandert < 31
-					&& Tijdscontrole.elapsed() > Tijdscontrole.optimum() * 124 / 1024;
+				bool playEasyMove = rootMoves[0].pv[0] == quickMove
+					&& mainThread->bestMoveChanges < 31
+					&& TimeControl.elapsed() > TimeControl.optimum() * 124 / 1024;
 
-				if ((rootZetten.zetAantal == 1 && zoekIteratie > 10)
-					|| Tijdscontrole.elapsed() > Tijdscontrole.optimum() * onstabielFactor / 1024 * verbeteringFactor / 1024
-					|| (mainThread->snelleZetGespeeld = speelGemakkelijkeZet))
+				if ((rootMoves.moveCount == 1 && searchIteration > 10)
+					|| TimeControl.elapsed() > TimeControl.optimum() * unstableFactor / 1024 * improvementFactor / 1024
+					|| (mainThread->quickMovePlayed = playEasyMove))
 				{
 					// If we are allowed to ponder do not stop the search now but
 					// keep pondering until the GUI sends "ponderhit" or "stop".
-					if (Klok.ponder)
-						Signalen.stopBijPonderhit = true;
+					if (Clock.ponder)
+						Signals.stopOnPonderhit = true;
 					else
-						Signalen.stopAnalyse = true;
+						Signals.stopAnalysis = true;
 #ifdef TRACE_TM
-					trace_tm_msg(1 + rootStelling->game_ply() / 2, Time.elapsed(), Time.optimum(), mainThread->snelleZetGespeeld ? "Easy Move" : "");
+					trace_tm_msg(1 + rootPosition->game_ply() / 2, Time.elapsed(), Time.optimum(), mainThread->quickMovePlayed ? "Easy Move" : "");
 #endif
 				}
 #if 0
-				else if (zoekIteratie >= 12 && mainThread && !mainThread->snelleZetGetest
-					&& (Time.elapsed() >= Time.optimum() / 4 || zoekIteratie >= mainThread->vorige_root_iteration - 1))
+				else if (searchIteration >= 12 && mainThread && !mainThread->quickMoveTested
+					&& (Time.elapsed() >= Time.optimum() / 4 || searchIteration >= mainThread->previous_root_iteration - 1))
 				{
-					mainThread->snelleZetGetest = true;
+					mainThread->quickMoveTested = true;
 
-					int iteration_singular = std::max(zoekIteratie / 2, zoekIteratie - 8);
-					Value v_singular = besteWaarde - Value(320);
-					st->uitgeslotenZet = rootZetten[0].pv[0];
-					st->doeGeenVroegePruning = true;
-					Value v = ::search<NonPV>(rootStelling, v_singular - 1, v_singular, rootDepthForIteration(iteration_singular), false);
-					st->uitgeslotenZet = NO_MOVE;
-					st->doeGeenVroegePruning = false;
+					int iteration_singular = std::max(searchIteration / 2, searchIteration - 8);
+					Value v_singular = bestValue - Value(320);
+					st->excludedMove = rootMoves[0].pv[0];
+					st->doNoEarlyPruning = true;
+					Value v = ::search<NonPV>(rootPosition, v_singular - 1, v_singular, rootDepthForIteration(iteration_singular), false);
+					st->excludedMove = NO_MOVE;
+					st->doNoEarlyPruning = false;
 
 					if (v < v_singular)
 					{
-						if (Klok.ponder)
-							Signalen.stopBijPonderhit = true;
+						if (Clock.ponder)
+							Signals.stopOnPonderhit = true;
 						else
-							Signalen.stopAnalyse = true;
+							Signals.stopAnalysis = true;
 					}
 				}
 #endif
 			}
 
-			if (rootZetten[0].pv.size() >= 3)
-				GemakkelijkeZet.verversPv(*rootStelling, rootZetten[0].pv);
+			if (rootMoves[0].pv.size() >= 3)
+				EasyMove.refreshPv(*rootPosition, rootMoves[0].pv);
 			else
-				GemakkelijkeZet.clear();
+				EasyMove.clear();
 		}
 	}
 
@@ -1001,395 +1001,395 @@ void Thread::start_search()
 
 	// Clear any candidate easy move that wasn't stable for the last search
 	// iterations; the second condition prevents consecutive fast moves.
-	if (GemakkelijkeZet.derdeZetStabiel < 6 || mainThread->snelleZetGespeeld)
-		GemakkelijkeZet.clear();
+	if (EasyMove.thirdMoveStable < 6 || mainThread->quickMovePlayed)
+		EasyMove.clear();
 }
 
 
 namespace
 {
 	template <NodeType NT>
-	Value search(Position& pos, Value alfa, Value beta, Depth diepte, bool cutNode)
+	Value search(Position& pos, Value alpha, Value beta, Depth depth, bool cutNode)
 	{
 		const bool PvNode = NT == PV;
 		const int MAX_QUIET_MOVES = 64;
 
-		assert(-HIGHEST_VALUE <= alfa && alfa < beta && beta <= HIGHEST_VALUE);
-		assert(PvNode || (alfa == beta - 1));
-		assert(diepte >= PLY && diepte < MAX_DEPTH);
+		assert(-HIGHEST_VALUE <= alpha && alpha < beta && beta <= HIGHEST_VALUE);
+		assert(PvNode || (alpha == beta - 1));
+		assert(depth >= PLY && depth < MAX_DEPTH);
 
-		Move pv[MAX_PLY + 1], rustigeZetten[MAX_QUIET_MOVES];
+		Move pv[MAX_PLY + 1], quietMoves[MAX_QUIET_MOVES];
 		TTTuple* ttt;
-		Key64 sleutel64;
-		Move ttZet, zet, besteZet;
-		Depth verlenging, nieuweDiepte, voorspeldeDiepte;
-		Value ttWaarde, eval;
-		bool staatSchaak, geeftSchaak, vooruitgang;
-		bool slagOfPromotie, volledigZoekenNodig;
-		Piece bewogenStuk;
-		int zetNummer, rustigeZetAantal;
+		Key64 key64;
+		Move ttMove, move, bestMove;
+		Depth extension, newDepth, predictedDepth;
+		Value ttValue, eval;
+		bool inCheck, givesCheck, progress;
+		bool captureOrPromotion, fullSearchNeeded;
+		Piece movedPiece;
+		int moveNumber, quietMoveCount;
 
-		trace_msg("Search", diepte, alfa, beta);
+		trace_msg("Search", depth, alpha, beta);
 
 		PositionInfo* st = pos.info();
-		const bool rootKnoop = PvNode && st->ply == 1;
+		const bool rootNode = PvNode && st->ply == 1;
 
 		// Step 1. Initialize node
-		Thread* mijnThread = pos.my_thread();
-		staatSchaak = st->schaakGevers;
-		zetNummer = rustigeZetAantal = st->zetNummer = 0;
+		Thread* myThread = pos.my_thread();
+		inCheck = st->checkGivers;
+		moveNumber = quietMoveCount = st->moveNumber = 0;
 
-		if (mijnThread == Threads.main())
+		if (myThread == Threads.main())
 		{
-			MainThread* mainThread = static_cast<MainThread*>(mijnThread);
-			if (++mainThread->interruptTeller >= 4096)
+			MainThread* mainThread = static_cast<MainThread*>(myThread);
+			if (++mainThread->interruptCounter >= 4096)
 			{
-				if (mainThread->snelleZetEvaluatieBezig)
+				if (mainThread->quickMoveEvaluationBusy)
 				{
-					if (mainThread->snelleZetEvaluatieAfgebroken)
-						return alfa;
-					int64_t elapsed = Tijdscontrole.elapsed();
-					if (elapsed > 1000 || elapsed > Tijdscontrole.optimum() / 16)
+					if (mainThread->quickMoveEvaluationAborted)
+						return alpha;
+					int64_t elapsed = TimeControl.elapsed();
+					if (elapsed > 1000 || elapsed > TimeControl.optimum() / 16)
 					{
-						mainThread->snelleZetEvaluatieAfgebroken = true;
-						return alfa;
+						mainThread->quickMoveEvaluationAborted = true;
+						return alpha;
 					}
 				}
 				time_control();
-				mainThread->interruptTeller = 0;
+				mainThread->interruptCounter = 0;
 			}
 		}
 
-		if (!rootKnoop)
+		if (!rootNode)
 		{
 			// Step 2. Check for aborted search and immediate draw
-			if (Signalen.stopAnalyse.load(std::memory_order_relaxed) || st->zetHerhaling || st->ply >= MAX_PLY)
-				return st->ply >= MAX_PLY && !staatSchaak 
-					? Evaluation::evaluatie(pos, NO_VALUE, NO_VALUE)
-					: RemiseWaarde[pos.side_to_move()];
+			if (Signals.stopAnalysis.load(std::memory_order_relaxed) || st->moveRepetition || st->ply >= MAX_PLY)
+				return st->ply >= MAX_PLY && !inCheck 
+					? Evaluation::evaluation(pos, NO_VALUE, NO_VALUE)
+					: DrawValue[pos.side_to_move()];
 
 			// Step 3. Mate distance pruning
-			alfa = std::max(mated_in(st->ply), alfa);
+			alpha = std::max(mated_in(st->ply), alpha);
 			beta = std::min(mate_in(st->ply + 1), beta);
-			if (alfa >= beta)
-				return alfa;
+			if (alpha >= beta)
+				return alpha;
 		}
 
 		assert(1 <= st->ply && st->ply < MAX_PLY);
 
-		besteZet = NO_MOVE;
+		bestMove = NO_MOVE;
 		(st + 2)->killers[0] = (st + 2)->killers[1] = NO_MOVE;
-		st->statsWaarde = SORT_MAX;
+		st->statsValue = SORT_MAX;
 		//uint64_t knopen = pos.bezochte_knopen();
 
 		// Step 4. Transposition table lookup
-		if (st->uitgeslotenZet)
+		if (st->excludedMove)
 		{
 			// st->stellingwaarde is nog juist, van de callende routine
 			ttt = nullptr;
-			ttZet = NO_MOVE;
-			ttWaarde = NO_VALUE;  // overbodig, maar vermijdt warning van compiler
-			sleutel64 = 0;  // overbodig, maar vermijdt warning van compiler
+			ttMove = NO_MOVE;
+			ttValue = NO_VALUE;  // overbodig, maar vermijdt warning van compiler
+			key64 = 0;  // overbodig, maar vermijdt warning van compiler
 			// sla ook IID over, want we slaan toch geen zetten op in de hashtabel
-			goto bekijk_alle_zetten;
+			goto examine_all_moves;
 		}
 
 		//sleutel64 = st->uitgeslotenZet ? st->sleutel ^ pos.uitzondering_sleutel(st->uitgeslotenZet) : st->sleutel;
-		sleutel64 = st->sleutel;
-		sleutel64 ^= pos.draw50_key();
-		ttt = HoofdHash.find_existing(sleutel64);
-		ttWaarde = ttt ? value_from_tt(ttt->waarde(), st->ply) : NO_VALUE;
-		ttZet = rootKnoop ? mijnThread->rootZetten[mijnThread->actievePV].pv[0]
-			: ttt ? ttt->zet() : NO_MOVE;
+		key64 = st->key;
+		key64 ^= pos.draw50_key();
+		ttt = MainHash.find_existing(key64);
+		ttValue = ttt ? value_from_tt(ttt->value(), st->ply) : NO_VALUE;
+		ttMove = rootNode ? myThread->rootMoves[myThread->activePV].pv[0]
+			: ttt ? ttt->move() : NO_MOVE;
 
 		if (!PvNode
-			&& ttWaarde != NO_VALUE
-			&& ttt->diepte() >= diepte
-			&& (ttWaarde >= beta ? (ttt->limiet() & LOWER_BOUND)
-				: (ttt->limiet() & UPPER_BOUND)))
+			&& ttValue != NO_VALUE
+			&& ttt->depth() >= depth
+			&& (ttValue >= beta ? (ttt->bound() & LOWER_BOUND)
+				: (ttt->bound() & UPPER_BOUND)))
 		{
-			if (ttZet)
+			if (ttMove)
 			{
-				if (ttWaarde >= beta)
-					update_stats(pos, staatSchaak, ttZet, diepte, nullptr, 0);
+				if (ttValue >= beta)
+					update_stats(pos, inCheck, ttMove, depth, nullptr, 0);
 				else
-					update_stats_minus(pos, staatSchaak, ttZet, diepte);
+					update_stats_minus(pos, inCheck, ttMove, depth);
 			}
 
-			return ttWaarde;
+			return ttValue;
 		}
 
 		// Step 4a. Tablebase probe
-		if (!rootKnoop && TB_Cardinality && diepte >= TB_ProbeDepth && pos.material_or_castling_changed())
+		if (!rootNode && TB_Cardinality && depth >= TB_ProbeDepth && pos.material_or_castling_changed())
 		{
-			int aantalStukken = pos.all_pieces_count();
+			int numPieces = pos.all_pieces_count();
 
-			if (aantalStukken <= TB_Cardinality
+			if (numPieces <= TB_Cardinality
 				//&& (/*aantalStukken < TB_Cardinality ||*/ diepte >= TB_ProbeDepth + BerekenEgtbNut(pos))
-				&& diepte >= TB_ProbeDepth
+				&& depth >= TB_ProbeDepth
 				&& !pos.castling_possible(ALL_CASTLING))
 			{
-				Value waarde;
-				if (aantalStukken <= EGTB::MaxPieces_wdl)
-					waarde = EGTB::EGTB_probe_wdl(pos, alfa, beta);
-				else if (aantalStukken <= EGTB::MaxPieces_dtm)
-					waarde = EGTB::EGTB_probe_dtm(pos, alfa, beta);
+				Value value;
+				if (numPieces <= EGTB::MaxPieces_wdl)
+					value = EGTB::EGTB_probe_wdl(pos, alpha, beta);
+				else if (numPieces <= EGTB::MaxPieces_dtm)
+					value = EGTB::EGTB_probe_dtm(pos, alpha, beta);
 				else
-					waarde = NO_VALUE;
+					value = NO_VALUE;
 
-				if (waarde != NO_VALUE)
+				if (value != NO_VALUE)
 				{
-					ttt = HoofdHash.find_replace(sleutel64);
-					ttt->save(sleutel64, value_to_tt(waarde, st->ply), EXACT_VALUE, 
-						std::min(MAX_DEPTH - PLY, diepte + 6 * PLY), 
-						NO_MOVE, NO_VALUE, HoofdHash.generatie());
+					ttt = MainHash.find_replace(key64);
+					ttt->save(key64, value_to_tt(value, st->ply), EXACT_VALUE, 
+						std::min(MAX_DEPTH - PLY, depth + 6 * PLY), 
+						NO_MOVE, NO_VALUE, MainHash.generation());
 
-					return waarde;
+					return value;
 				}
 #if 0
 				// dit is Joseph Ellis manier om TB scores eventueel te laten overschrijven door een gevonden mat 
 				// zie https://github.com/official-stockfish/Stockfish/compare/master...jhellis3:tb_fix_2
-				if (waarde == DRAW_VALUE
-					|| !ttt || (waarde < DRAW_VALUE && ttWaarde > -EGTB_WIN_VALUE) || (waarde > DRAW_VALUE && ttWaarde < EGTB_WIN_VALUE))
+				if (value == DRAW_VALUE
+					|| !ttt || (value < DRAW_VALUE && ttValue > -EGTB_WIN_VALUE) || (value > DRAW_VALUE && ttValue < EGTB_WIN_VALUE))
 				{
-					ttt = HoofdHash.find_replace(sleutel64);
-					ttt->save(sleutel64, value_to_tt(waarde, st->ply),
-						waarde > DRAW_VALUE ? LOWER_BOUND : waarde < DRAW_VALUE ? UPPER_BOUND : EXACT_VALUE,
-						diepte, NO_MOVE, NO_VALUE, HoofdHash.generatie());
+					ttt = MainHash.find_replace(key64);
+					ttt->save(key64, value_to_tt(value, st->ply),
+						value > DRAW_VALUE ? LOWER_BOUND : value < DRAW_VALUE ? UPPER_BOUND : EXACT_VALUE,
+						depth, NO_MOVE, NO_VALUE, MainHash.generation());
 
-					if (waarde == DRAW_VALUE)
-						return waarde;
+					if (value == DRAW_VALUE)
+						return value;
 				}
 #endif
 			}
 		}
 
 		// Step 5. Evaluate the position statically
-		if (staatSchaak)
+		if (inCheck)
 		{
-			st->stellingWaarde = NO_VALUE;
-			goto bekijk_alle_zetten;
+			st->positionValue = NO_VALUE;
+			goto examine_all_moves;
 		}
 
 		if (ttt && ttt->eval() != NO_VALUE)
 		{
-			eval = st->stellingWaarde = ttt->eval();
-			st->sterkeDreiging = ttt->dreiging();
+			eval = st->positionValue = ttt->eval();
+			st->strongThreat = ttt->threat();
 
-			if (ttWaarde != NO_VALUE)
-				if (ttt->limiet() & (ttWaarde > eval ? LOWER_BOUND : UPPER_BOUND))
-					eval = ttWaarde;
+			if (ttValue != NO_VALUE)
+				if (ttt->bound() & (ttValue > eval ? LOWER_BOUND : UPPER_BOUND))
+					eval = ttValue;
 		}
 		else
 		{
-			if (st->vorigeZet != NULL_MOVE)
-				eval = Evaluation::evaluatie(pos, NO_VALUE, NO_VALUE);
+			if (st->previousMove != NULL_MOVE)
+				eval = Evaluation::evaluation(pos, NO_VALUE, NO_VALUE);
 				//eval = Evaluatie::evaluatie(pos, 
 					//PvNode || diepte >= 4 * PLY ? GEEN_WAARDE : alfa - LazyMarginQSearchLow - Waarde(120) * (diepte / PLY),
 					//PvNode || diepte >= 4 * PLY ? GEEN_WAARDE : beta + LazyMarginQSearchHigh + Waarde(120) * (diepte / PLY));
 			else
-				eval = Evaluation::evaluation_after_nullmove((st - 1)->stellingWaarde);
+				eval = Evaluation::evaluation_after_nullmove((st - 1)->positionValue);
 
-			st->stellingWaarde = eval;
-			if (st->eval_is_exact && !rootKnoop)
+			st->positionValue = eval;
+			if (st->eval_is_exact && !rootNode)
 				return eval;
 
-			ttt = HoofdHash.find_replace(sleutel64);
-			ttt->save(sleutel64, NO_VALUE, NO_BOUND + st->sterkeDreiging, NO_DEPTH, NO_MOVE,
-				st->stellingWaarde, HoofdHash.generatie());
+			ttt = MainHash.find_replace(key64);
+			ttt->save(key64, NO_VALUE, NO_BOUND + st->strongThreat, NO_DEPTH, NO_MOVE,
+				st->positionValue, MainHash.generation());
 		}
 
-		trace_eval(st->stellingWaarde);
+		trace_eval(st->positionValue);
 
-		if (st->vorigeZet != NULL_MOVE
-			/*&& st->stellingWaarde != GEEN_WAARDE*/ && (st - 1)->stellingWaarde != NO_VALUE
-			&& st->materiaalSleutel == (st - 1)->materiaalSleutel)
+		if (st->previousMove != NULL_MOVE
+			/*&& st->stellingWaarde != GEEN_WAARDE*/ && (st - 1)->positionValue != NO_VALUE
+			&& st->materialKey == (st - 1)->materialKey)
 		{
 			const Value MAX_GAIN = Value(500);
-			Value gain = -st->stellingWaarde - (st - 1)->stellingWaarde + 2 * VALUE_TEMPO;
+			Value gain = -st->positionValue - (st - 1)->positionValue + 2 * VALUE_TEMPO;
 			gain = std::min(MAX_GAIN, std::max(-MAX_GAIN, gain));
-			pos.ti()->maxWinstTabel.update(st->bewogenStuk, st->vorigeZet, gain);
+			pos.ti()->maxGainTable.update(st->movedPiece, st->previousMove, gain);
 		}
 
-		if (st->doeGeenVroegePruning)
-			goto geen_vroege_pruning;
+		if (st->doNoEarlyPruning)
+			goto no_early_pruning;
 
 		// Step 6. Razoring
 		if (!PvNode
-			&& diepte < 4 * PLY
-			&& !ttZet
-			&& eval + razer_margin(diepte) <= alfa)
+			&& depth < 4 * PLY
+			&& !ttMove
+			&& eval + razer_margin(depth) <= alpha)
 			//&& !(st->sterkeDreiging & (pos.aan_zet() + 1)))
 		{
-			if (diepte < 2 * PLY)
-				return qsearch<NonPV, false>(pos, alfa, beta, DEPTH_0);
+			if (depth < 2 * PLY)
+				return qsearch<NonPV, false>(pos, alpha, beta, DEPTH_0);
 
-			Value ralpha = alfa - razer_margin(diepte);
+			Value ralpha = alpha - razer_margin(depth);
 			Value v = qsearch<NonPV, false>(pos, ralpha, ralpha + VALUE_1, DEPTH_0);
 			if (v <= ralpha)
 				return v;
 		}
 
 		// Step 7. Futility pruning: child node
-		if (!rootKnoop
-			&& diepte < 7 * PLY
-			&& eval - futility_marge1(diepte) >= beta
+		if (!rootNode
+			&& depth < 7 * PLY
+			&& eval - futility_margin1(depth) >= beta
 			&& eval < WIN_VALUE  // Do not return unproven wins
-			&& st->nietPionMateriaal[pos.side_to_move()])
-			return eval - futility_marge1(diepte);
+			&& st->nonPawnMaterial[pos.side_to_move()])
+			return eval - futility_margin1(depth);
 
 		// Step 8. Null move search with verification search
 		if (!PvNode
-			&& diepte >= 2 * PLY
+			&& depth >= 2 * PLY
 			&& eval >= beta + 2 * VALUE_TEMPO
-			&& (!st->sterkeDreiging || diepte >= 8 * PLY)
-			&& (st->stellingWaarde >= beta || diepte >= 12 * PLY)
-			&& st->nietPionMateriaal[pos.side_to_move()]
+			&& (!st->strongThreat || depth >= 8 * PLY)
+			&& (st->positionValue >= beta || depth >= 12 * PLY)
+			&& st->nonPawnMaterial[pos.side_to_move()]
 			//&& pos.stukken(pos.aan_zet(), PION)
-			&& (!Threads.analyseModus || diepte < 8 * PLY || Evaluation::at_least_two_mobile_pieces(pos))
+			&& (!Threads.analysisMode || depth < 8 * PLY || Evaluation::at_least_two_mobile_pieces(pos))
 			)   // goede test positie voor minstens_twee_mobiele_stukken: 8/6B1/p5p1/Pp4kp/1P5r/5P1Q/4q1PK/8 w - - 0 32 bm Qxh4
 		{
 			assert(eval - beta >= 0);
 
 			Depth R;
-			if (mijnThread->tactischeModus)
-				R = diepte < 4 * PLY ? diepte :
-				(540 + 66 * ((unsigned int)diepte / PLY)
-					+ std::max(std::min(310 * (eval - beta) / Value(204) - 20 - 15 * cutNode - 15 * (ttZet != NO_MOVE), 3 * 256), 0)
+			if (myThread->tacticalMode)
+				R = depth < 4 * PLY ? depth :
+				(540 + 66 * ((unsigned int)depth / PLY)
+					+ std::max(std::min(310 * (eval - beta) / Value(204) - 20 - 15 * cutNode - 15 * (ttMove != NO_MOVE), 3 * 256), 0)
 					) / 256 * PLY;
 			else
-				R = diepte < 4 * PLY ? diepte :
-				(480 + 76 * ((unsigned int)diepte / PLY)
+				R = depth < 4 * PLY ? depth :
+				(480 + 76 * ((unsigned int)depth / PLY)
 				//(480 + 76 * std::min((unsigned int)diepte / PLY, (unsigned int)diepte / PLY / 2 + 6)
-					+ std::max(std::min(310 * (eval - beta) / Value(204) - 20 - 15 * cutNode - 15 * (ttZet != NO_MOVE), 3 * 256), 0)
+					+ std::max(std::min(310 * (eval - beta) / Value(204) - 20 - 15 * cutNode - 15 * (ttMove != NO_MOVE), 3 * 256), 0)
 					) / 256 * PLY;
 
-			st->mp_eindeLijst = (st - 1)->mp_eindeLijst;
+			st->mp_endList = (st - 1)->mp_endList;
 			pos.do_null_move();
-			(st + 1)->doeGeenVroegePruning = true;
-			Value waarde = diepte - R < PLY ? -qsearch<NonPV, false>(pos, -beta, -beta + VALUE_1, DEPTH_0)
-				: -search<NonPV>(pos, -beta, -beta + VALUE_1, diepte - R, !cutNode);
-			(st + 1)->doeGeenVroegePruning = false;
+			(st + 1)->doNoEarlyPruning = true;
+			Value value = depth - R < PLY ? -qsearch<NonPV, false>(pos, -beta, -beta + VALUE_1, DEPTH_0)
+				: -search<NonPV>(pos, -beta, -beta + VALUE_1, depth - R, !cutNode);
+			(st + 1)->doNoEarlyPruning = false;
 			pos.undo_null_move();
 
-			if ((st - 1)->lmr_reductie && (waarde < beta - Value(100) || waarde < -LONGEST_MATE_VALUE))
+			if ((st - 1)->lmr_reduction && (value < beta - Value(100) || value < -LONGEST_MATE_VALUE))
 			{
-				if ((st - 1)->lmr_reductie <= 2 * PLY)
+				if ((st - 1)->lmr_reduction <= 2 * PLY)
 					return beta - VALUE_1;
-				diepte += 2 * PLY;
+				depth += 2 * PLY;
 
 				//int delta = std::min(int((st - 1)->lmr_reductie), int(2 * PLY));
 				//(st - 1)->lmr_reductie -= delta;
 				//diepte += Diepte(delta);
 			}
 
-			if (waarde >= beta)
+			if (value >= beta)
 			{
-				if (waarde >= LONGEST_MATE_VALUE)
-					waarde = beta;
+				if (value >= LONGEST_MATE_VALUE)
+					value = beta;
 
-				if (diepte < 12 * PLY && abs(beta) < WIN_VALUE)
-					return waarde;
+				if (depth < 12 * PLY && abs(beta) < WIN_VALUE)
+					return value;
 
-				st->doeGeenVroegePruning = true;
-				Value v = diepte - R < PLY ? qsearch<NonPV, false>(pos, beta - VALUE_1, beta, DEPTH_0)
-					: search<NonPV>(pos, beta - VALUE_1, beta, diepte - R, false);
-				st->doeGeenVroegePruning = false;
+				st->doNoEarlyPruning = true;
+				Value v = depth - R < PLY ? qsearch<NonPV, false>(pos, beta - VALUE_1, beta, DEPTH_0)
+					: search<NonPV>(pos, beta - VALUE_1, beta, depth - R, false);
+				st->doNoEarlyPruning = false;
 
 				if (v >= beta)
-					return waarde;
+					return value;
 			}
 		}
 #ifdef USE_LICENSE
 		// Step 8.5. Probeer null move om een dreiging te achterhalen om eventueel LMR te verminderen
 		// dummy conditie
-		else if (Threads.dummyNullMoveDreiging && diepte >= 6 * PLY && eval >= beta && (st - 1)->lmr_reductie)
+		else if (Threads.dummyNullMoveThreat && depth >= 6 * PLY && eval >= beta && (st - 1)->lmr_reduction)
 		{
-			st->mp_eindeLijst = (st - 1)->mp_eindeLijst;
+			st->mp_endList = (st - 1)->mp_endList;
 			pos.do_null_move();
-			(st + 1)->doeGeenVroegePruning = true;
+			(st + 1)->doNoEarlyPruning = true;
 			Value nullBeta = beta - Value(240);
-			Value waarde = -search<NonPV>(pos, -nullBeta, -nullBeta + VALUE_1, diepte / 2 - 2 * PLY, false);
-			(st + 1)->doeGeenVroegePruning = false;
+			Value value = -search<NonPV>(pos, -nullBeta, -nullBeta + VALUE_1, depth / 2 - 2 * PLY, false);
+			(st + 1)->doNoEarlyPruning = false;
 			pos.undo_null_move();
 
-			if (waarde < nullBeta)
+			if (value < nullBeta)
 			{
-				if ((st - 1)->lmr_reductie <= 2 * PLY)
+				if ((st - 1)->lmr_reduction <= 2 * PLY)
 					return beta - VALUE_1;
-				diepte += 2 * PLY;
+				depth += 2 * PLY;
 			}
 		}
 #endif
 
-	geen_vroege_pruning:
+	no_early_pruning:
 
 		// Step 9. ProbCut
 		if (!PvNode
-			&&  diepte >= 5 * PLY
-			&& (diepte >= 8 * PLY || (st->sterkeDreiging & (pos.side_to_move() + 1)))
+			&&  depth >= 5 * PLY
+			&& (depth >= 8 * PLY || (st->strongThreat & (pos.side_to_move() + 1)))
 			&&  abs(beta) < LONGEST_MATE_VALUE)
 		{
 			Value pc_beta = beta + Value(160);
-			Depth pc_diepte = diepte - 4 * PLY;
+			Depth pc_depth = depth - 4 * PLY;
 
-			assert(pc_diepte >= PLY);
-			assert(st->vorigeZet != NO_MOVE);
+			assert(pc_depth >= PLY);
+			assert(st->previousMove != NO_MOVE);
 			//assert(st->vorigeZet != NULL_ZET);
 
-			SeeValue limiet = diepte >= 8 * PLY ? pos.see_values()[st->geslagenStuk] : std::max(SEE_0, SeeValue((pc_beta - st->stellingWaarde) / 2));
-			MoveSelection::init_probcut(pos, ttZet, limiet);
+			SeeValue bound = depth >= 8 * PLY ? pos.see_values()[st->capturedPiece] : std::max(SEE_0, SeeValue((pc_beta - st->positionValue) / 2));
+			MoveSelection::init_probcut(pos, ttMove, bound);
 
-			while ((zet = MoveSelection::next_move(pos)) != NO_MOVE)
+			while ((move = MoveSelection::next_move(pos)) != NO_MOVE)
 			{
-				if (pos.legal_move(zet))
+				if (pos.legal_move(move))
 				{
-					pos.do_move(zet);
-					Value waarde = -search<NonPV>(pos, -pc_beta, -pc_beta + VALUE_1, pc_diepte, !cutNode);
-					pos.undo_move(zet);
-					if (waarde >= pc_beta)
-						return waarde;
+					pos.do_move(move);
+					Value value = -search<NonPV>(pos, -pc_beta, -pc_beta + VALUE_1, pc_depth, !cutNode);
+					pos.undo_move(move);
+					if (value >= pc_beta)
+						return value;
 				}
 			}
 		}
 
 		// Step 10. Internal iterative deepening
-		if (diepte >= (PvNode ? 5 * PLY : 8 * PLY)
-			&& !ttZet
+		if (depth >= (PvNode ? 5 * PLY : 8 * PLY)
+			&& !ttMove
 			//&& (!ttZet || (PvNode && tte->diepte() < diepte - 4 * PLY))
 			//&& (PvNode || st->staticEval + 256 >= beta))
-			&& (PvNode || cutNode || st->stellingWaarde + Value(102) >= beta))
+			&& (PvNode || cutNode || st->positionValue + Value(102) >= beta))
 		{
-			Depth d = diepte - 2 * PLY - (PvNode ? DEPTH_0 : ((unsigned int)diepte / PLY) / 4 * PLY);
-			st->doeGeenVroegePruning = true;
-			search<NT>(pos, alfa, beta, d, !PvNode && cutNode);
-			st->doeGeenVroegePruning = false;
+			Depth d = depth - 2 * PLY - (PvNode ? DEPTH_0 : ((unsigned int)depth / PLY) / 4 * PLY);
+			st->doNoEarlyPruning = true;
+			search<NT>(pos, alpha, beta, d, !PvNode && cutNode);
+			st->doNoEarlyPruning = false;
 
-			ttt = HoofdHash.find_existing(sleutel64);
-			ttZet = ttt ? ttt->zet() : NO_MOVE;
+			ttt = MainHash.find_existing(key64);
+			ttMove = ttt ? ttt->move() : NO_MOVE;
 		}
 
-	bekijk_alle_zetten:
+	examine_all_moves:
 		// opgepast vanaf hier gebruik van st->stellingWaarde - kan GEEN_WAARDE zijn (als staatSchaak)
 
-		const CounterMoveValues* cmh = st->counterZetWaarden;
-		const CounterMoveValues* fmh = (st - 1)->counterZetWaarden;
-		const CounterMoveValues* fmh2 = (st - 3)->counterZetWaarden;
+		const CounterMoveValues* cmh = st->counterMoveValues;
+		const CounterMoveValues* fmh = (st - 1)->counterMoveValues;
+		const CounterMoveValues* fmh2 = (st - 3)->counterMoveValues;
 
-		bool alleen_rustige_schaakzetten = !rootKnoop && diepte < 8 * PLY
-			&& st->stellingWaarde + futility_marge2(diepte - PLY) <= alfa;  // altijd false bij staatSchaak
+		bool only_quiet_checks = !rootNode && depth < 8 * PLY
+			&& st->positionValue + futility_margin2(depth - PLY) <= alpha;  // altijd false bij staatSchaak
 
-		MoveSelection::init_search(pos, ttZet, diepte, alleen_rustige_schaakzetten);
+		MoveSelection::init_search(pos, ttMove, depth, only_quiet_checks);
 
 #ifdef USE_LICENSE
-		if (mijnThread == Threads.main() && Threads.geknoeiMetExe)
+		if (myThread == Threads.main() && Threads.tamperedWithExe)
 		{
-			((char *)LMReducties)[Threads.geknoeiMetExe & (sizeof(LMReducties) - 1)] = 0;
-			Threads.geknoeiMetExe++;
+			((char *)LMReductions)[Threads.tamperedWithExe & (sizeof(LMReductions) - 1)] = 0;
+			Threads.tamperedWithExe++;
 		}
 #endif
 
-		Value besteWaarde = -HIGHEST_VALUE;
+		Value bestValue = -HIGHEST_VALUE;
 		//bool besteWaarde_is_herhaling = false;
 
 		//Zet vorige_zet_terug = GEEN_ZET;
@@ -1400,128 +1400,128 @@ namespace
 		//	vorige_zet_terug = maak_zet(zet_type((st - 1)->vorigeZet), naar_veld((st - 1)->vorigeZet), van_veld((st - 1)->vorigeZet));
 
 		// 60% vooruitgang
-		vooruitgang = st->stellingWaarde >= (st - 2)->stellingWaarde
+		progress = st->positionValue >= (st - 2)->positionValue
 			/* || st->stellingWaarde == GEEN_WAARDE test niet nodig */
-			|| (st - 2)->stellingWaarde == NO_VALUE;
+			|| (st - 2)->positionValue == NO_VALUE;
 
-		int LateMoveCount = diepte < 16 * PLY ? late_move_count(diepte, vooruitgang) : 999;
+		int LateMoveCount = depth < 16 * PLY ? late_move_count(depth, progress) : 999;
 		//LateMoveCount += (st - 1)->zetNummer / 16;
-		if (alleen_rustige_schaakzetten)
+		if (only_quiet_checks)
 			LateMoveCount = 1;
 		//if (staatSchaak)
 		//	LateMoveCount = diepte < 16 * PLY ? late_zet_aantal((diepte + PLY) / 2, false) : 999;
 		bool discovered_check_possible = pos.discovered_check_possible();
 		//bool pv_slag = false;
-		bool uitstellen_mogelijk = (PvNode || diepte >= 12 * PLY) && Threads.threadCount > 1;
+		bool postpone_possible = (PvNode || depth >= 12 * PLY) && Threads.threadCount > 1;
 
 		// Step 11. Loop through moves
-		while ((zet = MoveSelection::next_move(pos)) != NO_MOVE)
+		while ((move = MoveSelection::next_move(pos)) != NO_MOVE)
 		{
-			assert(piece_color(pos.moved_piece(zet)) == pos.side_to_move());
+			assert(piece_color(pos.moved_piece(move)) == pos.side_to_move());
 
-			if (zet == st->uitgeslotenZet)
+			if (move == st->excludedMove)
 				continue;
 
-			if (rootKnoop && mijnThread->rootZetten.find(zet) < mijnThread->actievePV)
+			if (rootNode && myThread->rootMoves.find(move) < myThread->activePV)
 				continue;
 
-			st->zetNummer = ++zetNummer;
+			st->moveNumber = ++moveNumber;
 
 			//if (zet == vorige_zet_terug)
 			//	continue;
 
-			if (rootKnoop && mijnThread == Threads.main())
+			if (rootNode && myThread == Threads.main())
 			{
-				if (Tijdscontrole.elapsed() > 4000)
-					sync_cout << "info currmove " << UCI::zet(zet, pos)
-						<< " currmovenumber " << zetNummer + mijnThread->actievePV << sync_endl;
+				if (TimeControl.elapsed() > 4000)
+					sync_cout << "info currmove " << UCI::move(move, pos)
+						<< " currmovenumber " << moveNumber + myThread->activePV << sync_endl;
 #ifdef USE_LICENSE
-				if (Threads.geknoeiMetExe)
-					((int *)LateZetAantal)[Threads.geknoeiMetExe & (sizeof(LateZetAantal) / sizeof(int) - 1)] = 220;
+				if (Threads.tamperedWithExe)
+					((int *)LateMoveCountTable)[Threads.tamperedWithExe & (sizeof(LateMoveCountTable) / sizeof(int) - 1)] = 220;
 #endif
 			}
 
 			if (PvNode)
 				(st + 1)->pv = nullptr;
 
-			slagOfPromotie = pos.slag_of_promotie(zet);
-			bewogenStuk = pos.moved_piece(zet);
+			captureOrPromotion = pos.capture_or_promotion(move);
+			movedPiece = pos.moved_piece(move);
 
-			geeftSchaak = zet < Move(CASTLING) && !discovered_check_possible
-				? st->schaakVelden[piece_type(bewogenStuk)] & to_square(zet)
-				: pos.gives_check(zet);
+			givesCheck = move < Move(CASTLING) && !discovered_check_possible
+				? st->checkSquares[piece_type(movedPiece)] & to_square(move)
+				: pos.gives_check(move);
 
 			// Step 12a. Extensions
-			verlenging = DEPTH_0;
+			extension = DEPTH_0;
 
 			//if (diepte < 8 * PLY && zet != ttZet && naar_veld(zet) == naar_veld(st->vorigeZet) && stuk_type(st->geslagenStuk) >= PAARD)
 			//	verlenging = PLY / 2;
 
-			if (geeftSchaak
-				&& (st->mp_etappe == GOOD_CAPTURES || zetNummer < LateMoveCount)
-				&& (st->mp_etappe == GOOD_CAPTURES || pos.see_test(zet, SEE_0)))
-				verlenging = PLY;
+			if (givesCheck
+				&& (st->mp_stage == GOOD_CAPTURES || moveNumber < LateMoveCount)
+				&& (st->mp_stage == GOOD_CAPTURES || pos.see_test(move, SEE_0)))
+				extension = PLY;
 
-			if (rootKnoop && mijnThread->tactischeModus)
+			if (rootNode && myThread->tacticalMode)
 			{
-				if (slagOfPromotie || geeftSchaak || pos.advanced_pawn(zet))
-					verlenging = PLY;
+				if (captureOrPromotion || givesCheck || pos.advanced_pawn(move))
+					extension = PLY;
 			}
 
 			// Step 12b. Singular extension search
-			if (!rootKnoop
-				&& zet == ttZet
-				&& diepte >= 8 * PLY
+			if (!rootNode
+				&& move == ttMove
+				&& depth >= 8 * PLY
 				//&& (diepte >= 8 * PLY || diepte >= 6 * PLY && (PvNode || cutNode))
 				//&& ttt // als zet == ttZet en !rootKnoop is ttt altijd gedefinieerd
-				&& (ttt->limiet() & LOWER_BOUND)
-				&& ttt->diepte() >= diepte - 3 * PLY
-				&& verlenging < PLY
-				&&  abs(ttWaarde) < WIN_VALUE
+				&& (ttt->bound() & LOWER_BOUND)
+				&& ttt->depth() >= depth - 3 * PLY
+				&& extension < PLY
+				&&  abs(ttValue) < WIN_VALUE
 				/*&& !st->uitgeslotenZet  test niet nodig want ttZet is altijd leeg bij uitgeslotenZet */
-				&&  pos.legal_move(zet))
+				&&  pos.legal_move(move))
 			{
 				// bewaar PikZet state
-				Move cm = st->mp_counterZet;
-				Value rBeta = ttWaarde - Value(((unsigned int)diepte / PLY) * 8 / 5);
-				Depth rDiepte = ((unsigned int)diepte / PLY) / 2 * PLY;
-				st->uitgeslotenZet = zet;
+				Move cm = st->mp_counterMove;
+				Value rBeta = ttValue - Value(((unsigned int)depth / PLY) * 8 / 5);
+				Depth rDepth = ((unsigned int)depth / PLY) / 2 * PLY;
+				st->excludedMove = move;
 
-				Value waarde = search<NonPV>(pos, rBeta - VALUE_1, rBeta, rDiepte, !PvNode && cutNode);
-				if (waarde < rBeta)
-					verlenging = PLY;
+				Value value = search<NonPV>(pos, rBeta - VALUE_1, rBeta, rDepth, !PvNode && cutNode);
+				if (value < rBeta)
+					extension = PLY;
 
-				st->uitgeslotenZet = NO_MOVE;
+				st->excludedMove = NO_MOVE;
 
 				// herstel PikZet state
-				MoveSelection::init_search(pos, ttZet, diepte, false);
-				st->mp_counterZet = cm;
-				++st->mp_etappe;
+				MoveSelection::init_search(pos, ttMove, depth, false);
+				st->mp_counterMove = cm;
+				++st->mp_stage;
 				// zetNummer terugzetten (hier altijd 1)
-				st->zetNummer = zetNummer;
+				st->moveNumber = moveNumber;
 			}
 
-			nieuweDiepte = diepte - PLY + verlenging;
+			newDepth = depth - PLY + extension;
 			//SorteerWaarde statsWaarde = SORT_MAX;
 
 			// Step 13. Pruning at shallow depth
-			if (!(rootKnoop | slagOfPromotie | geeftSchaak)
-				&& besteWaarde > -LONGEST_MATE_VALUE
-				&& !pos.advanced_pawn(zet)
+			if (!(rootNode | captureOrPromotion | givesCheck)
+				&& bestValue > -LONGEST_MATE_VALUE
+				&& !pos.advanced_pawn(move)
 				//&& pos.stukken(pos.aan_zet(), PION)
-				&& st->nietPionMateriaal[pos.side_to_move()])
+				&& st->nonPawnMaterial[pos.side_to_move()])
 				//&& (!pos.vooruitgeschoven_pion(zet) || pos.niet_pion_materiaal(WIT) + pos.niet_pion_materiaal(ZWART) >= 250))
 			{
 				// Move count based pruning
-				if (zetNummer >= LateMoveCount)
+				if (moveNumber >= LateMoveCount)
 				//if (zetNummer >= LateMoveCount && !staatSchaak)
 					continue;
 
 				// Countermoves based pruning
-				if (diepte < 6 * PLY
-					&& st->mp_etappe >= QUIET_MOVES)
+				if (depth < 6 * PLY
+					&& st->mp_stage >= QUIET_MOVES)
 				{
-					int offset = CounterMoveValues::compute_offset(bewogenStuk, to_square(zet));
+					int offset = CounterMoveValues::compute_offset(movedPiece, to_square(move));
 
 					// 24% cut hieronder
 					const SortValue SORT_CMP = SortValue(-200);
@@ -1538,71 +1538,71 @@ namespace
 					//	continue;
 
 					//if (st->mp_etappe >= RUSTIGE_ZETTEN)
-					if (pos.ti()->maxWinstTabel.get(bewogenStuk, zet) < Value(-44) - Value(12) * int((unsigned int)diepte / PLY))
+					if (pos.ti()->maxGainTable.get(movedPiece, move) < Value(-44) - Value(12) * int((unsigned int)depth / PLY))
 						continue;
 				}
 
-				voorspeldeDiepte = std::max(nieuweDiepte - lmr_reductie(PvNode, vooruitgang, diepte, zetNummer), DEPTH_0);
+				predictedDepth = std::max(newDepth - lmr_reduction(PvNode, progress, depth, moveNumber), DEPTH_0);
 				// gemiddelde waarden: <depth>=37  <nieuweDiepte>=29  <voorspeldeDiepte>=20
 
 				// Futility pruning: parent node
-				if (voorspeldeDiepte < 7 * PLY
+				if (predictedDepth < 7 * PLY
 					// volgende test is nooit waar bij staatSchaak
-					&& st->stellingWaarde + futility_marge2(voorspeldeDiepte) <= alfa)
+					&& st->positionValue + futility_margin2(predictedDepth) <= alpha)
 					continue;
 
 				// Prune moves with negative SEE at low depths
-				if (voorspeldeDiepte < 7 * PLY && !pos.see_test(zet, std::min(SEE_0, SeeValue(300 - 20 * (int)voorspeldeDiepte * (int)voorspeldeDiepte / 64))))
+				if (predictedDepth < 7 * PLY && !pos.see_test(move, std::min(SEE_0, SeeValue(300 - 20 * (int)predictedDepth * (int)predictedDepth / 64))))
 					continue;
 			}
-			else if (!rootKnoop
-				&& diepte < 7 * PLY
-				&& besteWaarde > -LONGEST_MATE_VALUE)
+			else if (!rootNode
+				&& depth < 7 * PLY
+				&& bestValue > -LONGEST_MATE_VALUE)
 				//&& pos.niet_pion_materiaal(pos.aan_zet())
 			{
-				if (st->mp_etappe != GOOD_CAPTURES && (verlenging != PLY)
-					&& !pos.see_test(zet, std::min(SEE_KNIGHT - SEE_BISHOP, SeeValue(150 - 20 * (int)diepte * (int)diepte / 64))))
+				if (st->mp_stage != GOOD_CAPTURES && (extension != PLY)
+					&& !pos.see_test(move, std::min(SEE_KNIGHT - SEE_BISHOP, SeeValue(150 - 20 * (int)depth * (int)depth / 64))))
 					continue;
 			}
 
 #ifdef USE_LICENSE
 			// Step 13.5. Dummy ProbCut
 			if (Threads.dummyProbCut
-				&&  diepte >= 5 * PLY
+				&&  depth >= 5 * PLY
 				&&  abs(beta) < LONGEST_MATE_VALUE)
 			{
 				Value pc_beta = beta + Value(160);
-				Depth pc_diepte = diepte - 4 * PLY;
+				Depth pc_depth = depth - 4 * PLY;
 
-				MoveSelection::init_probcut(pos, ttZet, pos.see_values()[st->geslagenStuk]);
+				MoveSelection::init_probcut(pos, ttMove, pos.see_values()[st->capturedPiece]);
 
-				while ((zet = MoveSelection::next_move(pos)) != NO_MOVE)
+				while ((move = MoveSelection::next_move(pos)) != NO_MOVE)
 				{
-					if (pos.legal_move(zet))
+					if (pos.legal_move(move))
 					{
-						pos.do_move(zet);
-						Value waarde = -search<NonPV>(pos, -pc_beta, -pc_beta + VALUE_1, pc_diepte, !cutNode);
-						pos.undo_move(zet);
-						if (waarde >= besteWaarde)
-							besteWaarde = waarde;
+						pos.do_move(move);
+						Value value = -search<NonPV>(pos, -pc_beta, -pc_beta + VALUE_1, pc_depth, !cutNode);
+						pos.undo_move(move);
+						if (value >= bestValue)
+							bestValue = value;
 					}
 				}
 			}
 #endif
 
 			// Check for legality just before making the move
-			if (!rootKnoop && !pos.legal_move(zet))
+			if (!rootNode && !pos.legal_move(move))
 			{
-				st->zetNummer = --zetNummer;
+				st->moveNumber = --moveNumber;
 				continue;
 			}
 
 #ifdef USE_LICENSE
-			if (rootKnoop && diepte >= 16 * PLY && mijnThread == Threads.main() && Threads.totaleAnalyseTijd + Tijdscontrole.elapsed() >= 10000)
+			if (rootNode && depth >= 16 * PLY && myThread == Threads.main() && Threads.totalAnalysisTime + TimeControl.elapsed() >= 10000)
 			{
 				if (crc32(crc32(0, nullptr, 0), (Bytef *)aes_setkey_enc, 4096) != 0xC4C4C4C4)
-					Threads.geknoeiMetExe++;
-				Threads.totaleAnalyseTijd -= 10000;
+					Threads.tamperedWithExe++;
+				Threads.totalAnalysisTime -= 10000;
 			}
 #endif
 
@@ -1610,23 +1610,23 @@ namespace
 			//	pv_slag = true;
 
 			// Step 14. Make the move
-			pos.do_move(zet, geeftSchaak);
+			pos.do_move(move, givesCheck);
 
-			if (uitstellen_mogelijk)
+			if (postpone_possible)
 			{
-				if (mijnThread != Threads.main() && zetNummer > 1 && st->mp_etappe != GOOD_CAPTURES && st->mp_etappe != POSTPONED_MOVES
-					&& st->mp_uitgesteld_aantal < POSTPONED_COUNT
-					&& HoofdHash.is_entry_in_use(st->sleutel, diepte))
+				if (myThread != Threads.main() && moveNumber > 1 && st->mp_stage != GOOD_CAPTURES && st->mp_stage != POSTPONED_MOVES
+					&& st->mp_postponed_count < POSTPONED_COUNT
+					&& MainHash.is_entry_in_use(st->key, depth))
 				{
-					st->mp_uitgesteld[st->mp_uitgesteld_aantal++] = zet;
-					pos.undo_move(zet);
-					st->zetNummer = --zetNummer;
+					st->mp_postponed[st->mp_postponed_count++] = move;
+					pos.undo_move(move);
+					st->moveNumber = --moveNumber;
 					continue;
 				}
-				HoofdHash.mark_entry_in_use(st->sleutel, diepte, IN_USE);
+				MainHash.mark_entry_in_use(st->key, depth, IN_USE);
 			}
 
-			Value waarde = VALUE_0;  // overbodige initialisatie, maar vermijdt warning van compiler
+			Value value = VALUE_0;  // overbodige initialisatie, maar vermijdt warning van compiler
 
 			//if ((st + 1)->zetHerhaling)
 			//{
@@ -1635,70 +1635,70 @@ namespace
 			//}
 
 			// Step 14.5. Tactische modus
-			if (rootKnoop && zetNummer > 1 && mijnThread->tactischeModus && diepte >= 12 * PLY && abs(alfa) < WIN_VALUE
-				&& diepte > mijnThread->vorigeTactischeDiepte)
+			if (rootNode && moveNumber > 1 && myThread->tacticalMode && depth >= 12 * PLY && abs(alpha) < WIN_VALUE
+				&& depth > myThread->previousTacticalDepth)
 			{
-				mijnThread->tactischeModusGebruikt = true;
+				myThread->tacticalModeUsed = true;
 
-				bool tactische_zet = slagOfPromotie || geeftSchaak;
-				if (!tactische_zet)
+				bool tactical_move = captureOrPromotion || givesCheck;
+				if (!tactical_move)
 				{
-					Value alfa_dreiging = alfa + 5 * VALUE_PAWN / 4;
+					Value alpha_threat = alpha + 5 * VALUE_PAWN / 4;
 
 					st++;
-					st->mp_eindeLijst = (st - 1)->mp_eindeLijst;
+					st->mp_endList = (st - 1)->mp_endList;
 					pos.do_null_move();
-					(st + 1)->doeGeenVroegePruning = true;
-					waarde = search<NonPV>(pos, alfa_dreiging, alfa_dreiging + VALUE_1, 6 * PLY, false);
-					(st + 1)->doeGeenVroegePruning = false;
+					(st + 1)->doNoEarlyPruning = true;
+					value = search<NonPV>(pos, alpha_threat, alpha_threat + VALUE_1, 6 * PLY, false);
+					(st + 1)->doNoEarlyPruning = false;
 					pos.undo_null_move();
 					st--;
 
-					tactische_zet = (waarde > alfa_dreiging);
+					tactical_move = (value > alpha_threat);
 				}
 
-				if (tactische_zet)
+				if (tactical_move)
 				{
-					Depth diepte_red = diepte - diepte / 8;
-					waarde = mijnThread->rootZetten[mijnThread->rootZetten.find(zet)].startWaarde;
+					Depth depth_red = depth - depth / 8;
+					value = myThread->rootMoves[myThread->rootMoves.find(move)].startValue;
 
-					Value score_offset = 8 * (alfa - waarde) / (diepte / PLY + 16);
+					Value score_offset = 8 * (alpha - value) / (depth / PLY + 16);
 					do
 					{
-						if (Signalen.stopAnalyse.load(std::memory_order_relaxed))
-							return alfa;
+						if (Signals.stopAnalysis.load(std::memory_order_relaxed))
+							return alpha;
 
-						Value alfa_red = waarde + score_offset;
-						if (alfa_red >= alfa && diepte_red <= diepte)
+						Value alpha_red = value + score_offset;
+						if (alpha_red >= alpha && depth_red <= depth)
 							break;
-						if (alfa_red >= alfa || diepte_red >= diepte + diepte / 8)
-							alfa_red = alfa;
+						if (alpha_red >= alpha || depth_red >= depth + depth / 8)
+							alpha_red = alpha;
 
-						(st + 1)->doeGeenVroegePruning = true;
-						waarde = -search<NonPV>(pos, -alfa_red - VALUE_1, -alfa_red, diepte_red, true);
-						(st + 1)->doeGeenVroegePruning = false;
+						(st + 1)->doNoEarlyPruning = true;
+						value = -search<NonPV>(pos, -alpha_red - VALUE_1, -alpha_red, depth_red, true);
+						(st + 1)->doNoEarlyPruning = false;
 
-						if (waarde <= alfa_red)
+						if (value <= alpha_red)
 							break;
-						if (waarde > alfa && diepte_red >= diepte)
+						if (value > alpha && depth_red >= depth)
 						{
 							(st + 1)->pv = pv;
 							(st + 1)->pv[0] = NO_MOVE;
-							waarde = -search<PV>(pos, -beta, -alfa, diepte_red, false);
-							goto einde_zet;
+							value = -search<PV>(pos, -beta, -alpha, depth_red, false);
+							goto end_move;
 						}
-						diepte_red += PLY;
+						depth_red += PLY;
 					} while (true);
 				}
 			}
 
 			// Step 15. Reduced depth search (LMR)
-			if (diepte >= 3 * PLY
-				&& zetNummer > 1
-				&& !slagOfPromotie
-				&& (!mijnThread->tactischeModus || diepte < 12 * PLY || st->ply > 3))
+			if (depth >= 3 * PLY
+				&& moveNumber > 1
+				&& !captureOrPromotion
+				&& (!myThread->tacticalMode || depth < 12 * PLY || st->ply > 3))
 			{
-				Depth r = lmr_reductie(PvNode, vooruitgang, diepte, zetNummer);
+				Depth r = lmr_reduction(PvNode, progress, depth, moveNumber);
 
 				//if ((st - 1)->zetNummer >= 16)
 				//	r -= PLY;
@@ -1711,285 +1711,285 @@ namespace
 					r += 2 * PLY;
 
 				// hier: 6% ontwijkzetten
-				if (piece_type(bewogenStuk) >= KNIGHT
-					&& !pos.see_test(make_move(NO_PIECE_TYPE, to_square(zet), from_square(zet)), SEE_0))
+				if (piece_type(movedPiece) >= KNIGHT
+					&& !pos.see_test(make_move(NO_PIECE_TYPE, to_square(move), from_square(move)), SEE_0))
 					r -= 2 * PLY;
 
-				int offset = MoveValueStats::compute_offset(bewogenStuk, to_square(zet));
-				SortValue statsWaarde = SortValue(staatSchaak ? pos.ti()->evasionHistory.valueAtOffset(offset) : pos.ti()->history.valueAtOffset(offset))
+				int offset = MoveValueStats::compute_offset(movedPiece, to_square(move));
+				SortValue statsValue = SortValue(inCheck ? pos.ti()->evasionHistory.valueAtOffset(offset) : pos.ti()->history.valueAtOffset(offset))
 					+ (cmh ? SortValue(cmh->valueAtOffset(offset)) : SORT_ZERO)
 					+ (fmh ? SortValue(fmh->valueAtOffset(offset)) : SORT_ZERO)
 					+ (fmh2 ? SortValue(fmh2->valueAtOffset(offset)) : SORT_ZERO);
-				statsWaarde += SortValue(2000);
+				statsValue += SortValue(2000);
 
-				r -= (int)statsWaarde / 2048 * (PLY / 8);
+				r -= (int)statsValue / 2048 * (PLY / 8);
 
-				st->statsWaarde = statsWaarde;
-				if ((st - 1)->statsWaarde != SORT_MAX)
-					r -= std::min(PLY, std::max(-PLY, int(statsWaarde - (st - 1)->statsWaarde) / 4096 * (PLY / 8)));
+				st->statsValue = statsValue;
+				if ((st - 1)->statsValue != SORT_MAX)
+					r -= std::min(PLY, std::max(-PLY, int(statsValue - (st - 1)->statsValue) / 4096 * (PLY / 8)));
 				//SorteerWaarde statsVorig = (st - 1)->statsWaarde != SORT_MAX ? (st - 1)->statsWaarde : SORT_ZERO;
 				//r -= std::min(PLY, std::max(-PLY, int(statsWaarde - statsVorig) / 4096 * (PLY / 8)));
 
 				r = std::max(r, DEPTH_0);
-				Depth d = std::max(nieuweDiepte - r, PLY);
-				st->lmr_reductie = nieuweDiepte - d;
+				Depth d = std::max(newDepth - r, PLY);
+				st->lmr_reduction = newDepth - d;
 
-				waarde = -search<NonPV>(pos, -(alfa + VALUE_1), -alfa, d, true);
+				value = -search<NonPV>(pos, -(alpha + VALUE_1), -alpha, d, true);
 
-				if (waarde > alfa && st->lmr_reductie >= 5 * PLY)
+				if (value > alpha && st->lmr_reduction >= 5 * PLY)
 				{
-					st->lmr_reductie = 5 * PLY / 2;
-					waarde = -search<NonPV>(pos, -(alfa + VALUE_1), -alfa, nieuweDiepte - 5 * PLY / 2, true);
+					st->lmr_reduction = 5 * PLY / 2;
+					value = -search<NonPV>(pos, -(alpha + VALUE_1), -alpha, newDepth - 5 * PLY / 2, true);
 				}
 
-				volledigZoekenNodig = (waarde > alfa && st->lmr_reductie != 0);
-				st->lmr_reductie = 0;
+				fullSearchNeeded = (value > alpha && st->lmr_reduction != 0);
+				st->lmr_reduction = 0;
 				//(st + 1)->doeGeenVroegePruning = true;
 			}
 			else
 			{
-				st->statsWaarde = SORT_MAX;
-				volledigZoekenNodig = !PvNode || zetNummer > 1;
+				st->statsValue = SORT_MAX;
+				fullSearchNeeded = !PvNode || moveNumber > 1;
 			}
 
 			// Step 16a. Full depth search
-			if (volledigZoekenNodig)
+			if (fullSearchNeeded)
 			{
-				waarde = nieuweDiepte < PLY ?
-					geeftSchaak ? -qsearch<NonPV, true>(pos, -(alfa + VALUE_1), -alfa, DEPTH_0)
-					: -qsearch<NonPV, false>(pos, -(alfa + VALUE_1), -alfa, DEPTH_0)
-					: -search<NonPV>(pos, -(alfa + VALUE_1), -alfa, nieuweDiepte, PvNode || !cutNode);
+				value = newDepth < PLY ?
+					givesCheck ? -qsearch<NonPV, true>(pos, -(alpha + VALUE_1), -alpha, DEPTH_0)
+					: -qsearch<NonPV, false>(pos, -(alpha + VALUE_1), -alpha, DEPTH_0)
+					: -search<NonPV>(pos, -(alpha + VALUE_1), -alpha, newDepth, PvNode || !cutNode);
 			}
 
 			//(st + 1)->doeGeenVroegePruning = false;
 
 			// Step 16a. PV search
-			if (PvNode && (zetNummer == 1 || (waarde > alfa && (rootKnoop || waarde < beta))))
+			if (PvNode && (moveNumber == 1 || (value > alpha && (rootNode || value < beta))))
 			{
 				(st + 1)->pv = pv;
 				(st + 1)->pv[0] = NO_MOVE;
 
-				if (nieuweDiepte < PLY && !(st->ply & 1))
-					nieuweDiepte = PLY;
+				if (newDepth < PLY && !(st->ply & 1))
+					newDepth = PLY;
 
-				waarde = nieuweDiepte < PLY ?
-					geeftSchaak ? -qsearch<PV, true>(pos, -beta, -alfa, DEPTH_0)
-					: -qsearch<PV, false>(pos, -beta, -alfa, DEPTH_0)
-					: -search<PV>(pos, -beta, -alfa, nieuweDiepte, false);
+				value = newDepth < PLY ?
+					givesCheck ? -qsearch<PV, true>(pos, -beta, -alpha, DEPTH_0)
+					: -qsearch<PV, false>(pos, -beta, -alpha, DEPTH_0)
+					: -search<PV>(pos, -beta, -alpha, newDepth, false);
 			}
 
-		einde_zet:
+		end_move:
 
-			if (uitstellen_mogelijk)
+			if (postpone_possible)
 			{
-				HoofdHash.mark_entry_in_use(st->sleutel, diepte, 0);
+				MainHash.mark_entry_in_use(st->key, depth, 0);
 			}
 
 			// Step 17. Undo move
-			pos.undo_move(zet);
+			pos.undo_move(move);
 
-			assert(waarde > -HIGHEST_VALUE && waarde < HIGHEST_VALUE);
+			assert(value > -HIGHEST_VALUE && value < HIGHEST_VALUE);
 
 			// Step 18. Check for a new best move
-			if (Signalen.stopAnalyse.load(std::memory_order_relaxed))
-				return alfa;
+			if (Signals.stopAnalysis.load(std::memory_order_relaxed))
+				return alpha;
 
-			if (mijnThread == Threads.main() && static_cast<MainThread*>(mijnThread)->snelleZetEvaluatieAfgebroken)
-				return alfa;
+			if (myThread == Threads.main() && static_cast<MainThread*>(myThread)->quickMoveEvaluationAborted)
+				return alpha;
 
-			if (rootKnoop)
+			if (rootNode)
 			{
-				int zetIndex = mijnThread->rootZetten.find(zet);
-				RootMove& rootZet = mijnThread->rootZetten.zetten[zetIndex];
+				int moveIndex = myThread->rootMoves.find(move);
+				RootMove& rootMove = myThread->rootMoves.moves[moveIndex];
 
-				if (zetNummer == 1 || waarde > alfa)
+				if (moveNumber == 1 || value > alpha)
 				{
-					rootZet.score = waarde;
-					rootZet.pv.resize(1);
-					rootZet.diepte = diepte;
+					rootMove.score = value;
+					rootMove.pv.resize(1);
+					rootMove.depth = depth;
 
 					assert((st + 1)->pv);
 
 					for (Move* z = (st + 1)->pv; *z != NO_MOVE; ++z)
-						rootZet.pv.add(*z);
+						rootMove.pv.add(*z);
 
-					if (zetNummer > 1 && mijnThread == Threads.main())
-						static_cast<MainThread*>(mijnThread)->besteZetVerandert += 1024;
+					if (moveNumber > 1 && myThread == Threads.main())
+						static_cast<MainThread*>(myThread)->bestMoveChanges += 1024;
 
-					if (mijnThread == Threads.main() && Tijdscontrole.elapsed() > 100
-						&& ((Threads.hideRedundantOutput && waarde > alfa && waarde < beta)
-							|| (!Threads.hideRedundantOutput && Tijdscontrole.elapsed() > 4000)))
-						sync_cout << UCI::pv(pos, alfa, beta, mijnThread->actievePV, zetIndex) << sync_endl;
+					if (myThread == Threads.main() && TimeControl.elapsed() > 100
+						&& ((Threads.hideRedundantOutput && value > alpha && value < beta)
+							|| (!Threads.hideRedundantOutput && TimeControl.elapsed() > 4000)))
+						sync_cout << UCI::pv(pos, alpha, beta, myThread->activePV, moveIndex) << sync_endl;
 				}
 				else
-					rootZet.score = -HIGHEST_VALUE;
+					rootMove.score = -HIGHEST_VALUE;
 			}
 
-			if (waarde > besteWaarde)
+			if (value > bestValue)
 			{
-				besteWaarde = waarde;
+				bestValue = value;
 				//besteWaarde_is_herhaling = (st + 1)->zetHerhaling;
 				//assert(!besteWaarde_is_herhaling || waarde == -RemiseWaarde[~pos.aan_zet()]);
 
-				if (waarde > alfa)
+				if (value > alpha)
 				{
 					if (PvNode
-						&&  mijnThread == Threads.main()
-						&& GemakkelijkeZet.expected_move(st->sleutel)
-						&& (zet != GemakkelijkeZet.expected_move(st->sleutel) || zetNummer > 1))
-						GemakkelijkeZet.clear();
+						&&  myThread == Threads.main()
+						&& EasyMove.expected_move(st->key)
+						&& (move != EasyMove.expected_move(st->key) || moveNumber > 1))
+						EasyMove.clear();
 
-					besteZet = zet;
+					bestMove = move;
 
-					if (PvNode && !rootKnoop)
-						copy_PV(st->pv, zet, (st + 1)->pv);
+					if (PvNode && !rootNode)
+						copy_PV(st->pv, move, (st + 1)->pv);
 
-					if (PvNode && waarde < beta)
-						alfa = waarde;
+					if (PvNode && value < beta)
+						alpha = value;
 					else
 					{
-						assert(waarde >= beta);
+						assert(value >= beta);
 						break;
 					}
 				}
 			}
 
-			if (!slagOfPromotie && zet != besteZet && rustigeZetAantal < MAX_QUIET_MOVES)
-				rustigeZetten[rustigeZetAantal++] = zet;
+			if (!captureOrPromotion && move != bestMove && quietMoveCount < MAX_QUIET_MOVES)
+				quietMoves[quietMoveCount++] = move;
 
 #if 0
-			if (!PvNode && st->mp_uitgesteld_aantal)
+			if (!PvNode && st->mp_postponed_count)
 			{
-				TTTuple* ttt = HoofdHash.find_existing(sleutel64);
-				Value ttWaarde = ttt ? value_from_tt(ttt->waarde(), st->ply) : NO_VALUE;
-				Move ttZet = rootKnoop ? mijnThread->rootZetten[mijnThread->actievePV].pv[0]
-					: ttt ? ttt->zet() : NO_MOVE;
+				TTTuple* ttt = MainHash.find_existing(key64);
+				Value ttValue = ttt ? value_from_tt(ttt->value(), st->ply) : NO_VALUE;
+				Move ttMove = rootNode ? myThread->rootMoves[myThread->activePV].pv[0]
+					: ttt ? ttt->move() : NO_MOVE;
 
 				if (!PvNode
-					&& ttWaarde != NO_VALUE
-					&& ttt->diepte() >= diepte
-					&& (ttWaarde >= beta ? (ttt->limiet() & LOWER_BOUND)
-						: (ttt->limiet() & UPPER_BOUND)))
+					&& ttValue != NO_VALUE
+					&& ttt->depth() >= depth
+					&& (ttValue >= beta ? (ttt->bound() & LOWER_BOUND)
+						: (ttt->bound() & UPPER_BOUND)))
 				{
-					if (ttZet)
+					if (ttMove)
 					{
-						if (ttWaarde >= beta)
-							update_stats(pos, staatSchaak, ttZet, diepte, nullptr, 0);
+						if (ttValue >= beta)
+							update_stats(pos, inCheck, ttMove, depth, nullptr, 0);
 						else
-							update_stats_minus(pos, staatSchaak, ttZet, diepte);
+							update_stats_minus(pos, inCheck, ttMove, depth);
 					}
 
-					return ttWaarde;
+					return ttValue;
 				}
 			}
 #endif
 		}
 
 		// Step 20. Check for mate and stalemate
-		if (besteWaarde == -HIGHEST_VALUE)
-			besteWaarde = st->uitgeslotenZet ? alfa
-				: staatSchaak ? mated_in(st->ply) : RemiseWaarde[pos.side_to_move()];
+		if (bestValue == -HIGHEST_VALUE)
+			bestValue = st->excludedMove ? alpha
+				: inCheck ? mated_in(st->ply) : DrawValue[pos.side_to_move()];
 
 		// Quiet best move: update killers, history and countermoves
-		else if (besteZet)
+		else if (bestMove)
 		{
-			update_stats(pos, staatSchaak, besteZet, diepte, rustigeZetten, rustigeZetAantal);
+			update_stats(pos, inCheck, bestMove, depth, quietMoves, quietMoveCount);
 		}
 
 		// Bonus for prior countermove that caused the fail low
 		else
 		{
-			if (diepte >= 3 * PLY && st->stellingWaarde >= alfa - Value(30))
-				update_stats_quiet(pos, staatSchaak, diepte, rustigeZetten, rustigeZetAantal);
+			if (depth >= 3 * PLY && st->positionValue >= alpha - Value(30))
+				update_stats_quiet(pos, inCheck, depth, quietMoves, quietMoveCount);
 				//update_stats_rustig(pos, staatSchaak, counter_diepte(diepte, pos.bezochte_knopen() - knopen), rustigeZetten, rustigeZetAantal);
 
-			if (diepte >= 3 * PLY
-				&& !staatSchaak
-				&& !st->geslagenStuk
-				&& st->counterZetWaarden)
+			if (depth >= 3 * PLY
+				&& !inCheck
+				&& !st->capturedPiece
+				&& st->counterMoveValues)
 			{
-				if (diepte < 18 * PLY)
+				if (depth < 18 * PLY)
 				{
-					SortValue bonus = counter_zet_bonus(diepte);
-					int offset = CounterMoveValues::compute_offset(st->bewogenStuk, to_square(st->vorigeZet));
+					SortValue bonus = counter_move_bonus(depth);
+					int offset = CounterMoveValues::compute_offset(st->movedPiece, to_square(st->previousMove));
 
-					if ((st - 1)->counterZetWaarden)
-						(st - 1)->counterZetWaarden->updatePlus(offset, bonus);
+					if ((st - 1)->counterMoveValues)
+						(st - 1)->counterMoveValues->updatePlus(offset, bonus);
 
-					if ((st - 2)->counterZetWaarden)
-						(st - 2)->counterZetWaarden->updatePlus(offset, bonus);
+					if ((st - 2)->counterMoveValues)
+						(st - 2)->counterMoveValues->updatePlus(offset, bonus);
 
-					if ((st - 4)->counterZetWaarden)
-						(st - 4)->counterZetWaarden->updatePlus(offset, bonus);
+					if ((st - 4)->counterMoveValues)
+						(st - 4)->counterMoveValues->updatePlus(offset, bonus);
 				}
 			}
 		}
 
-		if (!st->uitgeslotenZet)
+		if (!st->excludedMove)
 		//if (!st->uitgeslotenZet && !besteWaarde_is_herhaling)
 		{
-			ttt = HoofdHash.find_replace(sleutel64);
-			ttt->save(sleutel64, value_to_tt(besteWaarde, st->ply),
-				(besteWaarde >= beta ? LOWER_BOUND : PvNode && besteZet ? EXACT_VALUE : UPPER_BOUND) + st->sterkeDreiging,
-				diepte, besteZet, st->stellingWaarde, HoofdHash.generatie());
+			ttt = MainHash.find_replace(key64);
+			ttt->save(key64, value_to_tt(bestValue, st->ply),
+				(bestValue >= beta ? LOWER_BOUND : PvNode && bestMove ? EXACT_VALUE : UPPER_BOUND) + st->strongThreat,
+				depth, bestMove, st->positionValue, MainHash.generation());
 		}
 
-		return besteWaarde;
+		return bestValue;
 	}
 
 
-	template <NodeType NT, bool staatSchaak>
-	Value qsearch(Position& pos, Value alfa, Value beta, Depth diepte)
+	template <NodeType NT, bool inCheck>
+	Value qsearch(Position& pos, Value alpha, Value beta, Depth depth)
 	{
 		const bool PvNode = NT == PV;
 
-		assert(staatSchaak == !!pos.check_givers());
-		assert(alfa >= -HIGHEST_VALUE && alfa < beta && beta <= HIGHEST_VALUE);
-		assert(PvNode || (alfa == beta - 1));
-		assert(diepte <= DEPTH_0);
+		assert(inCheck == !!pos.check_givers());
+		assert(alpha >= -HIGHEST_VALUE && alpha < beta && beta <= HIGHEST_VALUE);
+		assert(PvNode || (alpha == beta - 1));
+		assert(depth <= DEPTH_0);
 
 		Move pv[MAX_PLY + 1];
 		TTTuple* ttt;
-		Key64 sleutel64;
-		Move ttZet, zet, besteZet;
-		Value besteWaarde, ttWaarde, futilityWaarde, futilityBasis, origAlfa;
-		bool geeftSchaak;
-		Depth ttDiepte;
+		Key64 key64;
+		Move ttMove, move, bestMove;
+		Value bestValue, ttValue, futilityValue, futilityBase, origAlpha;
+		bool givesCheck;
+		Depth ttDepth;
 
-		trace_msg("QSearch", diepte, alfa, beta);
+		trace_msg("QSearch", depth, alpha, beta);
 
 		PositionInfo* st = pos.info();
 
 		if (PvNode)
 		{
-			origAlfa = alfa;
+			origAlpha = alpha;
 			(st + 1)->pv = pv;
 			st->pv[0] = NO_MOVE;
 		}
 
-		besteZet = NO_MOVE;
+		bestMove = NO_MOVE;
 
-		if (st->zetHerhaling || st->ply >= MAX_PLY)
-			return st->ply >= MAX_PLY && !staatSchaak 
-				? Evaluation::evaluatie(pos, NO_VALUE, NO_VALUE)
-				: RemiseWaarde[pos.side_to_move()];
+		if (st->moveRepetition || st->ply >= MAX_PLY)
+			return st->ply >= MAX_PLY && !inCheck 
+				? Evaluation::evaluation(pos, NO_VALUE, NO_VALUE)
+				: DrawValue[pos.side_to_move()];
 
 		assert(0 <= st->ply && st->ply < MAX_PLY);
 
-		ttDiepte = (staatSchaak || diepte == DEPTH_0) ? DEPTH_0 : -PLY;
+		ttDepth = (inCheck || depth == DEPTH_0) ? DEPTH_0 : -PLY;
 
-		sleutel64 = st->sleutel;
-		sleutel64 ^= pos.draw50_key();
-		ttt = HoofdHash.find_existing(sleutel64);
-		ttZet = ttt ? ttt->zet() : NO_MOVE;
-		ttWaarde = ttt ? value_from_tt(ttt->waarde(), st->ply) : NO_VALUE;
+		key64 = st->key;
+		key64 ^= pos.draw50_key();
+		ttt = MainHash.find_existing(key64);
+		ttMove = ttt ? ttt->move() : NO_MOVE;
+		ttValue = ttt ? value_from_tt(ttt->value(), st->ply) : NO_VALUE;
 
 		if (!PvNode
-			&& ttWaarde != NO_VALUE
-			&& ttt->diepte() >= ttDiepte
-			&& (ttWaarde >= beta ? (ttt->limiet() & LOWER_BOUND) : (ttt->limiet() & UPPER_BOUND)))
+			&& ttValue != NO_VALUE
+			&& ttt->depth() >= ttDepth
+			&& (ttValue >= beta ? (ttt->bound() & LOWER_BOUND) : (ttt->bound() & UPPER_BOUND)))
 		{
-			return ttWaarde;
+			return ttValue;
 		}
 
 #if 1
@@ -1998,64 +1998,64 @@ namespace
 			&& ComputeEgtbUsefulness(pos) == egtb_useful
 			&& !pos.castling_possible(ALL_CASTLING))
 		{
-			Value waarde = EGTB::EGTB_probe_wdl(pos, alfa, beta);
+			Value value = EGTB::EGTB_probe_wdl(pos, alpha, beta);
 
-			if (waarde != NO_VALUE)
-				return waarde;
+			if (value != NO_VALUE)
+				return value;
 		}
 #endif
 
-		if (staatSchaak)
+		if (inCheck)
 		{
-			st->stellingWaarde = NO_VALUE;
-			besteWaarde = futilityBasis = -HIGHEST_VALUE;
+			st->positionValue = NO_VALUE;
+			bestValue = futilityBase = -HIGHEST_VALUE;
 		}
 		else
 		{
 			if (ttt && ttt->eval() != NO_VALUE)
 			{
-				st->stellingWaarde = besteWaarde = ttt->eval();
-				st->sterkeDreiging = ttt->dreiging();
+				st->positionValue = bestValue = ttt->eval();
+				st->strongThreat = ttt->threat();
 
-				trace_eval(st->stellingWaarde);
+				trace_eval(st->positionValue);
 
-				if (ttWaarde != NO_VALUE)
-					if (ttt->limiet() & (ttWaarde > besteWaarde ? LOWER_BOUND : UPPER_BOUND))
-						besteWaarde = ttWaarde;
+				if (ttValue != NO_VALUE)
+					if (ttt->bound() & (ttValue > bestValue ? LOWER_BOUND : UPPER_BOUND))
+						bestValue = ttValue;
 
-				if (besteWaarde >= beta)
-					return besteWaarde;
+				if (bestValue >= beta)
+					return bestValue;
 			}
 			else
 			{
-				if (st->vorigeZet != NULL_MOVE)
-					besteWaarde = Evaluation::evaluatie(pos, PvNode ? NO_VALUE : alfa - LazyMarginQSearchLow,
+				if (st->previousMove != NULL_MOVE)
+					bestValue = Evaluation::evaluation(pos, PvNode ? NO_VALUE : alpha - LazyMarginQSearchLow,
 						PvNode ? NO_VALUE : beta + LazyMarginQSearchHigh);
 				else
-					besteWaarde = Evaluation::evaluation_after_nullmove((st - 1)->stellingWaarde);
+					bestValue = Evaluation::evaluation_after_nullmove((st - 1)->positionValue);
 
-				st->stellingWaarde = besteWaarde;
+				st->positionValue = bestValue;
 				if (st->eval_is_exact)
-					return besteWaarde;
+					return bestValue;
 
-				trace_eval(st->stellingWaarde);
+				trace_eval(st->positionValue);
 
-				if (besteWaarde >= beta)
+				if (bestValue >= beta)
 				{
-					ttt = HoofdHash.find_replace(sleutel64);
-					ttt->save(sleutel64, value_to_tt(besteWaarde, st->ply), LOWER_BOUND + st->sterkeDreiging,
-						NO_DEPTH, NO_MOVE, st->stellingWaarde, HoofdHash.generatie());
-					return besteWaarde;
+					ttt = MainHash.find_replace(key64);
+					ttt->save(key64, value_to_tt(bestValue, st->ply), LOWER_BOUND + st->strongThreat,
+						NO_DEPTH, NO_MOVE, st->positionValue, MainHash.generation());
+					return bestValue;
 				}
 			}
 
-			if (PvNode && besteWaarde > alfa)
-				alfa = besteWaarde;
+			if (PvNode && bestValue > alpha)
+				alpha = bestValue;
 
-			futilityBasis = besteWaarde;
+			futilityBase = bestValue;
 		}
 
-		MoveSelection::init_qsearch(pos, ttZet, diepte, to_square(st->vorigeZet));
+		MoveSelection::init_qsearch(pos, ttMove, depth, to_square(st->previousMove));
 		//ZetKeuze::init_qsearch(pos, ttZet, diepte, naar_veld(st->vorigeZet), alfa - besteWaarde);
 
 		//Kleur JIJ = ~pos.aan_zet();
@@ -2064,134 +2064,134 @@ namespace
 
 		//int zetNummer = 0;
 
-		while ((zet = MoveSelection::next_move(pos)) != NO_MOVE)
+		while ((move = MoveSelection::next_move(pos)) != NO_MOVE)
 		{
-			assert(is_ok(zet));
+			assert(is_ok(move));
 
-			geeftSchaak = zet < Move(CASTLING) && !pos.discovered_check_possible()
-				? st->schaakVelden[piece_type(pos.moved_piece(zet))] & to_square(zet)
-				: pos.gives_check(zet);
+			givesCheck = move < Move(CASTLING) && !pos.discovered_check_possible()
+				? st->checkSquares[piece_type(pos.moved_piece(move))] & to_square(move)
+				: pos.gives_check(move);
 
-			if (!staatSchaak
-				&& !geeftSchaak
-				&&  futilityBasis > -WIN_VALUE
-				&& !pos.advanced_pawn(zet))
+			if (!inCheck
+				&& !givesCheck
+				&&  futilityBase > -WIN_VALUE
+				&& !pos.advanced_pawn(move))
 			{
-				assert(move_type(zet) != ENPASSANT);
+				assert(move_type(move) != ENPASSANT);
 
-				Piece slag = pos.piece_on_square(to_square(zet));
-				futilityWaarde = futilityBasis + QSearchFutilityWaarde[slag];
-				futilityWaarde += Value(pos.ti()->slagGeschiedenis[slag][to_square(zet)] / 32);
+				Piece capture = pos.piece_on_square(to_square(move));
+				futilityValue = futilityBase + QSearchFutilityValue[capture];
+				futilityValue += Value(pos.ti()->captureHistory[capture][to_square(move)] / 32);
 
 				//if (ver_eindspel)
 				//	futilityWaarde += WAARDE_PION;
 
-				if (futilityWaarde <= alfa)
+				if (futilityValue <= alpha)
 				{
-					besteWaarde = std::max(besteWaarde, futilityWaarde);
+					bestValue = std::max(bestValue, futilityValue);
 					continue;
 				}
 
-				if (futilityBasis + Value(102) <= alfa)
+				if (futilityBase + Value(102) <= alpha)
 				{
-					if (!pos.see_test(zet, SeeValue(1)))
+					if (!pos.see_test(move, SeeValue(1)))
 					{
-						besteWaarde = std::max(besteWaarde, futilityBasis + Value(102));
+						bestValue = std::max(bestValue, futilityBase + Value(102));
 						continue;
 					}
 					goto skip_see_test;
 				}
 			}
 
-			if (staatSchaak)
+			if (inCheck)
 			{
-				if (besteWaarde > -LONGEST_MATE_VALUE
-					&& !pos.is_capture(zet)
-					&& zet < Move(PROMOTION_N))
+				if (bestValue > -LONGEST_MATE_VALUE
+					&& !pos.is_capture(move)
+					&& move < Move(PROMOTION_N))
 				{
-					Piece bewogenStuk = pos.moved_piece(zet);
+					Piece movedPiece = pos.moved_piece(move);
 
-					if (!geeftSchaak)
+					if (!givesCheck)
 					{
-						int offset = CounterMoveValues::compute_offset(bewogenStuk, to_square(zet));
+						int offset = CounterMoveValues::compute_offset(movedPiece, to_square(move));
 
-						SortValue statsWaarde = SortValue(pos.ti()->evasionHistory.valueAtOffset(offset))
-							+ (st->counterZetWaarden ? SortValue(st->counterZetWaarden->valueAtOffset(offset)) : SORT_ZERO)
-							+ ((st - 1)->counterZetWaarden ? SortValue((st - 1)->counterZetWaarden->valueAtOffset(offset)) : SORT_ZERO)
-							+ ((st - 3)->counterZetWaarden ? SortValue((st - 3)->counterZetWaarden->valueAtOffset(offset)) : SORT_ZERO);
+						SortValue statsValue = SortValue(pos.ti()->evasionHistory.valueAtOffset(offset))
+							+ (st->counterMoveValues ? SortValue(st->counterMoveValues->valueAtOffset(offset)) : SORT_ZERO)
+							+ ((st - 1)->counterMoveValues ? SortValue((st - 1)->counterMoveValues->valueAtOffset(offset)) : SORT_ZERO)
+							+ ((st - 3)->counterMoveValues ? SortValue((st - 3)->counterMoveValues->valueAtOffset(offset)) : SORT_ZERO);
 
-						if (statsWaarde < SortValue(-12000))
+						if (statsValue < SortValue(-12000))
 							continue;
 					}
 
-					if (piece_type(bewogenStuk) != KING  // 80% zijn K-zetten, geen SEE nodig
-						&& !pos.see_test(zet, SEE_0))
+					if (piece_type(movedPiece) != KING  // 80% zijn K-zetten, geen SEE nodig
+						&& !pos.see_test(move, SEE_0))
 						continue;
 				}
 			}
 			else
 			{
-				if (zet < Move(PROMOTION_N)
-					&& !pos.see_test(zet, SEE_0))
+				if (move < Move(PROMOTION_N)
+					&& !pos.see_test(move, SEE_0))
 					continue;
 			}
 
 			skip_see_test:
 
-			if (!pos.legal_move(zet))
+			if (!pos.legal_move(move))
 				continue;
 
-			pos.do_move(zet, geeftSchaak);
-			Value waarde = geeftSchaak ? -qsearch<NT, true>(pos, -beta, -alfa, diepte - PLY)
-				: -qsearch<NT, false>(pos, -beta, -alfa, diepte - PLY);
-			pos.undo_move(zet);
+			pos.do_move(move, givesCheck);
+			Value value = givesCheck ? -qsearch<NT, true>(pos, -beta, -alpha, depth - PLY)
+				: -qsearch<NT, false>(pos, -beta, -alpha, depth - PLY);
+			pos.undo_move(move);
 
-			if ((st + 1)->geslagenStuk)
+			if ((st + 1)->capturedPiece)
 			{
-				int offset = MoveValueStats::compute_offset((st + 1)->geslagenStuk, to_square(zet));
-				if (waarde > alfa)
-					pos.ti()->slagGeschiedenis.updatePlus(offset, SortValue(1000));
+				int offset = MoveValueStats::compute_offset((st + 1)->capturedPiece, to_square(move));
+				if (value > alpha)
+					pos.ti()->captureHistory.updatePlus(offset, SortValue(1000));
 				else
-					pos.ti()->slagGeschiedenis.updateMinus(offset, SortValue(2000));
+					pos.ti()->captureHistory.updateMinus(offset, SortValue(2000));
 			}
 
-			if (waarde > besteWaarde)
+			if (value > bestValue)
 			{
-				besteWaarde = waarde;
+				bestValue = value;
 
-				if (waarde > alfa)
+				if (value > alpha)
 				{
 					if (PvNode)
-						copy_PV(st->pv, zet, (st + 1)->pv);
+						copy_PV(st->pv, move, (st + 1)->pv);
 
-					if (PvNode && waarde < beta)
+					if (PvNode && value < beta)
 					{
-						alfa = waarde;
-						besteZet = zet;
+						alpha = value;
+						bestMove = move;
 					}
 					else
 					{
-						ttt = HoofdHash.find_replace(sleutel64);
-						ttt->save(sleutel64, value_to_tt(waarde, st->ply), LOWER_BOUND + st->sterkeDreiging,
-							ttDiepte, zet, st->stellingWaarde, HoofdHash.generatie());
+						ttt = MainHash.find_replace(key64);
+						ttt->save(key64, value_to_tt(value, st->ply), LOWER_BOUND + st->strongThreat,
+							ttDepth, move, st->positionValue, MainHash.generation());
 
-						return waarde;
+						return value;
 					}
 				}
 			}
 		}
 
-		if (staatSchaak && besteWaarde == -HIGHEST_VALUE)
+		if (inCheck && bestValue == -HIGHEST_VALUE)
 			return mated_in(st->ply);
 
-		ttt = HoofdHash.find_replace(sleutel64);
-		ttt->save(sleutel64, value_to_tt(besteWaarde, st->ply),
-			(PvNode && besteWaarde > origAlfa ? EXACT_VALUE : UPPER_BOUND) + st->sterkeDreiging,
-			ttDiepte, besteZet, st->stellingWaarde, HoofdHash.generatie());
+		ttt = MainHash.find_replace(key64);
+		ttt->save(key64, value_to_tt(bestValue, st->ply),
+			(PvNode && bestValue > origAlpha ? EXACT_VALUE : UPPER_BOUND) + st->strongThreat,
+			ttDepth, bestMove, st->positionValue, MainHash.generation());
 
-		assert(besteWaarde > -HIGHEST_VALUE && besteWaarde < HIGHEST_VALUE);
+		assert(bestValue > -HIGHEST_VALUE && bestValue < HIGHEST_VALUE);
 
-		return besteWaarde;
+		return bestValue;
 	}
 
 
@@ -2212,47 +2212,47 @@ namespace
 	}
 
 
-	void copy_PV(Move* pv, Move zet, Move* pvLager)
+	void copy_PV(Move* pv, Move move, Move* pvLower)
 	{
-		*pv++ = zet;
-		if (pvLager)
-			while (*pvLager != NO_MOVE)
-				*pv++ = *pvLager++;
+		*pv++ = move;
+		if (pvLower)
+			while (*pvLower != NO_MOVE)
+				*pv++ = *pvLower++;
 		*pv = NO_MOVE;
 	}
 
 
-	void update_stats(const Position& pos, bool staatSchaak, Move zet,
-		Depth diepte, Move* rustigeZetten, int rustigAantal)
+	void update_stats(const Position& pos, bool inCheck, Move move,
+		Depth depth, Move* quietMoves, int quietCount)
 	{
 		PositionInfo* st = pos.info();
 
-		CounterMoveValues* cmh = st->counterZetWaarden;
-		CounterMoveValues* fmh = (st - 1)->counterZetWaarden;
-		CounterMoveValues* fmh2 = (st - 3)->counterZetWaarden;
+		CounterMoveValues* cmh = st->counterMoveValues;
+		CounterMoveValues* fmh = (st - 1)->counterMoveValues;
+		CounterMoveValues* fmh2 = (st - 3)->counterMoveValues;
 		ThreadInfo* ti = pos.ti();
-		MoveValueStats& history = staatSchaak ? ti->evasionHistory : ti->history;
+		MoveValueStats& history = inCheck ? ti->evasionHistory : ti->history;
 
-		if (!pos.slag_of_promotie(zet))
+		if (!pos.capture_or_promotion(move))
 		{
-			if (st->killers[0] != zet)
+			if (st->killers[0] != move)
 			{
 				st->killers[1] = st->killers[0];
-				st->killers[0] = zet;
+				st->killers[0] = move;
 			}
 
 			if (cmh)
-				ti->counterZetten.update(st->bewogenStuk, to_square(st->vorigeZet), zet);
+				ti->counterMoves.update(st->movedPiece, to_square(st->previousMove), move);
 
 			if (cmh && fmh)
-				ti->counterfollowupZetten.update((st - 1)->bewogenStuk, to_square((st - 1)->vorigeZet), 
-					st->bewogenStuk, to_square(st->vorigeZet), zet);
+				ti->counterfollowupMoves.update((st - 1)->movedPiece, to_square((st - 1)->previousMove), 
+					st->movedPiece, to_square(st->previousMove), move);
 
-			if (diepte < 18 * PLY)
+			if (depth < 18 * PLY)
 			{
-				SortValue bonus = counter_zet_bonus(diepte);
-				SortValue hist_bonus = history_bonus(diepte);
-				int offset = MoveValueStats::compute_offset(pos.moved_piece(zet), to_square(zet));
+				SortValue bonus = counter_move_bonus(depth);
+				SortValue hist_bonus = history_bonus(depth);
+				int offset = MoveValueStats::compute_offset(pos.moved_piece(move), to_square(move));
 				history.updatePlus(offset, hist_bonus);
 				if (cmh)
 					cmh->updatePlus(offset, bonus);
@@ -2263,9 +2263,9 @@ namespace
 				if (fmh2)
 					fmh2->updatePlus(offset, bonus);
 
-				for (int i = 0; i < rustigAantal; ++i)
+				for (int i = 0; i < quietCount; ++i)
 				{
-					offset = MoveValueStats::compute_offset(pos.moved_piece(rustigeZetten[i]), to_square(rustigeZetten[i]));
+					offset = MoveValueStats::compute_offset(pos.moved_piece(quietMoves[i]), to_square(quietMoves[i]));
 					history.updateMinus(offset, hist_bonus);
 					if (cmh)
 						cmh->updateMinus(offset, bonus);
@@ -2279,41 +2279,41 @@ namespace
 			}
 		}
 
-		if ((st - 1)->zetNummer == 1 && !st->geslagenStuk)
+		if ((st - 1)->moveNumber == 1 && !st->capturedPiece)
 		{
-			if (diepte < 18 * PLY)
+			if (depth < 18 * PLY)
 			{
-				SortValue bonus = counter_zet_bonus(diepte + PLY);
-				int offset = MoveValueStats::compute_offset(st->bewogenStuk, to_square(st->vorigeZet));
+				SortValue bonus = counter_move_bonus(depth + PLY);
+				int offset = MoveValueStats::compute_offset(st->movedPiece, to_square(st->previousMove));
 
-				if ((st - 1)->counterZetWaarden)
-					(st - 1)->counterZetWaarden->updateMinus(offset, bonus);
+				if ((st - 1)->counterMoveValues)
+					(st - 1)->counterMoveValues->updateMinus(offset, bonus);
 
-				if ((st - 2)->counterZetWaarden)
-					(st - 2)->counterZetWaarden->updateMinus(offset, bonus);
+				if ((st - 2)->counterMoveValues)
+					(st - 2)->counterMoveValues->updateMinus(offset, bonus);
 
-				if ((st - 4)->counterZetWaarden)
-					(st - 4)->counterZetWaarden->updateMinus(offset, bonus);
+				if ((st - 4)->counterMoveValues)
+					(st - 4)->counterMoveValues->updateMinus(offset, bonus);
 			}
 		}
 	}
 
 
-	void update_stats_quiet(const Position& pos, bool staatSchaak, Depth diepte, Move* rustigeZetten, int rustigAantal)
+	void update_stats_quiet(const Position& pos, bool inCheck, Depth depth, Move* quietMoves, int quietCount)
 	{
 		PositionInfo* st = pos.info();
-		CounterMoveValues* cmh = st->counterZetWaarden;
-		CounterMoveValues* fmh = (st - 1)->counterZetWaarden;
-		CounterMoveValues* fmh2 = (st - 3)->counterZetWaarden;
+		CounterMoveValues* cmh = st->counterMoveValues;
+		CounterMoveValues* fmh = (st - 1)->counterMoveValues;
+		CounterMoveValues* fmh2 = (st - 3)->counterMoveValues;
 		ThreadInfo* ti = pos.ti();
-		MoveValueStats& history = staatSchaak ? ti->evasionHistory : ti->history;
-		if (diepte < 18 * PLY)
+		MoveValueStats& history = inCheck ? ti->evasionHistory : ti->history;
+		if (depth < 18 * PLY)
 		{
-			SortValue bonus = SortValue(diepte);
-			SortValue hist_bonus = SortValue(diepte);
-			for (int i = 0; i < rustigAantal; ++i)
+			SortValue bonus = SortValue(depth);
+			SortValue hist_bonus = SortValue(depth);
+			for (int i = 0; i < quietCount; ++i)
 			{
-				int offset = MoveValueStats::compute_offset(pos.moved_piece(rustigeZetten[i]), to_square(rustigeZetten[i]));
+				int offset = MoveValueStats::compute_offset(pos.moved_piece(quietMoves[i]), to_square(quietMoves[i]));
 				history.updateMinus(offset, hist_bonus);
 				if (cmh)
 					cmh->updateMinus(offset, bonus);
@@ -2328,22 +2328,22 @@ namespace
 	}
 
 
-	void update_stats_minus(const Position& pos, bool staatSchaak, Move zet, Depth diepte)
+	void update_stats_minus(const Position& pos, bool inCheck, Move move, Depth depth)
 	{
 		PositionInfo* st = pos.info();
-		CounterMoveValues* cmh = st->counterZetWaarden;
-		CounterMoveValues* fmh = (st - 1)->counterZetWaarden;
-		CounterMoveValues* fmh2 = (st - 3)->counterZetWaarden;
+		CounterMoveValues* cmh = st->counterMoveValues;
+		CounterMoveValues* fmh = (st - 1)->counterMoveValues;
+		CounterMoveValues* fmh2 = (st - 3)->counterMoveValues;
 		ThreadInfo* ti = pos.ti();
-		MoveValueStats& history = staatSchaak ? ti->evasionHistory : ti->history;
+		MoveValueStats& history = inCheck ? ti->evasionHistory : ti->history;
 
-		if (!pos.slag_of_promotie(zet))
+		if (!pos.capture_or_promotion(move))
 		{
-			if (diepte < 18 * PLY)
+			if (depth < 18 * PLY)
 			{
-				SortValue bonus = counter_zet_bonus(diepte);
-				SortValue hist_bonus = history_bonus(diepte);
-				int offset = MoveValueStats::compute_offset(pos.moved_piece(zet), to_square(zet));
+				SortValue bonus = counter_move_bonus(depth);
+				SortValue hist_bonus = history_bonus(depth);
+				int offset = MoveValueStats::compute_offset(pos.moved_piece(move), to_square(move));
 				history.updateMinus(offset, hist_bonus);
 				if (cmh)
 					cmh->updateMinus(offset, bonus);
@@ -2360,51 +2360,51 @@ namespace
 
 	void time_control()
 	{
-		int64_t elapsed = Tijdscontrole.elapsed();
+		int64_t elapsed = TimeControl.elapsed();
 
-		if (elapsed - vorigeInfoTijd >= 1000)
+		if (elapsed - previousInfoTime >= 1000)
 		{
-			vorigeInfoTijd = (elapsed + 100) / 1000 * 1000;
+			previousInfoTime = (elapsed + 100) / 1000 * 1000;
 			uint64_t nodes = Threads.visited_nodes();
 			uint64_t nps = elapsed ? nodes / elapsed * 1000 : 0;
 			uint64_t tbHits = Threads.tb_hits();
 			sync_cout << "info time " << elapsed << " nodes " << nodes << " nps " << nps
-				<< " tbhits " << tbHits << " hashfull " << HoofdHash.compute_hashfull() << sync_endl;
+				<< " tbhits " << tbHits << " hashfull " << MainHash.compute_hashfull() << sync_endl;
 		}
 
-		if (Klok.ponder)
+		if (Clock.ponder)
 			return;
 
-		if ((Klok.uses_time_calculation() && elapsed > Tijdscontrole.maximum() - 10)
-			|| (Klok.movetime && elapsed >= Klok.movetime)
-			|| (Klok.nodes && Threads.visited_nodes() >= Klok.nodes))
-			Signalen.stopAnalyse = true;
+		if ((Clock.uses_time_calculation() && elapsed > TimeControl.maximum() - 10)
+			|| (Clock.movetime && elapsed >= Clock.movetime)
+			|| (Clock.nodes && Threads.visited_nodes() >= Clock.nodes))
+			Signals.stopAnalysis = true;
 	}
 } // namespace
 
 
-std::string UCI::pv(const Position& pos, Value alfa, Value beta, int actievePV, int actieveZet) {
+std::string UCI::pv(const Position& pos, Value alpha, Value beta, int activePV, int activeMove) {
 
   std::stringstream ss;
-  int elapsed = (int)Tijdscontrole.elapsed() + 1;
-  const RootMoves& rootZetten = pos.my_thread()->rootZetten;
-  int multiPV = std::min(Threads.multiPV, rootZetten.zetAantal);
-  if (Threads.speelSterkte != 100)
+  int elapsed = (int)TimeControl.elapsed() + 1;
+  const RootMoves& rootMoves = pos.my_thread()->rootMoves;
+  int multiPV = std::min(Threads.multiPV, rootMoves.moveCount);
+  if (Threads.playStrength != 100)
 	  multiPV = 1;
 
   uint64_t visited_nodes = Threads.visited_nodes();
   uint64_t tbHits = Threads.tb_hits();
-  int hashFull = elapsed > 1000 ? HoofdHash.compute_hashfull() : 0;
+  int hashFull = elapsed > 1000 ? MainHash.compute_hashfull() : 0;
 
   for (int i = 0; i < multiPV; ++i)
   {
-	  const RootMove& rootZet = rootZetten[i == actievePV ? actieveZet : i];
+	  const RootMove& rootMove = rootMoves[i == activePV ? activeMove : i];
 
-	  int iter = rootZet.diepte / MAIN_THREAD_INC;
+	  int iter = rootMove.depth / MAIN_THREAD_INC;
 	  if (iter < 1)
           continue;
 
-      Value v = i <= actievePV ? rootZet.score : rootZet.vorigeScore;
+      Value v = i <= activePV ? rootMove.score : rootMove.previousScore;
 
       bool tb = TB_RootInTB && abs(v) < EGTB_WIN_VALUE;
       v = tb ? TB_Score : v;
@@ -2414,18 +2414,18 @@ std::string UCI::pv(const Position& pos, Value alfa, Value beta, int actievePV, 
 
 	  // gebruik st->pionSleutel om maximale zoekdiepte te berekenen voor "seldepth" UCI output
 	  int selDepth = 0;
-	  PositionInfo * st = Threads.main()->rootStelling->info();
+	  PositionInfo * st = Threads.main()->rootPosition->info();
 	  for (selDepth = 0; selDepth < MAX_PLY; selDepth++)
-		  if ((st + selDepth)->pionSleutel == 0)
+		  if ((st + selDepth)->pawnKey == 0)
 			  break;
 
       ss << "info multipv " << i + 1
 		 << " depth "    << iter
          << " seldepth " << selDepth
-         << " score "    << UCI::waarde(v);
+         << " score "    << UCI::value(v);
 
-      if (!tb && i == actievePV)
-          ss << (v >= beta ? " lowerbound" : v <= alfa ? " upperbound" : "");
+      if (!tb && i == activePV)
+          ss << (v >= beta ? " lowerbound" : v <= alpha ? " upperbound" : "");
 
       ss << " time "     << elapsed
          << " nodes "    << visited_nodes
@@ -2438,11 +2438,11 @@ std::string UCI::pv(const Position& pos, Value alfa, Value beta, int actievePV, 
       ss << " pv";
 
 	  // limit the length of the pv (the final moves usually are poor anyways)
-	  int pvLength = rootZet.pv.size();
+	  int pvLength = rootMove.pv.size();
 	  if (pvLength > iter)
 		  pvLength = std::max(iter, pvLength - 4);
 	  for (int n = 0; n < pvLength; n++)
-		  ss << " " << UCI::zet(rootZet.pv[n], pos);
+		  ss << " " << UCI::move(rootMove.pv[n], pos);
   }
 
   return ss.str();
@@ -2456,13 +2456,13 @@ bool RootMove::find_ponder_move_in_tt(Position& pos)
 		return false;
 
     pos.do_move(pv[0]);
-    TTTuple* ttt = HoofdHash.find_existing(pos.sleutel() ^ pos.draw50_key());
+    TTTuple* ttt = MainHash.find_existing(pos.key() ^ pos.draw50_key());
 
     if (ttt)
     {
-        Move zet = ttt->zet(); // Local copy to be SMP safe
-		if (LegalMoveListContainsMove(pos, zet))
-			pv.add(zet);
+        Move move = ttt->move(); // Local copy to be SMP safe
+		if (LegalMoveListContainsMove(pos, move))
+			pv.add(move);
     }
 	pos.undo_move(pv[0]);
 
@@ -2472,19 +2472,19 @@ bool RootMove::find_ponder_move_in_tt(Position& pos)
 void RootMove::complete_pv_with_tt(Position& pos)
 {
 	Key64 keys[MAX_PLY], key;
-	int aantal = 0;
+	int count = 0;
 
 	assert(pv.size() == 1);
-	Move zet = pv[0];
-	keys[aantal++] = pos.sleutel();
+	Move move = pv[0];
+	keys[count++] = pos.key();
 
 	while (true)
 	{
-		pos.do_move(zet);
-		key = pos.sleutel();
+		pos.do_move(move);
+		key = pos.key();
 
 		bool repeated = false;
-		for (int i = aantal - 2; i >= 0; i -= 2)
+		for (int i = count - 2; i >= 0; i -= 2)
 			if (keys[i] == key)
 			{
 				repeated = true;
@@ -2493,15 +2493,15 @@ void RootMove::complete_pv_with_tt(Position& pos)
 		if (repeated)
 			break;
 
-		keys[aantal++] = key;
+		keys[count++] = key;
 
-		TTTuple* ttt = HoofdHash.find_existing(pos.sleutel() ^ pos.draw50_key());
+		TTTuple* ttt = MainHash.find_existing(pos.key() ^ pos.draw50_key());
 		if (!ttt)
 			break;
-		zet = ttt->zet();
-		if (!zet || !LegalMoveListContainsMove(pos, zet))
+		move = ttt->move();
+		if (!move || !LegalMoveListContainsMove(pos, move))
 			break;
-		pv.add(zet);
+		pv.add(move);
 	}
 	for (int i = pv.size(); i > 0; )
 		pos.undo_move(pv[--i]);
@@ -2512,64 +2512,64 @@ namespace
 {
 	Depth ComputeEgtbUsefulness(const Position& pos)
 	{
-		int TotAantal = pos.all_pieces_count();
-		const int WD = pos.aantal(WHITE, QUEEN);
-		const int ZD = pos.aantal(BLACK, QUEEN);
-		const int WT = pos.aantal(WHITE, ROOK);
-		const int ZT = pos.aantal(BLACK, ROOK);
-		const int WL = pos.aantal(WHITE, BISHOP);
-		const int ZL = pos.aantal(BLACK, BISHOP);
-		const int WP = pos.aantal(WHITE, KNIGHT);
-		const int ZP = pos.aantal(BLACK, KNIGHT);
-		const int WPion = pos.aantal(WHITE, PAWN);
-		const int ZPion = pos.aantal(BLACK, PAWN);
-		if (TotAantal == 4)
+		int TotalCount = pos.all_pieces_count();
+		const int WQ = pos.count(WHITE, QUEEN);
+		const int BQ = pos.count(BLACK, QUEEN);
+		const int WR = pos.count(WHITE, ROOK);
+		const int BR = pos.count(BLACK, ROOK);
+		const int WB = pos.count(WHITE, BISHOP);
+		const int BB = pos.count(BLACK, BISHOP);
+		const int WN = pos.count(WHITE, KNIGHT);
+		const int BN = pos.count(BLACK, KNIGHT);
+		const int WPawn = pos.count(WHITE, PAWN);
+		const int BPawn = pos.count(BLACK, PAWN);
+		if (TotalCount == 4)
 		{
 			if (
-				   WD == 1 && ZPion == 1 || ZD == 1 && WPion == 1  // KQKP
-				|| WT == 1 && ZPion == 1 || ZT == 1 && WPion == 1  // KRKP
-				|| WD == 1 && ZT == 1 || ZD == 1 && WT == 1  // KQKR
-				|| WPion == 1 && ZPion == 1  // KPKP
+				   WQ == 1 && BPawn == 1 || BQ == 1 && WPawn == 1  // KQKP
+				|| WR == 1 && BPawn == 1 || BR == 1 && WPawn == 1  // KRKP
+				|| WQ == 1 && BR == 1 || BQ == 1 && WR == 1  // KQKR
+				|| WPawn == 1 && BPawn == 1  // KPKP
 				)
 				return egtb_useful;
 		}
-		else if (TotAantal == 5)
+		else if (TotalCount == 5)
 		{
 			if (
-				   WD == 1 && ZD == 1 && WPion + ZPion == 1  // KQPKQ
-				|| WT == 1 && ZT == 1 && WPion + ZPion == 1  // KRPKR
-				|| WL + WP == 1 && ZL + ZP == 1 && WPion + ZPion == 1  // KBPKB, KNPKN, KBPKN, KNPKB
-				|| WP == 2 && ZPion == 1 // KNNKP wit
-				|| ZP == 2 && WPion == 1 // KNNKP zwart
-				|| WD == 1 && ZT == 1 && ZPion == 1  // KQKRP wit
-				|| ZD == 1 && WT == 1 && WPion == 1  // KQKRP zwart
-				|| WPion == 2 && ZPion == 1  // KPPKP
-				|| WPion == 1 && ZPion == 2  // KPPKP
-				|| WL + WP + ZL + ZP == 1 && WPion == 1 && ZPion == 1 // KBPKP, KNPKP
+				   WQ == 1 && BQ == 1 && WPawn + BPawn == 1  // KQPKQ
+				|| WR == 1 && BR == 1 && WPawn + BPawn == 1  // KRPKR
+				|| WB + WN == 1 && BB + BN == 1 && WPawn + BPawn == 1  // KBPKB, KNPKN, KBPKN, KNPKB
+				|| WN == 2 && BPawn == 1 // KNNKP wit
+				|| BN == 2 && WPawn == 1 // KNNKP zwart
+				|| WQ == 1 && BR == 1 && BPawn == 1  // KQKRP wit
+				|| BQ == 1 && WR == 1 && WPawn == 1  // KQKRP zwart
+				|| WPawn == 2 && BPawn == 1  // KPPKP
+				|| WPawn == 1 && BPawn == 2  // KPPKP
+				|| WB + WN + BB + BN == 1 && WPawn == 1 && BPawn == 1 // KBPKP, KNPKP
 				)
 				return egtb_useful;
 		}
-		else if (TotAantal == 6)
+		else if (TotalCount == 6)
 		{
 			if (
-				   WD == 1 && ZD == 1 && WPion + ZPion == 2  // KQPKQP, KQPPKQ
-				|| WT == 1 && ZT == 1 && WPion + ZPion == 2  // KRPKRP, KRPPKR
-				|| WL + WP == 1 && ZL + ZP == 1 && WPion + ZPion == 2  // KBPPKB, KBPKBP, KNPPKN, KNPKNP, KBPPKN, KBPKNP, KNPPKB
-				|| (WT == 1 && ZL + ZP == 1 || WL + WP == 1 && ZT == 1) && WPion == 1 && ZPion == 1  // KRPKBP, KRPKNP
-				|| WD == 1 && ZT == 1 && ZPion == 2  // KQKRPP wit
-				|| ZD == 1 && WT == 1 && WPion == 2  // KQKRPP zwart
-				|| WPion == 2 && ZPion == 2  // KPPKPP
-				|| WD == 1 && ZL == 1 && ZP == 1 && ZPion == 1  // KQKBNP wit
-				|| ZD == 1 && WL == 1 && WP == 1 && WPion == 1  // KQKBNP wit
+				   WQ == 1 && BQ == 1 && WPawn + BPawn == 2  // KQPKQP, KQPPKQ
+				|| WR == 1 && BR == 1 && WPawn + BPawn == 2  // KRPKRP, KRPPKR
+				|| WB + WN == 1 && BB + BN == 1 && WPawn + BPawn == 2  // KBPPKB, KBPKBP, KNPPKN, KNPKNP, KBPPKN, KBPKNP, KNPPKB
+				|| (WR == 1 && BB + BN == 1 || WB + WN == 1 && BR == 1) && WPawn == 1 && BPawn == 1  // KRPKBP, KRPKNP
+				|| WQ == 1 && BR == 1 && BPawn == 2  // KQKRPP wit
+				|| BQ == 1 && WR == 1 && WPawn == 2  // KQKRPP zwart
+				|| WPawn == 2 && BPawn == 2  // KPPKPP
+				|| WQ == 1 && BB == 1 && BN == 1 && BPawn == 1  // KQKBNP wit
+				|| BQ == 1 && WB == 1 && WN == 1 && WPawn == 1  // KQKBNP wit
 				)
 				return egtb_useful;
 		}
 		return egtb_not_useful;
 	}
 
-	void FilterRootMoves(Position& pos, RootMoves& rootZetten)
+	void FilterRootMoves(Position& pos, RootMoves& rootMoves)
 	{
-		int aantal_stukken = pos.all_pieces_count();
+		int num_pieces = pos.all_pieces_count();
 
 		// init de st->ply waarden (nodig voor juiste matwaarden)
 		PositionInfo* st = pos.info();
@@ -2577,12 +2577,12 @@ namespace
 			(st + n)->ply = n + 1;
 
 		TB_Score = NO_VALUE;
-		if (aantal_stukken <= EGTB::MaxPieces_dtm)
+		if (num_pieces <= EGTB::MaxPieces_dtm)
 			TB_Score = EGTB::EGTB_probe_dtm(pos, -MATE_VALUE, MATE_VALUE);
-		if (TB_Score == NO_VALUE && aantal_stukken <= EGTB::MaxPieces_dtz)
+		if (TB_Score == NO_VALUE && num_pieces <= EGTB::MaxPieces_dtz)
 			TB_Score = EGTB::EGTB_probe_dtz(pos, -MATE_VALUE, MATE_VALUE);
-		bool TB_afstand_gekend = TB_Score != NO_VALUE;
-		if (TB_Score == NO_VALUE && aantal_stukken <= EGTB::MaxPieces_wdl)
+		bool TB_distance_known = TB_Score != NO_VALUE;
+		if (TB_Score == NO_VALUE && num_pieces <= EGTB::MaxPieces_wdl)
 			TB_Score = EGTB::EGTB_probe_wdl(pos, -MATE_VALUE, MATE_VALUE);
 		
 		TB_RootInTB = TB_Score != NO_VALUE;
@@ -2594,20 +2594,20 @@ namespace
 			// verloren stelling, doe een normale Search
 			TB_Cardinality = 0;
 		}
-		else if (TB_Score > EGTB_WIN_VALUE && TB_afstand_gekend)
+		else if (TB_Score > EGTB_WIN_VALUE && TB_distance_known)
 		{
 			// winnende stelling -> kies de zet met de laagste DTM of DTZ
-			Value beste_waarde = -HIGHEST_VALUE;
-			int beste_index = -1;
+			Value best_value = -HIGHEST_VALUE;
+			int best_index = -1;
 
-			for (int i = 0; i < rootZetten.zetAantal; i++)
+			for (int i = 0; i < rootMoves.moveCount; i++)
 			{
-				Move zet = rootZetten[i].pv[0];
-				pos.do_move(zet);
-				if (!pos.info()->zetHerhaling)
+				Move move = rootMoves[i].pv[0];
+				pos.do_move(move);
+				if (!pos.info()->moveRepetition)
 				{
 					Value EGTB_score;
-					if (aantal_stukken <= EGTB::MaxPieces_dtm)
+					if (num_pieces <= EGTB::MaxPieces_dtm)
 						EGTB_score = EGTB::EGTB_probe_dtm(pos, -MATE_VALUE, MATE_VALUE);
 					else if (pos.fifty_moves_counter() == 0)
 					{
@@ -2622,47 +2622,47 @@ namespace
 						//	&& Heeft_ZetHerhaling(pos))
 						//	EGTB_score = REMISE_WAARDE;
 					}
-					if (EGTB_score != NO_VALUE && -EGTB_score > beste_waarde)
+					if (EGTB_score != NO_VALUE && -EGTB_score > best_value)
 					{
-						beste_waarde = -EGTB_score;
-						beste_index = i;
+						best_value = -EGTB_score;
+						best_index = i;
 					}
 				}
-				pos.undo_move(zet);
+				pos.undo_move(move);
 			}
 
-			if (beste_waarde != -HIGHEST_VALUE)
+			if (best_value != -HIGHEST_VALUE)
 			{
-				RootMove rootZet = rootZetten[beste_index];
-				rootZet.score = beste_waarde;
-				rootZetten.zetAantal = 0;
-				rootZetten.add(rootZet);
+				RootMove rootMove = rootMoves[best_index];
+				rootMove.score = best_value;
+				rootMoves.moveCount = 0;
+				rootMoves.add(rootMove);
 				TB_Cardinality = 0;
 			}
 		}
 		else
 		{
 			// behoud enkel zetten die dezelfde uitkomst behouden als in de root
-			int aantal = 0;
-			for (int i = 0; i < rootZetten.zetAantal; i++)
+			int count = 0;
+			for (int i = 0; i < rootMoves.moveCount; i++)
 			{
-				Move zet = rootZetten[i].pv[0];
-				pos.do_move(zet);
+				Move move = rootMoves[i].pv[0];
+				pos.do_move(move);
 
 				Value EGTB_score = NO_VALUE;
-				if (pos.info()->zetHerhaling)
+				if (pos.info()->moveRepetition)
 					EGTB_score = DRAW_VALUE;
-				else if (aantal_stukken <= EGTB::MaxPieces_dtm)
+				else if (num_pieces <= EGTB::MaxPieces_dtm)
 					EGTB_score = EGTB::EGTB_probe_dtm(pos, -MATE_VALUE, MATE_VALUE);
 				if (EGTB_score == NO_VALUE)
 				{
-					if (TB_afstand_gekend)
+					if (TB_distance_known)
 						EGTB_score = EGTB::EGTB_probe_dtz(pos, -MATE_VALUE, MATE_VALUE);
 					else
 						EGTB_score = EGTB::EGTB_probe_wdl(pos, -MATE_VALUE, MATE_VALUE);
 				}
 
-				pos.undo_move(zet);
+				pos.undo_move(move);
 
 				if (EGTB_score != NO_VALUE &&
 					((TB_Score > EGTB_WIN_VALUE && -EGTB_score < EGTB_WIN_VALUE)
@@ -2671,11 +2671,11 @@ namespace
 					// verwijder deze zet
 				}
 				else
-					rootZetten.zetten[aantal++] = rootZetten.zetten[i];
+					rootMoves.moves[count++] = rootMoves.moves[i];
 			}
-			if (aantal > 0)
+			if (count > 0)
 			{
-				rootZetten.zetAantal = aantal;
+				rootMoves.moveCount = count;
 				TB_Cardinality = 0;
 			}
 		}

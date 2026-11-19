@@ -28,29 +28,29 @@ const uint8_t UsageMask   = 0xfb;
 
 struct TTTuple 
 {
-	Move zet() const { return (Move)zet16; }
-	Value waarde() const { return (Value)waarde16; }
+	Move move() const { return (Move)move16; }
+	Value value() const { return (Value)value16; }
 	Value eval() const { return (Value)eval16; }
-	Depth diepte() const { return Depth(diepte8 * int(PLY) + PLY - 1); }
-	TTFlags limiet() const { return (TTFlags)(vlaggen8 & EXACT_VALUE); }
-	TTFlags dreiging() const { return (TTFlags)(vlaggen8 & ThreatMask); }
+	Depth depth() const { return Depth(depth8 * int(PLY) + PLY - 1); }
+	TTFlags bound() const { return (TTFlags)(flags8 & EXACT_VALUE); }
+	TTFlags threat() const { return (TTFlags)(flags8 & ThreatMask); }
 
-	void save(Key64 k, Value v, uint8_t vlaggen, Depth d, Move z, Value evaluatie, uint8_t gen)
+	void save(Key64 k, Value v, uint8_t flags, Depth d, Move z, Value evaluation, uint8_t gen)
 	{
 		int dd = d / PLY;
 		uint16_t k16 = k >> 48;
-		if (z || k16 != sleutel16)
-			zet16 = (uint16_t)z;
+		if (z || k16 != key16)
+			move16 = (uint16_t)z;
 
-		if (k16 != sleutel16
-			|| dd > diepte8 - 4
-			|| (vlaggen & EXACT_VALUE) == EXACT_VALUE)
+		if (k16 != key16
+			|| dd > depth8 - 4
+			|| (flags & EXACT_VALUE) == EXACT_VALUE)
 		{
-			sleutel16 = k16;
-			waarde16 = (int16_t)v;
-			eval16 = (int16_t)evaluatie;
-			vlaggen8 = (uint8_t)(gen + vlaggen);
-			diepte8 = (int8_t)dd;
+			key16 = k16;
+			value16 = (int16_t)v;
+			eval16 = (int16_t)evaluation;
+			flags8 = (uint8_t)(gen + flags);
+			depth8 = (int8_t)dd;
 		}
 	}
 
@@ -58,12 +58,12 @@ private:
 	friend class TranspositionTable;
 
 	// 10 bytes
-	uint16_t sleutel16;
-	int8_t   diepte8;
-	uint8_t  vlaggen8;
-	int16_t  waarde16;
+	uint16_t key16;
+	int8_t   depth8;
+	uint8_t  flags8;
+	int16_t  value16;
 	int16_t  eval16;
-	uint16_t zet16;
+	uint16_t move16;
 };
 
 
@@ -81,37 +81,37 @@ class TranspositionTable
 	static_assert(CacheLineSize % sizeof(Cluster) == 0, "Cluster size incorrect");
 
 public:
-	~TranspositionTable() { free_large_page_mem(tabel); }
-	void new_generation() { generatie8 = (generatie8 + 8) & GenerationMask; }
-	uint8_t generatie() const { return generatie8; }
+	~TranspositionTable() { free_large_page_mem(table); }
+	void new_generation() { generation8 = (generation8 + 8) & GenerationMask; }
+	uint8_t generation() const { return generation8; }
 	int tuple_replace_value(TTTuple* t) const;
-	TTTuple* find_existing(const Key64 sleutel) const;
-	TTTuple* find_replace(const Key64 sleutel) const;
+	TTTuple* find_existing(const Key64 key) const;
+	TTTuple* find_replace(const Key64 key) const;
 	int compute_hashfull() const;
 	void change_size(size_t mbSize);
 	void clear();
-	bool is_entry_in_use(const Key64 sleutel, Depth diepte) const;
-	void mark_entry_in_use(const Key64 sleutel, Depth diepte, uint8_t waarde);
+	bool is_entry_in_use(const Key64 key, Depth depth) const;
+	void mark_entry_in_use(const Key64 key, Depth depth, uint8_t value);
 
 	inline TTTuple* tuple(const Key64 key) const
 	{
 		//return &tabel[(size_t)key & (clusterAantal - 1)].entry[0];
-		return (TTTuple*)((char *)tabel + (key & clusterMask));
+		return (TTTuple*)((char *)table + (key & clusterMask));
 	}
-	inline void prefetch_tuple(const Key64 sleutel) const
+	inline void prefetch_tuple(const Key64 key) const
 	{
-		prefetch(tuple(sleutel));
+		prefetch(tuple(key));
 	}
 	bool save_to_file(string uci_hash_file);
 	bool load_from_file(string uci_hash_file);
 
 private:
-	size_t clusterAantal;
+	size_t clusterCount;
 	size_t clusterMask;
-	Cluster* tabel;
-	uint8_t generatie8;
+	Cluster* table;
+	uint8_t generation8;
 };
 
-extern TranspositionTable HoofdHash;
+extern TranspositionTable MainHash;
 
 #endif // #ifndef MOVE_HASH_H

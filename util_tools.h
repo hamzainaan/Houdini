@@ -41,15 +41,15 @@ inline TimePoint now()
 template<class Tuple, int Size>
 struct HashTable
 {
-	Tuple* operator[](Key64 sleutel)
+	Tuple* operator[](Key64 key)
 	{
 		static_assert(sizeof(Tuple) == 32 || sizeof(Tuple) == 128, "Verkeerde grootte");
-		return (Tuple*)((char *)tabel + ((uint32_t)sleutel & ((Size - 1) * sizeof(Tuple))));
+		return (Tuple*)((char *)table + ((uint32_t)key & ((Size - 1) * sizeof(Tuple))));
 		//return tabel + ((uint32_t)sleutel & (Grootte - 1));
 	}
 
 private:
-	CACHE_ALIGN Tuple tabel[Size];
+	CACHE_ALIGN Tuple table[Size];
 };
 
 

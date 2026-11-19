@@ -41,21 +41,21 @@ namespace UCI
 
 		int min, max;
 		int index;
-		std::string defaultWaarde, waarde, type;
+		std::string defaultValue, value, type;
 		OnChange on_change;
 	};
 
 	void initialize(UciOptionsMap&);
 	void mainLoop(int argc, char* argv[]);
-	std::string waarde(Value v);
-	std::string veld(Square veld);
-	std::string zet(Move zet, const Position& pos);
-	std::string pv(const Position& pos, Value alfa, Value beta, int actievePV, int actieveZet);
+	std::string value(Value v);
+	std::string square(Square square);
+	std::string move(Move move, const Position& pos);
+	std::string pv(const Position& pos, Value alpha, Value beta, int activePV, int activeMove);
 	Move move_from_string(const Position& pos, std::string& str);
 	int strength_for_elo(int elo);
 }
 
-extern UCI::UciOptionsMap UciOpties;
+extern UCI::UciOptionsMap UciOptions;
 extern int TUNE_1, TUNE_2, TUNE_3, TUNE_4, TUNE_5, TUNE_6, TUNE_7, TUNE_8, TUNE_9, TUNE_10;
 extern int TUNE_11, TUNE_12, TUNE_13, TUNE_14, TUNE_15, TUNE_16, TUNE_17, TUNE_18, TUNE_19, TUNE_20;
 

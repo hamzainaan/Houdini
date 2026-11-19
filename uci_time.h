@@ -21,28 +21,28 @@ struct TimeLimit
 		return !(mate | movetime | depth | nodes | infinite);
 	}
 
-	TimePoint startTijd;
+	TimePoint startTime;
 	int time[COLOR_N], inc[COLOR_N], movestogo, depth, movetime, mate, infinite, ponder;
 	uint64_t nodes;
-	MaxMoveList zoekZetten;
+	MaxMoveList searchMoves;
 };
 
 
 class TimeManagement 
 {
 public:
-	void initialize(TimeLimit& tijdLimiet, Color ik, int ply);
-	int64_t optimum() const { return optimaleTijd; }
-	int64_t maximum() const { return maximumTijd; }
+	void initialize(TimeLimit& timeLimit, Color us, int ply);
+	int64_t optimum() const { return optimalTime; }
+	int64_t maximum() const { return maximumTime; }
 	int64_t elapsed() const;
 	void adjustment_after_ponderhit();
 
 private:
-	TimePoint startTijd;
-	int64_t optimaleTijd;
-	int64_t maximumTijd;
+	TimePoint startTime;
+	int64_t optimalTime;
+	int64_t maximumTime;
 };
 
-extern TimeManagement Tijdscontrole;
+extern TimeManagement TimeControl;
 
 #endif // #ifndef UCI_TIME_H

@@ -19,25 +19,25 @@ class Endgames
 
 	typedef std::map<Key64, int> FunctionIndexMap;
 
-	int waarde_aantal, factor_aantal;
-	FunctionIndexMap mapWaarde;
-	FunctionIndexMap mapSchaalFactor;
+	int value_count, factor_count;
+	FunctionIndexMap mapValue;
+	FunctionIndexMap mapScaleFactor;
 public:
 	Endgames();
 	void initialize();
 
 	int probe_value(Key64 key);
-	int probe_scalefactor(Key64 key, Color& sterkeZijde);
+	int probe_scalefactor(Key64 key, Color& strongSide);
 
-	endgame_value_fx waarde_functies[16];
-	endgame_scalefactor_fx factor_functies[32];
+	endgame_value_fx value_functions[16];
+	endgame_scalefactor_fx factor_functions[32];
 };
 
-template <Color sterkeZijde> Value endgameValue_KXK(const Position& pos);
-template <Color sterkeZijde> ScaleFactor endgameScaleFactor_KBPsK(const Position& pos);
-template <Color sterkeZijde> ScaleFactor endgameScaleFactor_KQKRPs(const Position& pos);
-template <Color sterkeZijde> ScaleFactor endgameScaleFactor_KPsK(const Position& pos);
-template <Color sterkeZijde> ScaleFactor endgameScaleFactor_KPKP(const Position& pos);
+template <Color strongSide> Value endgameValue_KXK(const Position& pos);
+template <Color strongSide> ScaleFactor endgameScaleFactor_KBPsK(const Position& pos);
+template <Color strongSide> ScaleFactor endgameScaleFactor_KQKRPs(const Position& pos);
+template <Color strongSide> ScaleFactor endgameScaleFactor_KPsK(const Position& pos);
+template <Color strongSide> ScaleFactor endgameScaleFactor_KPKP(const Position& pos);
 
 
 #endif // #ifndef EVAL_ENDGAMES_H

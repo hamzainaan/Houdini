@@ -22,36 +22,36 @@ typedef PieceSquareStats<3*8192, 3*8192> CounterMoveValues;
 struct RootMove
 {
 	RootMove() {}
-	RootMove(Move zet) { pv.zetNummer = 1; pv.zetten[0] = zet; }
+	RootMove(Move move) { pv.moveNumber = 1; pv.moves[0] = move; }
 
-	bool operator<(const RootMove& rootZet) const { return rootZet.score < score; }
-	bool operator==(const Move& zet) const { return pv[0] == zet; }
+	bool operator<(const RootMove& rootMove) const { return rootMove.score < score; }
+	bool operator==(const Move& move) const { return pv[0] == move; }
 	bool find_ponder_move_in_tt(Position& pos);
 	void complete_pv_with_tt(Position& pos);
 
-	Depth diepte = DEPTH_0;
+	Depth depth = DEPTH_0;
 	Value score = -HIGHEST_VALUE;
-	Value vorigeScore = -HIGHEST_VALUE;
-	Value startWaarde;
+	Value previousScore = -HIGHEST_VALUE;
+	Value startValue;
 	PrincipalVariation pv;
 };
 
 struct RootMoves
 {
-	RootMoves() : zetAantal(0) {}
+	RootMoves() : moveCount(0) {}
 
-	int zetAantal, dummy;
-	RootMove zetten[MAX_MOVES];
+	int moveCount, dummy;
+	RootMove moves[MAX_MOVES];
 
-	void add(RootMove rootZet) { zetten[zetAantal++] = rootZet; }
-	RootMove& operator[](int index) { return zetten[index]; }
-	const RootMove& operator[](int index) const { return zetten[index]; }
-	void clear() { zetAantal = 0; }
+	void add(RootMove rootMove) { moves[moveCount++] = rootMove; }
+	RootMove& operator[](int index) { return moves[index]; }
+	const RootMove& operator[](int index) const { return moves[index]; }
+	void clear() { moveCount = 0; }
 
-	int find(Move zet)
+	int find(Move move)
 	{
-		for (int i = 0; i < zetAantal; i++)
-			if (zetten[i].pv[0] == zet)
+		for (int i = 0; i < moveCount; i++)
+			if (moves[i].pv[0] == move)
 				return i;
 		return -1;
 	}
@@ -59,14 +59,14 @@ struct RootMoves
 
 struct SignalsType
 {
-	std::atomic_bool stopAnalyse, stopBijPonderhit;
+	std::atomic_bool stopAnalysis, stopOnPonderhit;
 };
 
 
 namespace Search
 {
-	extern SignalsType Signalen;
-	extern TimeLimit Klok;
+	extern SignalsType Signals;
+	extern TimeLimit Clock;
 	extern bool Running;
 
 	void initialize();
@@ -74,11 +74,11 @@ namespace Search
 	void adjust_time_after_ponderhit();
 	void export_table();
 	void import_table();
-	extern uint8_t LMReducties[2][2][64 * (int)PLY][64];
+	extern uint8_t LMReductions[2][2][64 * (int)PLY][64];
 }
 
 
-typedef Value(*EGTB_probe_fx)(Position& pos, Value alfa, Value beta);
+typedef Value(*EGTB_probe_fx)(Position& pos, Value alpha, Value beta);
 
 namespace EGTB
 {

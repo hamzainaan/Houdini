@@ -30,18 +30,18 @@
 #ifdef TRACE_LOG
 void open_tracefile();
 void close_tracefile();
-void trace_do_move(int zet);
+void trace_do_move(int move);
 void trace_cancel_move();
-void trace_eval(int waarde);
-void trace_msg(const char *MSG, int diepte, int alfa, int beta, bool force = false);
+void trace_eval(int value);
+void trace_msg(const char *MSG, int depth, int alpha, int beta, bool force = false);
 void trace_reset_indent();
 #else
 inline void open_tracefile() {}
 inline void close_tracefile() {}
-inline void trace_do_move(int zet) {}
+inline void trace_do_move(int move) {}
 inline void trace_cancel_move() {}
-inline void trace_eval(int waarde) {}
-inline void trace_msg(const char *MSG, int diepte, int alfa, int beta, bool force = false) {}
+inline void trace_eval(int value) {}
+inline void trace_msg(const char *MSG, int depth, int alpha, int beta, bool force = false) {}
 #endif
 
 //#define TRACE_TM
@@ -191,7 +191,7 @@ enum Piece : uint8_t
 	PIECE_N = 16
 };
 
-const MaterialValue MateriaalWaarden[PIECE_N] =
+const MaterialValue MaterialValues[PIECE_N] =
 {
 	MATL_0, MATL_0, MATL_0, MATL_KNIGHT, MATL_BISHOP, MATL_ROOK, MATL_QUEEN, MATL_0,
 	MATL_0, MATL_0, MATL_0, MATL_KNIGHT, MATL_BISHOP, MATL_ROOK, MATL_QUEEN, MATL_0
@@ -199,7 +199,7 @@ const MaterialValue MateriaalWaarden[PIECE_N] =
 
 inline Value ValueFromMaterial(MaterialValue v) { return Value(16 * (int)v); }
 
-const int StukFase[PIECE_N] =
+const int PiecePhase[PIECE_N] =
 {
 	0, 0, 0, 1, 1, 3, 6, 0,
 	0, 0, 0, 1, 1, 3, 6, 0
@@ -348,14 +348,14 @@ inline Score score_muldiv(Score score, int mul, int div)
 	return remake_score(mg_value(score) * mul / div, eg_value(score) * mul / div);
 }
 
-inline Color operator~(Color kleur)
+inline Color operator~(Color color)
 {
-	return Color(kleur ^ 1);
+	return Color(color ^ 1);
 }
 
-inline Square operator~(Square veld)
+inline Square operator~(Square square)
 {
-	return Square(veld ^ 56);
+	return Square(square ^ 56);
 }
 
 inline Value mate_in(int ply)
@@ -373,45 +373,45 @@ inline Square make_square(File f, Rank r)
 	return Square((r << 3) + f);
 }
 
-inline Piece make_piece(Color kleur, PieceType stuk)
+inline Piece make_piece(Color color, PieceType piece)
 {
-	return Piece((kleur << 3) + stuk);
+	return Piece((color << 3) + piece);
 }
 
-inline PieceType piece_type(Piece stuk)
+inline PieceType piece_type(Piece piece)
 {
-	return PieceType(stuk & 7);
+	return PieceType(piece & 7);
 }
 
-inline Color piece_color(Piece stuk)
+inline Color piece_color(Piece piece)
 {
-	assert(stuk != NO_PIECE);
-	return Color(stuk >> 3);
+	assert(piece != NO_PIECE);
+	return Color(piece >> 3);
 }
 
-inline File lijn(Square veld)
+inline File file_of(Square square)
 {
-	return File(veld & 7);
+	return File(square & 7);
 }
 
-inline Rank rij(Square veld)
+inline Rank rank_of(Square square)
 {
-	return Rank(veld >> 3);
+	return Rank(square >> 3);
 }
 
-inline Square relative_square(Color kleur, Square veld)
+inline Square relative_square(Color color, Square square)
 {
-	return Square(veld ^ (kleur * 56));
+	return Square(square ^ (color * 56));
 }
 
-inline Rank relative_rank(Color kleur, Rank r)
+inline Rank relative_rank(Color color, Rank r)
 {
-	return Rank(r ^ (kleur * 7));
+	return Rank(r ^ (color * 7));
 }
 
-inline Rank relative_rank(Color kleur, Square veld)
+inline Rank relative_rank(Color color, Square square)
 {
-	return relative_rank(kleur, rij(veld));
+	return relative_rank(color, rank_of(square));
 }
 
 inline bool different_color(Square v1, Square v2)
@@ -420,82 +420,82 @@ inline bool different_color(Square v1, Square v2)
 	return ((v >> 3) ^ v) & 1;
 }
 
-inline Square pawn_forward(Color kleur)
+inline Square pawn_forward(Color color)
 {
-	return kleur == WHITE ? UP : DOWN;
+	return color == WHITE ? UP : DOWN;
 }
 
-inline Square square_in_front(Color kleur, Square veld)
+inline Square square_in_front(Color color, Square square)
 {
-	return kleur == WHITE ? veld + UP : veld + DOWN;
+	return color == WHITE ? square + UP : square + DOWN;
 }
 
-inline Square square_behind(Color kleur, Square veld)
+inline Square square_behind(Color color, Square square)
 {
-	return kleur == WHITE ? veld - UP : veld - DOWN;
+	return color == WHITE ? square - UP : square - DOWN;
 }
 
-inline Square from_square(Move zet)
+inline Square from_square(Move move)
 {
-	return Square((zet >> 6) & 0x3F);
+	return Square((move >> 6) & 0x3F);
 }
 
-inline Square to_square(Move zet)
+inline Square to_square(Move move)
 {
-	return Square(zet & 0x3F);
+	return Square(move & 0x3F);
 }
 
-inline MoveType move_type(Move zet)
+inline MoveType move_type(Move move)
 {
-	return MoveType(zet & (15 << 12));
+	return MoveType(move & (15 << 12));
 }
 
-inline PieceType promotion_piece(Move zet)
+inline PieceType promotion_piece(Move move)
 {
-	return PieceType(KNIGHT + (((zet >> 12) & 15) - (PROMOTION_N >> 12)));
+	return PieceType(KNIGHT + (((move >> 12) & 15) - (PROMOTION_N >> 12)));
 }
 
-inline PieceType piece_of_move(Move zet)
+inline PieceType piece_of_move(Move move)
 {
-	assert(zet < Move(CASTLING));
-	return PieceType((zet >> 12) & 7);
+	assert(move < Move(CASTLING));
+	return PieceType((move >> 12) & 7);
 }
 
-inline Move make_move(PieceType stuk, Square van, Square naar)
+inline Move make_move(PieceType piece, Square from, Square to)
 {
 	//return Zet(naar + (van << 6) + (stuk << 12));
-	return Move(naar + (van << 6));
+	return Move(to + (from << 6));
 }
 
-inline Move make_move(MoveType type, Square van, Square naar)
+inline Move make_move(MoveType type, Square from, Square to)
 {
-	return Move(naar + (van << 6) + type);
+	return Move(to + (from << 6) + type);
 }
 
-inline bool is_ok(Move zet)
+inline bool is_ok(Move move)
 {
-	return zet != NO_MOVE && zet != NULL_MOVE;
+	return move != NO_MOVE && move != NULL_MOVE;
 }
 
 template <int Capacity>
 struct FixedMoveList
 {
-	int zetNummer;
-	Move zetten[Capacity];
+	int moveNumber;
+	Move moves[Capacity];
 
-	FixedMoveList() : zetNummer(0) {}
-	void add(Move zet) { if (zetNummer < Capacity) zetten[zetNummer++] = zet; }
-	Move& operator[](int index) { return zetten[index]; }
-	const Move& operator[](int index) const { return zetten[index]; }
-	int size() const { return zetNummer; }
-	void resize(int newSize) { zetNummer = newSize; }
-	void clear() { zetNummer = 0; }
-	bool empty() { return zetNummer == 0; }
+	FixedMoveList() : moveNumber(0) {}
+	void add(Move move) { if (moveNumber < Capacity) moves[moveNumber++] = move; }
+	Move& operator[](int index) { return moves[index]; }
+	const Move& operator[](int index) const { return moves[index]; }
+	int size() const { return moveNumber; }
+	void resize(int newSize) { moveNumber = newSize; }
+	void clear() { moveNumber = 0; }
+	bool empty() { return moveNumber == 0; }
 
-	int find(Move zet)
+	int find(Move move)
 	{
-		for (int i = 0; i < zetNummer; i++)
-			if (zetten[i] == zet)
+		for (int i = 0; i < moveNumber; i++)
+			if (moves[i] == move)
 				return i;
 		return -1;
 	}

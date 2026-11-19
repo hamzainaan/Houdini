@@ -19,9 +19,9 @@ void read_license_tables();
 int main(int argc, char* argv[])
 {
 	std::cout << engine_info() << std::endl;
-	Threads.programmaStart = now();
+	Threads.programStart = now();
 
-	UCI::initialize(UciOpties);
+	UCI::initialize(UciOptions);
 	PST::initialize();
 	Bitboards::initialize();
 	Position::initialize();
@@ -46,7 +46,7 @@ int main(int argc, char* argv[])
 #endif
 
 	Threads.initialize();
-	HoofdHash.change_size(UciOpties["Hash"]);
+	MainHash.change_size(UciOptions["Hash"]);
 	UCI::mainLoop(argc, argv);
 
 	Threads.exit();

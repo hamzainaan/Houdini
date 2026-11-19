@@ -9,14 +9,14 @@
 uint8_t PopCnt16[1 << 16];
 #endif
 
-int8_t VeldAfstand[SQUARE_N][SQUARE_N];
+int8_t SquareDistance[SQUARE_N][SQUARE_N];
 
-Bitboard TorenMask[SQUARE_N];
-Bitboard LoperMask[SQUARE_N];
-Bitboard* LoperAanvalTabel[64];
-Bitboard* TorenAanvalTabel[64];
+Bitboard RookMask[SQUARE_N];
+Bitboard BishopMask[SQUARE_N];
+Bitboard* BishopAttackTable[64];
+Bitboard* RookAttackTable[64];
 
-const Bitboard LoperMagics[64] =
+const Bitboard BishopMagics[64] =
 {
 	0x007bfeffbfeffbffull, 0x003effbfeffbfe08ull, 0x0000401020200000ull,
 	0x0000200810000000ull, 0x0000110080000000ull, 0x0000080100800000ull,
@@ -42,7 +42,7 @@ const Bitboard LoperMagics[64] =
 	0x007ffdff7fdff7fdull
 };
 
-const Bitboard TorenMagics[64] =
+const Bitboard RookMagics[64] =
 {
 	0x00a801f7fbfeffffull, 0x00180012000bffffull, 0x0040080010004004ull,
 	0x0040040008004002ull, 0x0040020004004001ull, 0x0020008020010202ull,
@@ -69,23 +69,23 @@ const Bitboard TorenMagics[64] =
 };
 
 
-Bitboard bbVeld[SQUARE_N];
-Bitboard bbAangrenzendeLijnen[FILE_N];
-Bitboard bbRijenVoorwaarts[COLOR_N][RANK_N];
-Bitboard bbTussen[SQUARE_N][SQUARE_N];
-Bitboard bbVerbinding[SQUARE_N][SQUARE_N];
-Bitboard bbVoorwaarts[COLOR_N][SQUARE_N];
-Bitboard VrijpionMask[COLOR_N][SQUARE_N];
-Bitboard PionAanvalBereik[COLOR_N][SQUARE_N];
-Bitboard PionAanval[COLOR_N][SQUARE_N];
-Bitboard LegeAanval[PIECE_TYPE_N][SQUARE_N];
-Bitboard KoningZone[SQUARE_N];
+Bitboard bbSquare[SQUARE_N];
+Bitboard bbAdjacentFiles[FILE_N];
+Bitboard bbRanksForward[COLOR_N][RANK_N];
+Bitboard bbBetween[SQUARE_N][SQUARE_N];
+Bitboard bbConnection[SQUARE_N][SQUARE_N];
+Bitboard bbForward[COLOR_N][SQUARE_N];
+Bitboard PassedPawnMask[COLOR_N][SQUARE_N];
+Bitboard PawnAttackRange[COLOR_N][SQUARE_N];
+Bitboard PawnAttack[COLOR_N][SQUARE_N];
+Bitboard EmptyAttack[PIECE_TYPE_N][SQUARE_N];
+Bitboard KingZone[SQUARE_N];
 
 namespace
 {
-	Bitboard MagicAanvalT[102400];
+	Bitboard MagicAttackR[102400];
 #ifdef USE_PEXT
-	Bitboard MagicAanvalL[5248];
+	Bitboard MagicAttackB[5248];
 #endif
 
 	static const int Local_BishopMagicIndex[64] =
@@ -218,83 +218,83 @@ void Bitboards::initialize()
 		PopCnt16[i] = (uint8_t)popcount16(i);
 #endif
 
-	for (Square veld = SQ_A1; veld <= SQ_H8; ++veld)
-		bbVeld[veld] = 1ULL << veld;
+	for (Square square = SQ_A1; square <= SQ_H8; ++square)
+		bbSquare[square] = 1ULL << square;
 
 #ifdef NO_BSF
-	for (Square veld = SQ_A1; veld <= SQ_H8; ++veld)
-		BSFTable[bsf_index(bbVeld[s])] = veld;
+	for (Square square = SQ_A1; square <= SQ_H8; ++square)
+		BSFTable[bsf_index(bbSquare[s])] = square;
 	for (Bitboard b = 2; b < 256; ++b)
 		MSBTable[b] = MSBTable[b - 1] + !more_than_one(b);
 #endif
 
-	for (File lijn = FILE_A; lijn <= FILE_H; ++lijn)
-		bbAangrenzendeLijnen[lijn] = (lijn > FILE_A ? bbLijn[lijn - 1] : 0) | (lijn < FILE_H ? bbLijn[lijn + 1] : 0);
+	for (File file = FILE_A; file <= FILE_H; ++file)
+		bbAdjacentFiles[file] = (file > FILE_A ? bbFile[file - 1] : 0) | (file < FILE_H ? bbFile[file + 1] : 0);
 
-	for (Rank rij = RANK_1; rij < RANK_8; ++rij)
-		bbRijenVoorwaarts[WHITE][rij] = ~(bbRijenVoorwaarts[BLACK][rij + 1] = bbRijenVoorwaarts[BLACK][rij] | bbRij[rij]);
+	for (Rank rank = RANK_1; rank < RANK_8; ++rank)
+		bbRanksForward[WHITE][rank] = ~(bbRanksForward[BLACK][rank + 1] = bbRanksForward[BLACK][rank] | bbRank[rank]);
 
-	for (Color kleur = WHITE; kleur <= BLACK; ++kleur)
-		for (Square veld = SQ_A1; veld <= SQ_H8; ++veld)
+	for (Color color = WHITE; color <= BLACK; ++color)
+		for (Square square = SQ_A1; square <= SQ_H8; ++square)
 		{
-			bbVoorwaarts[kleur][veld] = bbRijenVoorwaarts[kleur][rij(veld)] & bbLijn[lijn(veld)];
-			PionAanvalBereik[kleur][veld] = bbRijenVoorwaarts[kleur][rij(veld)] & bbAangrenzendeLijnen[lijn(veld)];
-			VrijpionMask[kleur][veld] = bbVoorwaarts[kleur][veld] | PionAanvalBereik[kleur][veld];
+			bbForward[color][square] = bbRanksForward[color][rank_of(square)] & bbFile[file_of(square)];
+			PawnAttackRange[color][square] = bbRanksForward[color][rank_of(square)] & bbAdjacentFiles[file_of(square)];
+			PassedPawnMask[color][square] = bbForward[color][square] | PawnAttackRange[color][square];
 		}
 
-	for (Square veld1 = SQ_A1; veld1 <= SQ_H8; ++veld1)
-		for (Square veld2 = SQ_A1; veld2 <= SQ_H8; ++veld2)
-			VeldAfstand[veld1][veld2] = std::max(file_distance(veld1, veld2), rank_distance(veld1, veld2));
+	for (Square square1 = SQ_A1; square1 <= SQ_H8; ++square1)
+		for (Square square2 = SQ_A1; square2 <= SQ_H8; ++square2)
+			SquareDistance[square1][square2] = std::max(file_distance(square1, square2), rank_distance(square1, square2));
 
-	for (Square veld = SQ_A1; veld <= SQ_H8; ++veld)
+	for (Square square = SQ_A1; square <= SQ_H8; ++square)
 	{
-		PionAanval[WHITE][veld] = pion_aanval<WHITE>(bbVeld[veld]);
-		PionAanval[BLACK][veld] = pion_aanval<BLACK>(bbVeld[veld]);
+		PawnAttack[WHITE][square] = pawn_attack<WHITE>(bbSquare[square]);
+		PawnAttack[BLACK][square] = pawn_attack<BLACK>(bbSquare[square]);
 	}
 
-	for (PieceType stuk = KING; stuk <= KNIGHT; ++(++stuk))
-		for (Square veld = SQ_A1; veld <= SQ_H8; ++veld)
+	for (PieceType piece = KING; piece <= KNIGHT; ++(++piece))
+		for (Square square = SQ_A1; square <= SQ_H8; ++square)
 		{
 			Bitboard b = 0;
 			for (int i = 0; i < 8; ++i)
 			{
-				Square naar = veld + Square(KN_delta[stuk][i]);
-				if (naar >= SQ_A1 && naar <= SQ_H8 && distance(veld, naar) < 3)
-					b |= naar;
+				Square to = square + Square(KN_delta[piece][i]);
+				if (to >= SQ_A1 && to <= SQ_H8 && distance(square, to) < 3)
+					b |= to;
 			}
-			LegeAanval[stuk][veld] = b;
+			EmptyAttack[piece][square] = b;
 		}
 
-	for (Square veld = SQ_A1; veld <= SQ_H8; ++veld)
+	for (Square square = SQ_A1; square <= SQ_H8; ++square)
 	{
-		Bitboard b = LegeAanval[KING][veld];
-		if (lijn(veld) == FILE_A)
+		Bitboard b = EmptyAttack[KING][square];
+		if (file_of(square) == FILE_A)
 			b |= b << 1;
-		else if (lijn(veld) == FILE_H)
+		else if (file_of(square) == FILE_H)
 			b |= b >> 1;
-		if (rij(veld) == RANK_1)
+		if (rank_of(square) == RANK_1)
 			b |= b << 8;
-		else if (rij(veld) == RANK_8)
+		else if (rank_of(square) == RANK_8)
 			b |= b >> 8;
-		KoningZone[veld] = b;
+		KingZone[square] = b;
 	}
 
 	init_magic_sliders();
 
-	for (Square veld1 = SQ_A1; veld1 <= SQ_H8; ++veld1)
+	for (Square square1 = SQ_A1; square1 <= SQ_H8; ++square1)
 	{
-		LegeAanval[BISHOP][veld1] = attack_bb_bishop(veld1, 0);
-		LegeAanval[ROOK][veld1] = attack_bb_rook(veld1, 0);
-		LegeAanval[QUEEN][veld1] = LegeAanval[BISHOP][veld1] | LegeAanval[ROOK][veld1];
+		EmptyAttack[BISHOP][square1] = attack_bb_bishop(square1, 0);
+		EmptyAttack[ROOK][square1] = attack_bb_rook(square1, 0);
+		EmptyAttack[QUEEN][square1] = EmptyAttack[BISHOP][square1] | EmptyAttack[ROOK][square1];
 
-		for (PieceType stuk = BISHOP; stuk <= ROOK; ++stuk)
-			for (Square veld2 = SQ_A1; veld2 <= SQ_H8; ++veld2)
+		for (PieceType piece = BISHOP; piece <= ROOK; ++piece)
+			for (Square square2 = SQ_A1; square2 <= SQ_H8; ++square2)
 			{
-				if (!(LegeAanval[stuk][veld1] & veld2))
+				if (!(EmptyAttack[piece][square1] & square2))
 					continue;
 
-				bbVerbinding[veld1][veld2] = (attack_bb(stuk, veld1, 0) & attack_bb(stuk, veld2, 0)) | veld1 | veld2;
-				bbTussen[veld1][veld2] = attack_bb(stuk, veld1, bbVeld[veld2]) & attack_bb(stuk, veld2, bbVeld[veld1]);
+				bbConnection[square1][square2] = (attack_bb(piece, square1, 0) & attack_bb(piece, square2, 0)) | square1 | square2;
+				bbBetween[square1][square2] = attack_bb(piece, square1, bbSquare[square2]) & attack_bb(piece, square2, bbSquare[square1]);
 			}
 	}
 }
@@ -302,22 +302,22 @@ void Bitboards::initialize()
 
 namespace
 {
-	Bitboard sliding_attacks(int veld, Bitboard block, const int deltas[4][2],
+	Bitboard sliding_attacks(int square, Bitboard block, const int deltas[4][2],
 		int fmin, int fmax, int rmin, int rmax)
 	{
 		Bitboard result = 0;
-		int rk = veld / 8, fl = veld % 8, r, f;
+		int rk = square / 8, fl = square % 8, r, f;
 
-		for (int richting = 0; richting < 4; richting++)
+		for (int direction = 0; direction < 4; direction++)
 		{
-			int dx = deltas[richting][0];
-			int dy = deltas[richting][1];
+			int dx = deltas[direction][0];
+			int dy = deltas[direction][1];
 			for (f = fl + dx, r = rk + dy;
 				(dx == 0 || (f >= fmin && f <= fmax)) && (dy == 0 || (r >= rmin && r <= rmax));
 				f += dx, r += dy)
 			{
-				result |= bbVeld[f + r * 8];
-				if (block & bbVeld[f + r * 8])
+				result |= bbSquare[f + r * 8];
+				if (block & bbSquare[f + r * 8])
 					break;
 			}
 		}
@@ -326,56 +326,56 @@ namespace
 
 
 #ifdef USE_PEXT
-	void init_magic_bb_pext(Bitboard *aanval, Bitboard* veldIndex[], Bitboard *mask, const int deltas[4][2])
+	void init_magic_bb_pext(Bitboard *attack, Bitboard* squareIndex[], Bitboard *mask, const int deltas[4][2])
 	{
-		for (int veld = 0; veld < 64; veld++)
+		for (int square = 0; square < 64; square++)
 		{
-			veldIndex[veld] = aanval;
-			mask[veld] = sliding_attacks(veld, 0, deltas, 1, 6, 1, 6);
+			squareIndex[square] = attack;
+			mask[square] = sliding_attacks(square, 0, deltas, 1, 6, 1, 6);
 
 			Bitboard b = 0;
 			do  // loop over complete set of mask[veld], see http://chessprogramming.wikispaces.com/Traversing+Subsets+of+a+Set
 			{
-				veldIndex[veld][pext(b, mask[veld])] = sliding_attacks(veld, b, deltas, 0, 7, 0, 7);
-				b = (b - mask[veld]) & mask[veld];
-				aanval++;
+				squareIndex[square][pext(b, mask[square])] = sliding_attacks(square, b, deltas, 0, 7, 0, 7);
+				b = (b - mask[square]) & mask[square];
+				attack++;
 			} while (b);
 		}
 	}
 #else
-	void init_magic_bb(Bitboard *aanval, const int attackIndex[], Bitboard* veldIndex[], Bitboard *mask,
+	void init_magic_bb(Bitboard *attack, const int attackIndex[], Bitboard* squareIndex[], Bitboard *mask,
 		int shift, const Bitboard mult[], const int deltas[4][2])
 	{
-		for (int veld = 0; veld < 64; veld++)
+		for (int square = 0; square < 64; square++)
 		{
-			int index = attackIndex[veld];
-			veldIndex[veld] = aanval + index;
-			mask[veld] = sliding_attacks(veld, 0, deltas, 1, 6, 1, 6);
+			int index = attackIndex[square];
+			squareIndex[square] = attack + index;
+			mask[square] = sliding_attacks(square, 0, deltas, 1, 6, 1, 6);
 
 			Bitboard b = 0;
 			do  // loop over complete set of mask[veld], see http://chessprogramming.wikispaces.com/Traversing+Subsets+of+a+Set
 			{
-				int offset = (unsigned int)((b * mult[veld]) >> shift);
-				veldIndex[veld][offset] = sliding_attacks(veld, b, deltas, 0, 7, 0, 7);
-				b = (b - mask[veld]) & mask[veld];
+				int offset = (unsigned int)((b * mult[square]) >> shift);
+				squareIndex[square][offset] = sliding_attacks(square, b, deltas, 0, 7, 0, 7);
+				b = (b - mask[square]) & mask[square];
 			} while (b);
 		}
 	}
 #endif
 
 
-	const int toren_deltas[4][2] = { { 0, 1 },{ 0, -1 },{ 1, 0 },{ -1, 0 } };
-	const int loper_deltas[4][2] = { { 1, 1 },{ -1, 1 },{ 1, -1 },{ -1, -1 } };
+	const int rook_deltas[4][2] = { { 0, 1 },{ 0, -1 },{ 1, 0 },{ -1, 0 } };
+	const int bishop_deltas[4][2] = { { 1, 1 },{ -1, 1 },{ 1, -1 },{ -1, -1 } };
 
 	void init_magic_sliders()
 	{
 #ifdef USE_PEXT
-		init_magic_bb_pext(MagicAanvalT, TorenAanvalTabel, TorenMask, toren_deltas);
-		init_magic_bb_pext(MagicAanvalL, LoperAanvalTabel, LoperMask, loper_deltas);
+		init_magic_bb_pext(MagicAttackR, RookAttackTable, RookMask, rook_deltas);
+		init_magic_bb_pext(MagicAttackB, BishopAttackTable, BishopMask, bishop_deltas);
 #else
-		init_magic_bb(MagicAanvalT, Local_RookMagicIndex, TorenAanvalTabel, TorenMask, 52, TorenMagics, toren_deltas);
-		init_magic_bb(MagicAanvalT, Local_BishopMagicIndex, LoperAanvalTabel,
-			LoperMask, 55, LoperMagics, loper_deltas);
+		init_magic_bb(MagicAttackR, Local_RookMagicIndex, RookAttackTable, RookMask, 52, RookMagics, rook_deltas);
+		init_magic_bb(MagicAttackR, Local_BishopMagicIndex, BishopAttackTable,
+			BishopMask, 55, BishopMagics, bishop_deltas);
 #endif
 	}
 

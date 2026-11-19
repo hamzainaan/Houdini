@@ -13,8 +13,8 @@
 
 static bool SyzygyInUse = false;
 static std::string CurrentSyzygyPath = "";
-Value Syzygy_probe_wdl(Position& pos, Value alfa, Value beta);
-Value Syzygy_probe_dtz(Position& pos, Value alfa, Value beta);
+Value Syzygy_probe_wdl(Position& pos, Value alpha, Value beta);
+Value Syzygy_probe_dtz(Position& pos, Value alpha, Value beta);
 
 
 void Syzygy_init(const std::string& path)
@@ -47,7 +47,7 @@ void Syzygy_init(const std::string& path)
 	}
 }
 
-Value Syzygy_probe_wdl(Position& pos, Value alfa, Value beta)
+Value Syzygy_probe_wdl(Position& pos, Value alpha, Value beta)
 {
 	int success;
 	int v;
@@ -68,7 +68,7 @@ Value Syzygy_probe_wdl(Position& pos, Value alfa, Value beta)
 		return DRAW_VALUE;
 }
 
-Value Syzygy_probe_dtz(Position& pos, Value alfa, Value beta)
+Value Syzygy_probe_dtz(Position& pos, Value alpha, Value beta)
 {
 	int success;
 	int v;

@@ -18,7 +18,7 @@
 
 using std::string;
 
-UCI::UciOptionsMap UciOpties;
+UCI::UciOptionsMap UciOptions;
 
 int TUNE_1, TUNE_2, TUNE_3, TUNE_4, TUNE_5, TUNE_6, TUNE_7, TUNE_8, TUNE_9, TUNE_10;
 int TUNE_11, TUNE_12, TUNE_13, TUNE_14, TUNE_15, TUNE_16, TUNE_17, TUNE_18, TUNE_19, TUNE_20;
@@ -30,7 +30,7 @@ namespace UCI
 	void on_clear_hash(const UciOption&)
 	{
 		Search::clear_all();
-		if (UciOpties["Never Clear Hash"])
+		if (UciOptions["Never Clear Hash"])
 			sync_cout << "info string \"Never Clear Hash\" option is enabled" << sync_endl;
 		else
 			sync_cout << "info string Hash cleared" << sync_endl;
@@ -38,7 +38,7 @@ namespace UCI
 
 	void on_hash_size(const UciOption& o)
 	{
-		HoofdHash.change_size(o);
+		MainHash.change_size(o);
 	}
 
 	void on_logger(const UciOption& o)
@@ -75,7 +75,7 @@ namespace UCI
 
 	void on_save_hash_to_file(const UciOption& o)
 	{
-		if (HoofdHash.save_to_file(UciOpties["Hash File"]))
+		if (MainHash.save_to_file(UciOptions["Hash File"]))
 			sync_cout << "info string Hash Saved to File" << sync_endl;
 		else
 			sync_cout << "info string Failure to Save Hash to File" << sync_endl;
@@ -83,12 +83,12 @@ namespace UCI
 
 	void on_load_hash_from_file(const UciOption& o)
 	{
-		if (!UciOpties["Never Clear Hash"])
+		if (!UciOptions["Never Clear Hash"])
 		{
-			UciOpties["Never Clear Hash"] = true;
+			UciOptions["Never Clear Hash"] = true;
 			sync_cout << "info string Enabling Never Clear Hash option, please enable this option in the Houdini configuration" << sync_endl;
 		}
-		if (HoofdHash.load_from_file(UciOpties["Hash File"]))
+		if (MainHash.load_from_file(UciOptions["Hash File"]))
 			sync_cout << "info string Hash Loaded from File" << sync_endl;
 		else
 			sync_cout << "info string Failure to Load Hash from File" << sync_endl;
@@ -106,12 +106,12 @@ namespace UCI
 			return 100;
 	}
 
-	int elo_for_strength(int sterkte)
+	int elo_for_strength(int strength)
 	{
-		if (sterkte <= 50)
-			return 800 + 30 * sterkte;
-		else if (sterkte < 100)
-			return 2300 + 14 * (sterkte - 50);
+		if (strength <= 50)
+			return 800 + 30 * strength;
+		else if (strength < 100)
+			return 2300 + 14 * (strength - 50);
 		else
 			return 3000;
 	}
@@ -266,7 +266,7 @@ namespace UCI
 						os << " min " << o.min << " max " << o.max;
 
 					if (o.type != "button")
-						os << " default " << o.defaultWaarde;
+						os << " default " << o.defaultValue;
 
 					os << std::endl;
 					break;
@@ -278,12 +278,12 @@ namespace UCI
 
 	UciOption::UciOption(const char* v, OnChange f) : min(0), max(0), type("string"), on_change(f)
 	{
-		defaultWaarde = waarde = v;
+		defaultValue = value = v;
 	}
 
 	UciOption::UciOption(bool v, OnChange f) : min(0), max(0), type("check"), on_change(f)
 	{
-		defaultWaarde = waarde = (v ? "true" : "false");
+		defaultValue = value = (v ? "true" : "false");
 	}
 
 	UciOption::UciOption(OnChange f) : min(0), max(0), type("button"), on_change(f)
@@ -291,26 +291,26 @@ namespace UCI
 
 	UciOption::UciOption(int v, int minv, int maxv, OnChange f) : min(minv), max(maxv), type("spin"), on_change(f)
 	{
-		defaultWaarde = waarde = std::to_string(v);
+		defaultValue = value = std::to_string(v);
 	}
 
 	UciOption::operator int() const
 	{
 		assert(type == "check" || type == "spin");
-		return (type == "spin" ? stoi(waarde) : waarde == "true" || waarde == "yes" || waarde == "1");
+		return (type == "spin" ? stoi(value) : value == "true" || value == "yes" || value == "1");
 	}
 
 	UciOption::operator std::string() const
 	{
 		assert(type == "string");
-		return waarde;
+		return value;
 	}
 
 	void UciOption::operator<<(const UciOption& o)
 	{
-		static int volgorde = 0;
+		static int order = 0;
 		*this = o;
-		index = volgorde++;
+		index = order++;
 	}
 
 	UciOption& UciOption::operator=(const string& v)
@@ -323,7 +323,7 @@ namespace UCI
 			return *this;
 
 		if (type != "button")
-			waarde = v;
+			value = v;
 
 		if (on_change)
 			on_change(*this);

@@ -50,9 +50,9 @@ Thread::Thread()
 	threadIndex = Threads.threadCount;
 
 	std::unique_lock<Mutex> lk(mutex);
-	zoekenActief = true;
+	searchActive = true;
 	nativeThread = std::thread(&Thread::idle_loop, this);
-	sleepCondition.wait(lk, [&] { return !zoekenActief; });
+	sleepCondition.wait(lk, [&] { return !searchActive; });
 }
 
 
@@ -69,7 +69,7 @@ Thread::~Thread()
 void Thread::wait_for_search_finished()
 {
 	std::unique_lock<Mutex> lk(mutex);
-	sleepCondition.wait(lk, [&] { return !zoekenActief; });
+	sleepCondition.wait(lk, [&] { return !searchActive; });
 }
 
 
@@ -81,12 +81,12 @@ void Thread::wait(std::atomic_bool& condition)
 }
 
 
-void Thread::wake_up(bool activeer_zoeken)
+void Thread::wake_up(bool activate_search)
 {
 	std::unique_lock<Mutex> lk(mutex);
 
-	if (activeer_zoeken)
-		zoekenActief = true;
+	if (activate_search)
+		searchActive = true;
 
 	sleepCondition.notify_one();
 }
@@ -99,7 +99,7 @@ void Thread::idle_loop()
 	if (Threads.NUMA_highest_node)
 	{
 		Threads.set_thread_affinity(threadIndex);
-		int numa_node = Threads.numa_node_voor_thread[threadIndex];
+		int numa_node = Threads.numa_node_for_thread[threadIndex];
 		ni = Threads.NUMA_data[numa_node];
 		p = alloc_large_page_mem(sizeof(ThreadInfo), nullptr, true, numa_node);
 	}
@@ -112,15 +112,15 @@ void Thread::idle_loop()
 	std::memset(p, 0, sizeof(ThreadInfo));
 	ti = new (p) ThreadInfo;
 
-	rootStelling = &ti->rootStelling;
+	rootPosition = &ti->rootPosition;
 
 	while (!exit)
 	{
 		std::unique_lock<Mutex> lk(mutex);
 
-		zoekenActief = false;
+		searchActive = false;
 
-		while (!zoekenActief && !exit)
+		while (!searchActive && !exit)
 		{
 			sleepCondition.notify_one();
 			sleepCondition.wait(lk);
@@ -142,9 +142,9 @@ void ThreadPool::initialize()
 	init_kernel_functions();
 #endif
 #ifdef USE_NUMA
-	if (UciOpties["NUMA Enabled"])
+	if (UciOptions["NUMA Enabled"])
 	{
-		NUMA_offset = UciOpties["NUMA Offset"];
+		NUMA_offset = UciOptions["NUMA Offset"];
 		initialize_Numa();
 	}
 	if (Threads.NUMA_highest_node)
@@ -158,10 +158,10 @@ void ThreadPool::initialize()
 	threadCount = 1;
 	endgames.initialize();
 	change_thread_count();
-	vijftigZettenAfstand = 50;
+	fiftyMovesDistance = 50;
 	multiPV = 1;
-	totaleAnalyseTijd = 0;
-	geknoeiMetExe = 0;
+	totalAnalysisTime = 0;
+	tamperedWithExe = 0;
 }
 
 
@@ -182,7 +182,7 @@ void ThreadPool::exit()
 
 void ThreadPool::change_thread_count()
 {
-	int uci_threads = UciOpties["Threads"];
+	int uci_threads = UciOptions["Threads"];
 
 	assert(uci_threads > 0);
 
@@ -198,11 +198,11 @@ void ThreadPool::change_thread_count()
 
 uint64_t ThreadPool::visited_nodes()
 {
-	uint64_t knopen = 0;
+	uint64_t nodes = 0;
 	for (int i = 0; i < activeThreadCount; ++i)
-		knopen += threads[i]->rootStelling->visited_nodes();
-	knopen += knopen / 7;
-	return knopen;
+		nodes += threads[i]->rootPosition->visited_nodes();
+	nodes += nodes / 7;
+	return nodes;
 }
 
 
@@ -210,19 +210,19 @@ uint64_t ThreadPool::tb_hits()
 {
 	uint64_t hits = 0;
 	for (int i = 0; i < activeThreadCount; ++i)
-		hits += threads[i]->rootStelling->tb_hits();
+		hits += threads[i]->rootPosition->tb_hits();
 	return hits;
 }
 
 
-void ThreadPool::start_search_task(Position& pos, const TimeLimit& tijdLimiet)
+void ThreadPool::start_search_task(Position& pos, const TimeLimit& timeLimit)
 {
 	main()->wait_for_search_finished();
 
-	Search::Signalen.stopBijPonderhit = Search::Signalen.stopAnalyse = false;
-	Search::Klok = tijdLimiet;
+	Search::Signals.stopOnPonderhit = Search::Signals.stopAnalysis = false;
+	Search::Clock = timeLimit;
 
-	rootStelling = &pos;
+	rootPosition = &pos;
 
 #ifdef USE_LICENSE
 #ifdef CHESSBASE
@@ -244,13 +244,13 @@ void ThreadPool::clear_counter_move_history()
 	{
 		for (unsigned int i = 0; i <= NUMA_highest_node; i++)
 		{
-			NUMA_data[i]->counterZetStatistieken.clear();
+			NUMA_data[i]->counterMoveStatistics.clear();
 		}
 	}
 	else
 #endif
 	{
-		GlobalData->counterZetStatistieken.clear();
+		GlobalData->counterMoveStatistics.clear();
 		//GlobalData->counterZetStatistieken.fill(SorteerWaarde(-5000));
 	}
 }
@@ -359,7 +359,7 @@ void ThreadPool::initialize_Numa()
 	int ThreadCount = std::min(logicalProcessorCount, MAX_THREADS);
 	for (int i = 0; i < ThreadCount; i++)
 	{
-		numa_node_voor_thread[i] = (HT_mul * (NUMA_highest_node + 1) * i / logicalProcessorCount + NUMA_offset) % (NUMA_highest_node + 1);
+		numa_node_for_thread[i] = (HT_mul * (NUMA_highest_node + 1) * i / logicalProcessorCount + NUMA_offset) % (NUMA_highest_node + 1);
 		//sync_cout << "info string thread " << i << " on node " << numa_node_voor_thread[i] << sync_endl;
 	}
 }
@@ -379,7 +379,7 @@ void ThreadPool::set_thread_affinity(int thread_id)
 {
 	if (!pSetThreadGroupAffinity)
 		return;
-	int node = numa_node_voor_thread[thread_id];
+	int node = numa_node_for_thread[thread_id];
 	// work-around for bug in Windows other than Windows 10
 	NUMA_affinities[node].Reserved[0] = 0;
 	NUMA_affinities[node].Reserved[1] = 0;
@@ -394,11 +394,11 @@ void ThreadPool::set_thread_affinity(int thread_id)
 		sync_cout << "info string Error " << GetLastError() << " while setting affinity for thread " << thread_id << sync_endl;
 }
 
-void ThreadPool::change_numa(bool aan)
+void ThreadPool::change_numa(bool on)
 {
-	if (aan && !NUMA_highest_node)
+	if (on && !NUMA_highest_node)
 		reinitialize_Numa();
-	else if (!aan && NUMA_highest_node)
+	else if (!on && NUMA_highest_node)
 		reinitialize_Numa();
 }
 

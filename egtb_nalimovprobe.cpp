@@ -38,7 +38,7 @@ int NalimovCacheSize = 32;
 
 static bool NalimovInUse = false;
 void *NalimovCache;
-Value Nalimov_probe(Position& pos, Value alfa, Value beta);
+Value Nalimov_probe(Position& pos, Value alpha, Value beta);
 
 void Nalimov_init(const std::string& path)
 {
@@ -129,17 +129,17 @@ void write_egtbtracefile(const char *msg)
 #endif
 
 
-void register_piece(int rgiCounters[], int offset, square rgSquares[], int stuk, Bitboard bb)
+void register_piece(int rgiCounters[], int offset, square rgSquares[], int pieceNumber, Bitboard bb)
 {
 	if (bb)
 	{
-		rgSquares[3 * stuk] = pop_lsb(&bb);
+		rgSquares[3 * pieceNumber] = pop_lsb(&bb);
 		if (bb)
 		{
-			rgSquares[3 * stuk + 1] = pop_lsb(&bb);
+			rgSquares[3 * pieceNumber + 1] = pop_lsb(&bb);
 			if (bb)
 			{
-				rgSquares[3 * stuk + 2] = pop_lsb(&bb);
+				rgSquares[3 * pieceNumber + 2] = pop_lsb(&bb);
 				rgiCounters[offset] = 3;
 			}
 			else
@@ -152,7 +152,7 @@ void register_piece(int rgiCounters[], int offset, square rgSquares[], int stuk,
 		rgiCounters[offset] = 0;
 }
 
-Value Nalimov_probe(Position& pos, Value alfa, Value beta)
+Value Nalimov_probe(Position& pos, Value alpha, Value beta)
 {
 	int rgiCounters[10], iTb;
 	bool Inverted;
@@ -179,8 +179,8 @@ Value Nalimov_probe(Position& pos, Value alfa, Value beta)
 	if (iTb == 0)
 		return NO_VALUE;
 
-	sqW[15] = pos.koning(WHITE);
-	sqB[15] = pos.koning(BLACK);
+	sqW[15] = pos.king(WHITE);
+	sqB[15] = pos.king(BLACK);
 
 	if (iTb > 0)
 	{
@@ -227,7 +227,7 @@ Value Nalimov_probe(Position& pos, Value alfa, Value beta)
 			' ', 'k', 'p', 'n', 'b', 'r', 'q',
 		};
 		int count = 0;
-		uint64 bb = bb_bezet;
+		uint64 bb = bb_occupied;
 		while (bb)
 		{
 			int sq = LSB(bb);

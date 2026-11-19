@@ -22,37 +22,37 @@ enum MoveGeneration
 
 struct MoveEx 
 {
-	Move zet;
-	SortValue waarde;
+	Move move;
+	SortValue value;
 
-	operator Move() const { return zet; }
-	void operator=(Move z) { zet = z; }
+	operator Move() const { return move; }
+	void operator=(Move z) { move = z; }
 };
 
 inline bool operator<(const MoveEx& f, const MoveEx& s) 
 {
-	return f.waarde < s.waarde;
+	return f.value < s.value;
 }
 
 template<MoveGeneration>
-MoveEx* generateMoves(const Position& pos, MoveEx* zetten);
+MoveEx* generateMoves(const Position& pos, MoveEx* moves);
 
-MoveEx* generateCapturesOnSquare(const Position& pos, MoveEx* zetten, Square veld);
-MoveEx* generateLegalMoves(const Position& pos, MoveEx* zetten);
+MoveEx* generateCapturesOnSquare(const Position& pos, MoveEx* moves, Square square);
+MoveEx* generateLegalMoves(const Position& pos, MoveEx* moves);
 
 struct LegalMoveList 
 {
-	explicit LegalMoveList(const Position& pos) { einde = generateLegalMoves(pos, zetten); }
-	const MoveEx* begin() const { return zetten; }
-	const MoveEx* end() const { return einde; }
+	explicit LegalMoveList(const Position& pos) { last = generateLegalMoves(pos, moves); }
+	const MoveEx* begin() const { return moves; }
+	const MoveEx* end() const { return last; }
 
 private:
-	MoveEx* einde;
-	MoveEx zetten[MAX_MOVES];
+	MoveEx* last;
+	MoveEx moves[MAX_MOVES];
 };
 
-bool LegalMoveListContainsMove(const Position& pos, Move zet);
+bool LegalMoveListContainsMove(const Position& pos, Move move);
 bool AtLeastOneLegalMove(const Position& pos);
-bool LegalMoveListContainsCastling(const Position& pos, Move zet);
+bool LegalMoveListContainsCastling(const Position& pos, Move move);
 
 #endif // #ifndef MOVE_GENERATION_H

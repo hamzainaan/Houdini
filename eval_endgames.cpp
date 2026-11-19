@@ -51,42 +51,42 @@ namespace
 	const int KRPPKRPScaleFactors[RANK_N] = { 0, 14, 16, 22, 33, 69, 0, 0 };
 
 #ifndef NDEBUG
-	bool count_material(const Position& pos, Color kleur, MaterialValue npm, int pionnen)
+	bool count_material(const Position& pos, Color color, MaterialValue npm, int pawns)
 	{
-		return pos.non_pawn_material(kleur) == npm && pos.aantal(kleur, PAWN) == pionnen;
+		return pos.non_pawn_material(color) == npm && pos.count(color, PAWN) == pawns;
 	}
 #endif
 
-	Square normalize_pawn_side(const Position& pos, Color sterkeZijde, Square veld)
+	Square normalize_pawn_side(const Position& pos, Color strongSide, Square square)
 	{
-		assert(pos.aantal(sterkeZijde, PAWN) == 1);
+		assert(pos.count(strongSide, PAWN) == 1);
 
-		if (lijn(pos.piece_square(sterkeZijde, PAWN)) >= FILE_E)
-			veld = Square(veld ^ 7);
+		if (file_of(pos.piece_square(strongSide, PAWN)) >= FILE_E)
+			square = Square(square ^ 7);
 
-		if (sterkeZijde == BLACK)
-			veld = ~veld;
+		if (strongSide == BLACK)
+			square = ~square;
 
-		return veld;
+		return square;
 	}
 
-	Key64 material_key(Color kleur, const char* pieces)
+	Key64 material_key(Color color, const char* pieces)
 	{
-		Key64 materiaalSleutel = 0;
-		for (PieceType stuk = KING; stuk <= QUEEN; ++stuk)
+		Key64 materialKey = 0;
+		for (PieceType piece = KING; piece <= QUEEN; ++piece)
 		{
-			int aantal = int(pieces[stuk] - '0');
-			for (int cnt = 0; cnt < aantal; ++cnt)
-				materiaalSleutel ^= Zobrist::psq[make_piece(kleur, stuk)][cnt];
-			aantal = int(pieces[stuk + 8] - '0');
-			for (int cnt = 0; cnt < aantal; ++cnt)
-				materiaalSleutel ^= Zobrist::psq[make_piece(~kleur, stuk)][cnt];
+			int count = int(pieces[piece] - '0');
+			for (int cnt = 0; cnt < count; ++cnt)
+				materialKey ^= Zobrist::psq[make_piece(color, piece)][cnt];
+			count = int(pieces[piece + 8] - '0');
+			for (int cnt = 0; cnt < count; ++cnt)
+				materialKey ^= Zobrist::psq[make_piece(~color, piece)][cnt];
 		}
 
-		return materiaalSleutel;
+		return materialKey;
 	}
 
-	Bitboard attack_king_inc(Square s) { return LegeAanval[KING][s] | s; }
+	Bitboard attack_king_inc(Square s) { return EmptyAttack[KING][s] | s; }
 } // namespace
 
 
@@ -96,113 +96,113 @@ const Bitboard BlackModifier = 0xa4489c56;
 
 void Endgames::add_value(const char* pieces, endgame_value_fx fW, endgame_value_fx fB)
 {
-	mapWaarde[material_key(WHITE, pieces)] = waarde_aantal;
-	waarde_functies[waarde_aantal++] = fW;
-	mapWaarde[material_key(BLACK, pieces)] = waarde_aantal;
-	waarde_functies[waarde_aantal++] = fB;
+	mapValue[material_key(WHITE, pieces)] = value_count;
+	value_functions[value_count++] = fW;
+	mapValue[material_key(BLACK, pieces)] = value_count;
+	value_functions[value_count++] = fB;
 }
 
 void Endgames::add_scalefactor(const char* pieces, endgame_scalefactor_fx fW, endgame_scalefactor_fx fB)
 {
-	mapSchaalFactor[material_key(WHITE, pieces)] = factor_aantal;
-	factor_functies[factor_aantal++] = fW;
-	mapSchaalFactor[material_key(BLACK, pieces) ^ BlackModifier] = factor_aantal;
-	factor_functies[factor_aantal++] = fB;
+	mapScaleFactor[material_key(WHITE, pieces)] = factor_count;
+	factor_functions[factor_count++] = fW;
+	mapScaleFactor[material_key(BLACK, pieces) ^ BlackModifier] = factor_count;
+	factor_functions[factor_count++] = fB;
 }
 
-int Endgames::probe_value(Key64 sleutel)
+int Endgames::probe_value(Key64 key)
 {
-	FunctionIndexMap::const_iterator iter = mapWaarde.find(sleutel);
-	return iter == mapWaarde.end() ? -1 : iter->second;
+	FunctionIndexMap::const_iterator iter = mapValue.find(key);
+	return iter == mapValue.end() ? -1 : iter->second;
 }
 
-int Endgames::probe_scalefactor(Key64 sleutel, Color& sterkeZijde)
+int Endgames::probe_scalefactor(Key64 key, Color& strongSide)
 {
-	FunctionIndexMap::const_iterator iter = mapSchaalFactor.find(sleutel);
-	if (iter != mapSchaalFactor.end())
-		return sterkeZijde = WHITE, iter->second;
-	iter = mapSchaalFactor.find(sleutel ^ BlackModifier);
-	if (iter != mapSchaalFactor.end())
-		return sterkeZijde = BLACK, iter->second;
+	FunctionIndexMap::const_iterator iter = mapScaleFactor.find(key);
+	if (iter != mapScaleFactor.end())
+		return strongSide = WHITE, iter->second;
+	iter = mapScaleFactor.find(key ^ BlackModifier);
+	if (iter != mapScaleFactor.end())
+		return strongSide = BLACK, iter->second;
 	return -1;
 }
 
 
-template <Color sterkeZijde>
+template <Color strongSide>
 Value endgameValue_KXK(const Position& pos) 
 {
-	const Color zwakkeZijde = ~sterkeZijde;
-	assert(count_material(pos, zwakkeZijde, MATL_0, 0));
+	const Color weakSide = ~strongSide;
+	assert(count_material(pos, weakSide, MATL_0, 0));
 	assert(!pos.check_givers()); // Eval is never called when in check
 
-	if (pos.side_to_move() == zwakkeZijde && !AtLeastOneLegalMove(pos))
+	if (pos.side_to_move() == weakSide && !AtLeastOneLegalMove(pos))
 		return DRAW_VALUE;
 
-	Square sterkeK = pos.koning(sterkeZijde);
-	Square zwakkeK = pos.koning(zwakkeZijde);
+	Square strongK = pos.king(strongSide);
+	Square weakK = pos.king(weakSide);
 
-	Value result = ValueFromMaterial(pos.non_pawn_material(sterkeZijde))
-		+ pos.aantal(sterkeZijde, PAWN) * VALUE_PAWN
-		+ PushToEdge[zwakkeK]
-		+ PushClose[distance(sterkeK, zwakkeK)];
+	Value result = ValueFromMaterial(pos.non_pawn_material(strongSide))
+		+ pos.count(strongSide, PAWN) * VALUE_PAWN
+		+ PushToEdge[weakK]
+		+ PushClose[distance(strongK, weakK)];
 
 	if (result < WIN_VALUE)
-		if (pos.aantal(sterkeZijde, QUEEN) + pos.aantal(sterkeZijde, ROOK)
-			|| (pos.aantal(sterkeZijde, BISHOP) && pos.aantal(sterkeZijde, KNIGHT))
-			|| (pos.pieces(sterkeZijde, BISHOP) & DarkSquares && pos.pieces(sterkeZijde, BISHOP) & ~DarkSquares))
+		if (pos.count(strongSide, QUEEN) + pos.count(strongSide, ROOK)
+			|| (pos.count(strongSide, BISHOP) && pos.count(strongSide, KNIGHT))
+			|| (pos.pieces(strongSide, BISHOP) & DarkSquares && pos.pieces(strongSide, BISHOP) & ~DarkSquares))
 			result += WIN_VALUE;
 
-	return sterkeZijde == pos.side_to_move() ? result : -result;
+	return strongSide == pos.side_to_move() ? result : -result;
 }
 
 
-template <Color sterkeZijde>
+template <Color strongSide>
 Value endgameValue_KBNK(const Position& pos) 
 {
-	const Color zwakkeZijde = ~sterkeZijde;
-	assert(count_material(pos, sterkeZijde, MATL_KNIGHT + MATL_BISHOP, 0));
-	assert(count_material(pos, zwakkeZijde, MATL_0, 0));
+	const Color weakSide = ~strongSide;
+	assert(count_material(pos, strongSide, MATL_KNIGHT + MATL_BISHOP, 0));
+	assert(count_material(pos, weakSide, MATL_0, 0));
 
-	Square sterkeK = pos.koning(sterkeZijde);
-	Square zwakkeK = pos.koning(zwakkeZijde);
-	Square loper = pos.piece_square(sterkeZijde, BISHOP);
+	Square strongK = pos.king(strongSide);
+	Square weakK = pos.king(weakSide);
+	Square bishop = pos.piece_square(strongSide, BISHOP);
 
-	if (different_color(loper, SQ_A1))
+	if (different_color(bishop, SQ_A1))
 	{
-		sterkeK = ~sterkeK;
-		zwakkeK = ~zwakkeK;
+		strongK = ~strongK;
+		weakK = ~weakK;
 	}
 
 	Value result = WIN_VALUE
-		+ PushClose[distance(sterkeK, zwakkeK)]
-		+ PushToCorner[zwakkeK];
+		+ PushClose[distance(strongK, weakK)]
+		+ PushToCorner[weakK];
 
-	return sterkeZijde == pos.side_to_move() ? result : -result;
+	return strongSide == pos.side_to_move() ? result : -result;
 }
 
 
-template <Color sterkeZijde>
+template <Color strongSide>
 Value endgameValue_KPK(const Position& pos) 
 {
-	const Color zwakkeZijde = ~sterkeZijde;
-	assert(count_material(pos, sterkeZijde, MATL_0, 1));
-	assert(count_material(pos, zwakkeZijde, MATL_0, 0));
+	const Color weakSide = ~strongSide;
+	assert(count_material(pos, strongSide, MATL_0, 1));
+	assert(count_material(pos, weakSide, MATL_0, 0));
 
-	Square sterkeK = normalize_pawn_side(pos, sterkeZijde, pos.koning(sterkeZijde));
-	Square zwakkeK = normalize_pawn_side(pos, sterkeZijde, pos.koning(zwakkeZijde));
-	Square pion = normalize_pawn_side(pos, sterkeZijde, pos.piece_square(sterkeZijde, PAWN));
+	Square strongK = normalize_pawn_side(pos, strongSide, pos.king(strongSide));
+	Square weakK = normalize_pawn_side(pos, strongSide, pos.king(weakSide));
+	Square pawn = normalize_pawn_side(pos, strongSide, pos.piece_square(strongSide, PAWN));
 
-	Color ik = sterkeZijde == pos.side_to_move() ? WHITE : BLACK;
+	Color us = strongSide == pos.side_to_move() ? WHITE : BLACK;
 
-	if (!Bitbases::probe(sterkeK, pion, zwakkeK, ik))
+	if (!Bitbases::probe(strongK, pawn, weakK, us))
 	{
 		pos.info()->eval_is_exact = true;
 		return DRAW_VALUE;
 	}
 
-	Value result = WIN_VALUE + Value(40) * int(rij(pion));
+	Value result = WIN_VALUE + Value(40) * int(rank_of(pawn));
 
-	return sterkeZijde == pos.side_to_move() ? result : -result;
+	return strongSide == pos.side_to_move() ? result : -result;
 }
 
 
@@ -226,50 +226,50 @@ R7/7K/8/2k1p3/8/8/8/8 b - - 0 1
 2R5/1K6/8/8/1p6/1k6/8/8 w - - 0 1
 K5R1/8/6p1/5k2/8/8/8/8 w - - 0 1
 */
-template <Color sterkeZijde>
+template <Color strongSide>
 ScaleFactor endgameScaleFactor_KRKP(const Position& pos)
 {
-	const Color zwakkeZijde = ~sterkeZijde;
-	assert(count_material(pos, sterkeZijde, MATL_ROOK, 0));
-	assert(count_material(pos, zwakkeZijde, MATL_0, 1));
+	const Color weakSide = ~strongSide;
+	assert(count_material(pos, strongSide, MATL_ROOK, 0));
+	assert(count_material(pos, weakSide, MATL_0, 1));
 
-	Square witte_koning = relative_square(sterkeZijde, pos.koning(sterkeZijde));
-	Square zwarte_koning = relative_square(sterkeZijde, pos.koning(zwakkeZijde));
-	Square toren = relative_square(sterkeZijde, pos.piece_square(sterkeZijde, ROOK));
-	Square pion = relative_square(sterkeZijde, pos.piece_square(zwakkeZijde, PAWN));
+	Square white_king = relative_square(strongSide, pos.king(strongSide));
+	Square black_king = relative_square(strongSide, pos.king(weakSide));
+	Square rook = relative_square(strongSide, pos.piece_square(strongSide, ROOK));
+	Square pawn = relative_square(strongSide, pos.piece_square(weakSide, PAWN));
 
-	Square promotie = make_square(lijn(pion), RANK_1);
+	Square promotion = make_square(file_of(pawn), RANK_1);
 
-	int promotie_afstand, WK_afstand, ZK_afstand, WK_afstand2;
-	bool pion_aangevallen, toren_achter_pion;
+	int promotion_distance, WK_distance, BK_distance, WK_distance2;
+	bool pawn_attacked, rook_behind_pawn;
 
-	if (!((pos.attack_from<KING>(witte_koning) | pos.pieces(sterkeZijde, KING)) & bb_ranks_forward(zwakkeZijde, pion)) &&
-		(rij(pion) <= RANK_3 || rij(zwarte_koning) <= rij(pion)))
+	if (!((pos.attack_from<KING>(white_king) | pos.pieces(strongSide, KING)) & bb_ranks_forward(weakSide, pawn)) &&
+		(rank_of(pawn) <= RANK_3 || rank_of(black_king) <= rank_of(pawn)))
 	{
-		ZK_afstand = VeldAfstand[zwarte_koning][pion];
-		pion_aangevallen = (pos.attack_from<ROOK>(pos.piece_square(sterkeZijde, ROOK)) | pos.attack_from<KING>(pos.koning(sterkeZijde)))
-			& pos.piece_square(zwakkeZijde, PAWN);
+		BK_distance = SquareDistance[black_king][pawn];
+		pawn_attacked = (pos.attack_from<ROOK>(pos.piece_square(strongSide, ROOK)) | pos.attack_from<KING>(pos.king(strongSide)))
+			& pos.piece_square(weakSide, PAWN);
 
-		if (ZK_afstand <= 1 + (pos.side_to_move() == zwakkeZijde || !pion_aangevallen))
+		if (BK_distance <= 1 + (pos.side_to_move() == weakSide || !pawn_attacked))
 		{
-			toren_achter_pion = (lijn(pion) == lijn(toren));
-			promotie_afstand = rij(pion) + VeldAfstand[zwarte_koning][promotie] - 2 + (toren_achter_pion);
-			WK_afstand = VeldAfstand[witte_koning][promotie] - (pos.side_to_move() == sterkeZijde);
-			if ((lijn(witte_koning) < lijn(pion) && lijn(zwarte_koning) < lijn(pion) ||
-				lijn(witte_koning) > lijn(pion) && lijn(zwarte_koning) > lijn(pion)) &&
-				rij(witte_koning) >= rij(zwarte_koning))
-				WK_afstand++;
+			rook_behind_pawn = (file_of(pawn) == file_of(rook));
+			promotion_distance = rank_of(pawn) + SquareDistance[black_king][promotion] - 2 + (rook_behind_pawn);
+			WK_distance = SquareDistance[white_king][promotion] - (pos.side_to_move() == strongSide);
+			if ((file_of(white_king) < file_of(pawn) && file_of(black_king) < file_of(pawn) ||
+				file_of(white_king) > file_of(pawn) && file_of(black_king) > file_of(pawn)) &&
+				rank_of(white_king) >= rank_of(black_king))
+				WK_distance++;
 
-			if ((lijn(witte_koning) < lijn(zwarte_koning) && lijn(zwarte_koning) < lijn(pion) ||
-				lijn(witte_koning) > lijn(zwarte_koning) && lijn(zwarte_koning) > lijn(pion)) &&
-				rij(witte_koning) >= rij(zwarte_koning))
-				WK_afstand++;
+			if ((file_of(white_king) < file_of(black_king) && file_of(black_king) < file_of(pawn) ||
+				file_of(white_king) > file_of(black_king) && file_of(black_king) > file_of(pawn)) &&
+				rank_of(white_king) >= rank_of(black_king))
+				WK_distance++;
 
-			if (WK_afstand > promotie_afstand)
+			if (WK_distance > promotion_distance)
 			{
-				WK_afstand2 = VeldAfstand[witte_koning][pion] - (pos.side_to_move() == sterkeZijde);
-				if (WK_afstand2 > ZK_afstand ||
-					rij(witte_koning) - (pos.side_to_move() == sterkeZijde) > rij(pion))
+				WK_distance2 = SquareDistance[white_king][pawn] - (pos.side_to_move() == strongSide);
+				if (WK_distance2 > BK_distance ||
+					rank_of(white_king) - (pos.side_to_move() == strongSide) > rank_of(pawn))
 					return DRAW_FACTOR;
 			}
 		}
@@ -295,51 +295,51 @@ Q7/8/8/K7/8/8/pk6/8 w - - 0 1
 7Q/8/8/3K4/8/8/2pk4/8 w - - 0 1
 8/8/1Q6/1K6/8/8/1kp5/8 w - - 0 1
 */
-template <Color sterkeZijde>
+template <Color strongSide>
 ScaleFactor endgameScaleFactor_KQKP(const Position& pos) 
 {
-	const Color zwakkeZijde = ~sterkeZijde;
-	assert(count_material(pos, sterkeZijde, MATL_QUEEN, 0));
-	assert(count_material(pos, zwakkeZijde, MATL_0, 1));
+	const Color weakSide = ~strongSide;
+	assert(count_material(pos, strongSide, MATL_QUEEN, 0));
+	assert(count_material(pos, weakSide, MATL_0, 1));
 
-	if (!(pos.pieces(zwakkeZijde, PAWN) & (sterkeZijde == WHITE ? bb4(SQ_A2, SQ_C2, SQ_F2, SQ_H2) : bb4(SQ_A7, SQ_C7, SQ_F7, SQ_H7))))
+	if (!(pos.pieces(weakSide, PAWN) & (strongSide == WHITE ? bb4(SQ_A2, SQ_C2, SQ_F2, SQ_H2) : bb4(SQ_A7, SQ_C7, SQ_F7, SQ_H7))))
 		return NO_FACTOR;
 
-	Square witte_koning = relative_square(sterkeZijde, pos.koning(sterkeZijde));
-	Square zwarte_koning = relative_square(sterkeZijde, pos.koning(zwakkeZijde));
-	Square dame = relative_square(sterkeZijde, pos.piece_square(sterkeZijde, QUEEN));
-	Square pion = relative_square(sterkeZijde, pos.piece_square(zwakkeZijde, PAWN));
+	Square white_king = relative_square(strongSide, pos.king(strongSide));
+	Square black_king = relative_square(strongSide, pos.king(weakSide));
+	Square queen = relative_square(strongSide, pos.piece_square(strongSide, QUEEN));
+	Square pawn = relative_square(strongSide, pos.piece_square(weakSide, PAWN));
 
-	Bitboard aanval = pos.attack_from<QUEEN>(pos.piece_square(sterkeZijde, QUEEN)) | pos.attack_from<KING>(pos.koning(sterkeZijde));
-	bool wit_aan_zet = pos.side_to_move() == sterkeZijde;
-	Bitboard ZK_schaak = pos.check_givers();
+	Bitboard attack = pos.attack_from<QUEEN>(pos.piece_square(strongSide, QUEEN)) | pos.attack_from<KING>(pos.king(strongSide));
+	bool white_to_move = pos.side_to_move() == strongSide;
+	Bitboard BK_check = pos.check_givers();
 
-	int flop = sterkeZijde == WHITE ? 0 : 070;
-	bool tempo = !wit_aan_zet || !(aanval & Square(pion ^ flop));
-	if (dame != pion - 8 && rij(zwarte_koning) <= RANK_2 + tempo
-		&& (VeldAfstand[zwarte_koning][pion] <= 1 + tempo || pion == SQ_C2 && zwarte_koning == SQ_A1 || pion == SQ_F2 && zwarte_koning == SQ_H1))
+	int flop = strongSide == WHITE ? 0 : 070;
+	bool tempo = !white_to_move || !(attack & Square(pawn ^ flop));
+	if (queen != pawn - 8 && rank_of(black_king) <= RANK_2 + tempo
+		&& (SquareDistance[black_king][pawn] <= 1 + tempo || pawn == SQ_C2 && black_king == SQ_A1 || pawn == SQ_F2 && black_king == SQ_H1))
 	{
-		if (lijn(pion) >= FILE_E)
+		if (file_of(pawn) >= FILE_E)
 		{
 			flop ^= 07;
-			pion = Square(pion ^ 07);
-			witte_koning = Square(witte_koning ^ 07);
-			zwarte_koning = Square(zwarte_koning ^ 07);
-			dame = Square(dame ^ 07);
+			pawn = Square(pawn ^ 07);
+			white_king = Square(white_king ^ 07);
+			black_king = Square(black_king ^ 07);
+			queen = Square(queen ^ 07);
 		}
-		if (pion == SQ_A2 && (lijn(witte_koning) > FILE_E || witte_koning > SQ_D5))
+		if (pawn == SQ_A2 && (file_of(white_king) > FILE_E || white_king > SQ_D5))
 			return DRAW_FACTOR;
-		if (pion == SQ_C2 && lijn(zwarte_koning) < FILE_C && (lijn(witte_koning) > FILE_E || witte_koning > SQ_C4))
+		if (pawn == SQ_C2 && file_of(black_king) < FILE_C && (file_of(white_king) > FILE_E || white_king > SQ_C4))
 			return DRAW_FACTOR;
-		if (pion == SQ_C2 && lijn(zwarte_koning) >= FILE_C && (lijn(witte_koning) > FILE_G || witte_koning > SQ_D5))
+		if (pawn == SQ_C2 && file_of(black_king) >= FILE_C && (file_of(white_king) > FILE_G || white_king > SQ_D5))
 			return DRAW_FACTOR;
 
-		if (!wit_aan_zet && !ZK_schaak)
+		if (!white_to_move && !BK_check)
 		{
-			if (pion == SQ_A2 && (VeldAfstand[SQ_A1][zwarte_koning] == 1 || lijn(dame) != FILE_A && !(aanval & Square(SQ_A1 ^ flop))))
+			if (pawn == SQ_A2 && (SquareDistance[SQ_A1][black_king] == 1 || file_of(queen) != FILE_A && !(attack & Square(SQ_A1 ^ flop))))
 				return DRAW_FACTOR;
 
-			if (pion == SQ_C2 && (VeldAfstand[SQ_C1][zwarte_koning] == 1 || lijn(dame) != FILE_C && !(aanval & Square(SQ_C1 ^ flop))))
+			if (pawn == SQ_C2 && (SquareDistance[SQ_C1][black_king] == 1 || file_of(queen) != FILE_C && !(attack & Square(SQ_C1 ^ flop))))
 				return DRAW_FACTOR;
 		}
 	}
@@ -347,25 +347,25 @@ ScaleFactor endgameScaleFactor_KQKP(const Position& pos)
 }
 
 
-template <Color sterkeZijde>
+template <Color strongSide>
 Value endgameValue_KQKR(const Position& pos)
 {
-	const Color zwakkeZijde = ~sterkeZijde;
-	assert(count_material(pos, sterkeZijde, MATL_QUEEN, 0));
-	assert(count_material(pos, zwakkeZijde, MATL_ROOK, 0));
+	const Color weakSide = ~strongSide;
+	assert(count_material(pos, strongSide, MATL_QUEEN, 0));
+	assert(count_material(pos, weakSide, MATL_ROOK, 0));
 
-	Square sterkeK = pos.koning(sterkeZijde);
-	Square zwakkeK = pos.koning(zwakkeZijde);
+	Square strongK = pos.king(strongSide);
+	Square weakK = pos.king(weakSide);
 
 	Value result = 4 * VALUE_PAWN
-		+ PushToEdge[zwakkeK]
-		+ PushClose[distance(sterkeK, zwakkeK)];
+		+ PushToEdge[weakK]
+		+ PushClose[distance(strongK, weakK)];
 
-	return sterkeZijde == pos.side_to_move() ? result : -result;
+	return strongSide == pos.side_to_move() ? result : -result;
 }
 
 
-template <Color sterkeZijde>
+template <Color strongSide>
 Value endgameValue_KNNK(const Position& pos)
 { 
 	return DRAW_VALUE;
@@ -390,86 +390,86 @@ win
 1k6/p7/Pp1K4/8/P3B3/8/8/8 w - - 0 1
 8/Bpk5/8/P2K4/8/8/8/8 w - - 0 1
 */
-template <Color sterkeZijde>
+template <Color strongSide>
 ScaleFactor endgameScaleFactor_KBPsK(const Position& pos) 
 {
-	const Color zwakkeZijde = ~sterkeZijde;
-	assert(pos.non_pawn_material(sterkeZijde) == MATL_BISHOP);
-	assert(pos.aantal(sterkeZijde, PAWN) >= 1);
+	const Color weakSide = ~strongSide;
+	assert(pos.non_pawn_material(strongSide) == MATL_BISHOP);
+	assert(pos.count(strongSide, PAWN) >= 1);
 
 	// kan laatste pion geslagen worden?
-	Bitboard bb_zwart_aanval = attack_king_inc(pos.koning(zwakkeZijde));
-	Bitboard bb_wit_aanval = pos.attack_from<KING>(pos.koning(sterkeZijde)) | pos.attack_from<BISHOP>(pos.piece_square(sterkeZijde, BISHOP));
-	if (pos.aantal(sterkeZijde, PAWN) == 1 && pos.side_to_move() == zwakkeZijde
-		&& pos.pieces(sterkeZijde, PAWN) & bb_zwart_aanval & ~bb_wit_aanval)
+	Bitboard bb_black_attack = attack_king_inc(pos.king(weakSide));
+	Bitboard bb_white_attack = pos.attack_from<KING>(pos.king(strongSide)) | pos.attack_from<BISHOP>(pos.piece_square(strongSide, BISHOP));
+	if (pos.count(strongSide, PAWN) == 1 && pos.side_to_move() == weakSide
+		&& pos.pieces(strongSide, PAWN) & bb_black_attack & ~bb_white_attack)
 		return DRAW_FACTOR;
 
-	Square witte_koning = relative_square(sterkeZijde, pos.koning(sterkeZijde));
-	Square zwarte_koning = relative_square(sterkeZijde, pos.koning(zwakkeZijde));
-	Square loper = relative_square(sterkeZijde, pos.piece_square(sterkeZijde, BISHOP));
-	Square pion = relative_square(sterkeZijde, pos.piece_list(sterkeZijde, PAWN)[0]);
-	Bitboard witte_pionnen = 0, zwarte_pionnen = 0;
+	Square white_king = relative_square(strongSide, pos.king(strongSide));
+	Square black_king = relative_square(strongSide, pos.king(weakSide));
+	Square bishop = relative_square(strongSide, pos.piece_square(strongSide, BISHOP));
+	Square pawn = relative_square(strongSide, pos.piece_list(strongSide, PAWN)[0]);
+	Bitboard white_pawns = 0, black_pawns = 0;
 
-	if (DarkSquares & loper)
+	if (DarkSquares & bishop)
 	{
-		witte_koning = Square(witte_koning ^ 07);
-		zwarte_koning = Square(zwarte_koning ^ 07);
-		loper = Square(loper ^ 07);
-		pion = Square(pion ^ 07);
-		for (int i = 0; i < pos.aantal(sterkeZijde, PAWN); i++)
-			witte_pionnen |= relative_square(sterkeZijde, Square(pos.piece_list(sterkeZijde, PAWN)[i] ^ 07));
-		for (int i = 0; i < pos.aantal(zwakkeZijde, PAWN); i++)
-			zwarte_pionnen |= relative_square(sterkeZijde, Square(pos.piece_list(zwakkeZijde, PAWN)[i] ^ 07));
+		white_king = Square(white_king ^ 07);
+		black_king = Square(black_king ^ 07);
+		bishop = Square(bishop ^ 07);
+		pawn = Square(pawn ^ 07);
+		for (int i = 0; i < pos.count(strongSide, PAWN); i++)
+			white_pawns |= relative_square(strongSide, Square(pos.piece_list(strongSide, PAWN)[i] ^ 07));
+		for (int i = 0; i < pos.count(weakSide, PAWN); i++)
+			black_pawns |= relative_square(strongSide, Square(pos.piece_list(weakSide, PAWN)[i] ^ 07));
 	}
 	else
 	{
-		for (int i = 0; i < pos.aantal(sterkeZijde, PAWN); i++)
-			witte_pionnen |= relative_square(sterkeZijde, pos.piece_list(sterkeZijde, PAWN)[i]);
-		for (int i = 0; i < pos.aantal(zwakkeZijde, PAWN); i++)
-			zwarte_pionnen |= relative_square(sterkeZijde, pos.piece_list(zwakkeZijde, PAWN)[i]);
+		for (int i = 0; i < pos.count(strongSide, PAWN); i++)
+			white_pawns |= relative_square(strongSide, pos.piece_list(strongSide, PAWN)[i]);
+		for (int i = 0; i < pos.count(weakSide, PAWN); i++)
+			black_pawns |= relative_square(strongSide, pos.piece_list(weakSide, PAWN)[i]);
 	}
 	// vanaf hier hebben we de situatie met een witte loper op de lichte velden
 
-	Bitboard bb_koning_dekt = attack_king_inc(zwarte_koning);
-	if (pos.aantal(sterkeZijde, PAWN) > 1)
-		pion = SQ_NONE;
+	Bitboard bb_king_covers = attack_king_inc(black_king);
+	if (pos.count(strongSide, PAWN) > 1)
+		pawn = SQ_NONE;
 
-	if (!(witte_pionnen & ~FileHBB))
+	if (!(white_pawns & ~FileHBB))
 	{
-		if (bb_koning_dekt & bb(SQ_H8))
+		if (bb_king_covers & bb(SQ_H8))
 		{
-			if (witte_pionnen & bb(SQ_H5) && (zwarte_pionnen & bb2(SQ_G7, SQ_H6)) == bb2(SQ_G7, SQ_H6))
+			if (white_pawns & bb(SQ_H5) && (black_pawns & bb2(SQ_G7, SQ_H6)) == bb2(SQ_G7, SQ_H6))
 				;
 			else
 				return DRAW_FACTOR;
 		}
-		if (!(zwarte_pionnen & FileGBB)
-			&& VeldAfstand[SQ_G7][zwarte_koning] < VeldAfstand[SQ_G7][witte_koning] + 1 - (pos.side_to_move() == sterkeZijde)
-			&& VeldAfstand[SQ_H8][zwarte_koning] < 7 - rij(msb(witte_pionnen)) - (pos.side_to_move() == sterkeZijde))
+		if (!(black_pawns & FileGBB)
+			&& SquareDistance[SQ_G7][black_king] < SquareDistance[SQ_G7][white_king] + 1 - (pos.side_to_move() == strongSide)
+			&& SquareDistance[SQ_H8][black_king] < 7 - rank_of(msb(white_pawns)) - (pos.side_to_move() == strongSide))
 			return ScaleFactor(NORMAL_FACTOR / 4);
-		if (!(witte_pionnen & ~bb2(SQ_H2, SQ_H3)) && (zwarte_pionnen & bb(SQ_H4)))
+		if (!(white_pawns & ~bb2(SQ_H2, SQ_H3)) && (black_pawns & bb(SQ_H4)))
 			return ScaleFactor(NORMAL_FACTOR / 4);
 	}
-	if (pion == SQ_G6 && loper == SQ_H7 && bb_koning_dekt & bb(SQ_H8))
+	if (pawn == SQ_G6 && bishop == SQ_H7 && bb_king_covers & bb(SQ_H8))
 		return DRAW_FACTOR;
-	if (!(witte_pionnen & ~FileABB) && witte_pionnen & bb(SQ_A6) &&
-		zwarte_pionnen & bb(SQ_A7) && bb_koning_dekt & bb(SQ_B8) &&
-		(!(zwarte_pionnen & FileBBB) ||
-			rij(lsb(witte_pionnen & FileABB)) >= rij(msb(zwarte_pionnen & FileBBB))))
+	if (!(white_pawns & ~FileABB) && white_pawns & bb(SQ_A6) &&
+		black_pawns & bb(SQ_A7) && bb_king_covers & bb(SQ_B8) &&
+		(!(black_pawns & FileBBB) ||
+			rank_of(lsb(white_pawns & FileABB)) >= rank_of(msb(black_pawns & FileBBB))))
 		return DRAW_FACTOR;
-	if (!(witte_pionnen & ~FileGBB) && witte_pionnen & bb(SQ_G6) &&
-		zwarte_pionnen & bb(SQ_G7) && bb_koning_dekt & bb2(SQ_G8, SQ_F8))
+	if (!(white_pawns & ~FileGBB) && white_pawns & bb(SQ_G6) &&
+		black_pawns & bb(SQ_G7) && bb_king_covers & bb2(SQ_G8, SQ_F8))
 		return DRAW_FACTOR;
-	if (pion == SQ_B6 && zwarte_pionnen & bb(SQ_B7) && bb_koning_dekt & bb2(SQ_B8, SQ_C8))
+	if (pawn == SQ_B6 && black_pawns & bb(SQ_B7) && bb_king_covers & bb2(SQ_B8, SQ_C8))
 		return DRAW_FACTOR;
 	// witte pionnen a6-b5-c4 geblokkeerd door een keten van a7-b6-c5
-	if (witte_pionnen == bb2(SQ_A6, SQ_B5)
-		&& (zwarte_pionnen & (bb2(SQ_A7, SQ_B6) | bb3(SQ_B7, SQ_C7, SQ_C6))) == bb2(SQ_A7, SQ_B6)
-		&& bb_koning_dekt & bb(SQ_B8))
+	if (white_pawns == bb2(SQ_A6, SQ_B5)
+		&& (black_pawns & (bb2(SQ_A7, SQ_B6) | bb3(SQ_B7, SQ_C7, SQ_C6))) == bb2(SQ_A7, SQ_B6)
+		&& bb_king_covers & bb(SQ_B8))
 		return DRAW_FACTOR;
-	if (witte_pionnen == bb3(SQ_A6, SQ_B5, SQ_C4)
-		&& (zwarte_pionnen & (bb3(SQ_A7, SQ_B6, SQ_C5) | bb3(SQ_B7, SQ_C7, SQ_C6) | bb3(SQ_D7, SQ_D6, SQ_D5))) == bb3(SQ_A7, SQ_B6, SQ_C5)
-		&& bb_koning_dekt & bb(SQ_B8))
+	if (white_pawns == bb3(SQ_A6, SQ_B5, SQ_C4)
+		&& (black_pawns & (bb3(SQ_A7, SQ_B6, SQ_C5) | bb3(SQ_B7, SQ_C7, SQ_C6) | bb3(SQ_D7, SQ_D6, SQ_D5))) == bb3(SQ_A7, SQ_B6, SQ_C5)
+		&& bb_king_covers & bb(SQ_B8))
 		return DRAW_FACTOR;
 
 	return NO_FACTOR;
@@ -481,24 +481,24 @@ remise
 winst
 8/6kp/6r1/8/4KQ2/8/8/8 w - - 0 1
 */
-template <Color sterkeZijde>
+template <Color strongSide>
 ScaleFactor endgameScaleFactor_KQKRPs(const Position& pos) 
 {
-	const Color zwakkeZijde = ~sterkeZijde;
-	assert(count_material(pos, sterkeZijde, MATL_QUEEN, 0));
-	assert(pos.aantal(zwakkeZijde, ROOK) == 1);
-	assert(pos.aantal(zwakkeZijde, PAWN) >= 1);
+	const Color weakSide = ~strongSide;
+	assert(count_material(pos, strongSide, MATL_QUEEN, 0));
+	assert(pos.count(weakSide, ROOK) == 1);
+	assert(pos.count(weakSide, PAWN) >= 1);
 
-	Square kingSq = pos.koning(zwakkeZijde);
-	Square rsq = pos.piece_square(zwakkeZijde, ROOK);
+	Square kingSq = pos.king(weakSide);
+	Square rsq = pos.piece_square(weakSide, ROOK);
 
-	if (relative_rank(zwakkeZijde, kingSq) <= RANK_2
-		&&  relative_rank(zwakkeZijde, pos.koning(sterkeZijde)) >= RANK_4
-		&&  relative_rank(zwakkeZijde, rsq) == RANK_3
-		&& (pos.pieces(zwakkeZijde, PAWN)
+	if (relative_rank(weakSide, kingSq) <= RANK_2
+		&&  relative_rank(weakSide, pos.king(strongSide)) >= RANK_4
+		&&  relative_rank(weakSide, rsq) == RANK_3
+		&& (pos.pieces(weakSide, PAWN)
 			& ~FileABB & ~FileHBB // a en h pion maken geen vesting !
 			& pos.attack_from<KING>(kingSq)
-			& pos.attack_from<PAWN>(rsq, sterkeZijde)))
+			& pos.attack_from<PAWN>(rsq, strongSide)))
 		return DRAW_FACTOR;
 
 	return ONE_PAWN_FACTOR;
@@ -511,44 +511,44 @@ ScaleFactor endgameScaleFactor_KQKRPs(const Position& pos)
 ///
 /// It would also be nice to rewrite the actual code for this function,
 /// which is mostly copied from Glaurung 1.x, and isn't very pretty.
-template <Color sterkeZijde>
+template <Color strongSide>
 ScaleFactor endgameScaleFactor_KRPKR(const Position& pos) {
 
-  const Color zwakkeZijde = ~sterkeZijde;
-  assert(count_material(pos, sterkeZijde, MATL_ROOK, 1));
-  assert(count_material(pos, zwakkeZijde, MATL_ROOK, 0));
+  const Color weakSide = ~strongSide;
+  assert(count_material(pos, strongSide, MATL_ROOK, 1));
+  assert(count_material(pos, weakSide, MATL_ROOK, 0));
 
   // Assume sterkeZijde is white and the pawn is on files A-D
-  Square wksq = normalize_pawn_side(pos, sterkeZijde, pos.koning(sterkeZijde));
-  Square bksq = normalize_pawn_side(pos, sterkeZijde, pos.koning(zwakkeZijde));
-  Square wrsq = normalize_pawn_side(pos, sterkeZijde, pos.piece_square(sterkeZijde, ROOK));
-  Square wpsq = normalize_pawn_side(pos, sterkeZijde, pos.piece_square(sterkeZijde, PAWN));
-  Square brsq = normalize_pawn_side(pos, sterkeZijde, pos.piece_square(zwakkeZijde, ROOK));
+  Square wksq = normalize_pawn_side(pos, strongSide, pos.king(strongSide));
+  Square bksq = normalize_pawn_side(pos, strongSide, pos.king(weakSide));
+  Square wrsq = normalize_pawn_side(pos, strongSide, pos.piece_square(strongSide, ROOK));
+  Square wpsq = normalize_pawn_side(pos, strongSide, pos.piece_square(strongSide, PAWN));
+  Square brsq = normalize_pawn_side(pos, strongSide, pos.piece_square(weakSide, ROOK));
 
-  File f = lijn(wpsq);
-  Rank r = rij(wpsq);
+  File f = file_of(wpsq);
+  Rank r = rank_of(wpsq);
   Square queeningSq = make_square(f, RANK_8);
-  int tempo = (pos.side_to_move() == sterkeZijde);
+  int tempo = (pos.side_to_move() == strongSide);
 
   // If the pawn is not too far advanced and the defending king defends the
   // queening square, use the third-rank defence.
   if (   r <= RANK_5
       && distance(bksq, queeningSq) <= 1
       && wksq <= SQ_H5
-      && (rij(brsq) == RANK_6 || (r <= RANK_3 && rij(wrsq) != RANK_6)))
+      && (rank_of(brsq) == RANK_6 || (r <= RANK_3 && rank_of(wrsq) != RANK_6)))
       return DRAW_FACTOR;
 
   // The defending side saves a draw by checking from behind in case the pawn
   // has advanced to the 6th rank with the king behind.
   if (   r == RANK_6
       && distance(bksq, queeningSq) <= 1
-      && rij(wksq) + tempo <= RANK_6
-      && (rij(brsq) == RANK_1 || (!tempo && file_distance(brsq, wpsq) >= 3)))
+      && rank_of(wksq) + tempo <= RANK_6
+      && (rank_of(brsq) == RANK_1 || (!tempo && file_distance(brsq, wpsq) >= 3)))
       return DRAW_FACTOR;
 
   if (   r >= RANK_6
       && bksq == queeningSq
-      && rij(brsq) == RANK_1
+      && rank_of(brsq) == RANK_1
       && (!tempo || distance(wksq, wpsq) >= 2))
       return DRAW_FACTOR;
 
@@ -557,8 +557,8 @@ ScaleFactor endgameScaleFactor_KRPKR(const Position& pos) {
   if (   wpsq == SQ_A7
       && wrsq == SQ_A8
       && (bksq == SQ_H7 || bksq == SQ_G7)
-      && lijn(brsq) == FILE_A
-      && (rij(brsq) <= RANK_3 || lijn(wksq) >= FILE_D || rij(wksq) <= RANK_5))
+      && file_of(brsq) == FILE_A
+      && (rank_of(brsq) <= RANK_3 || file_of(wksq) >= FILE_D || rank_of(wksq) <= RANK_5))
       return DRAW_FACTOR;
 
   // If the defending king blocks the pawn and the attacking king is too far
@@ -574,7 +574,7 @@ ScaleFactor endgameScaleFactor_KRPKR(const Position& pos) {
   // and the defending king cannot gain tempi by threatening the attacking rook.
   if (   r == RANK_7
       && f != FILE_A
-      && lijn(wrsq) == f
+      && file_of(wrsq) == f
       && wrsq != queeningSq
       && (distance(wksq, queeningSq) < distance(bksq, queeningSq) - 2 + tempo)
       && (distance(wksq, queeningSq) < distance(bksq, wrsq) + tempo))
@@ -582,7 +582,7 @@ ScaleFactor endgameScaleFactor_KRPKR(const Position& pos) {
 
   // Similar to the above, but with the pawn further back
   if (   f != FILE_A
-      && lijn(wrsq) == f
+      && file_of(wrsq) == f
       && wrsq < wpsq
       && (distance(wksq, queeningSq) < distance(bksq, queeningSq) - 2 + tempo)
       && (distance(wksq, wpsq + UP) < distance(bksq, wpsq + UP) - 2 + tempo)
@@ -597,7 +597,7 @@ ScaleFactor endgameScaleFactor_KRPKR(const Position& pos) {
   // the pawn's path, it's probably a draw.
   if (r <= RANK_4 && bksq > wpsq)
   {
-      if (lijn(bksq) == lijn(wpsq))
+      if (file_of(bksq) == file_of(wpsq))
           return ScaleFactor(16);
       if (   file_distance(bksq, wpsq) == 1
           && distance(wksq, bksq) > 2)
@@ -606,21 +606,21 @@ ScaleFactor endgameScaleFactor_KRPKR(const Position& pos) {
   return NO_FACTOR;
 }
 
-template <Color sterkeZijde>
+template <Color strongSide>
 ScaleFactor endgameScaleFactor_KRPKB(const Position& pos) {
 
-  const Color zwakkeZijde = ~sterkeZijde;
-  assert(count_material(pos, sterkeZijde, MATL_ROOK, 1));
-  assert(count_material(pos, zwakkeZijde, MATL_BISHOP, 0));
+  const Color weakSide = ~strongSide;
+  assert(count_material(pos, strongSide, MATL_ROOK, 1));
+  assert(count_material(pos, weakSide, MATL_BISHOP, 0));
 
   // Test for a rook pawn
   if (pos.pieces(PAWN) & (FileABB | FileHBB))
   {
-      Square veldK = pos.koning(zwakkeZijde);
-      Square bsq = pos.piece_square(zwakkeZijde, BISHOP);
-      Square psq = pos.piece_square(sterkeZijde, PAWN);
-      Rank rk = relative_rank(sterkeZijde, psq);
-      Square push = pawn_forward(sterkeZijde);
+      Square squareK = pos.king(weakSide);
+      Square bsq = pos.piece_square(weakSide, BISHOP);
+      Square psq = pos.piece_square(strongSide, PAWN);
+      Rank rk = relative_rank(strongSide, psq);
+      Square push = pawn_forward(strongSide);
 
       // If the pawn is on the 5th rank and the pawn (currently) is on
       // the same color square as the bishop then there is a chance of
@@ -629,9 +629,9 @@ ScaleFactor endgameScaleFactor_KRPKB(const Position& pos) {
       // corner but not trapped there.
       if (rk == RANK_5 && !different_color(bsq, psq))
       {
-          int d = distance(psq + 3 * push, veldK);
+          int d = distance(psq + 3 * push, squareK);
 
-          if (d <= 2 && !(d == 0 && veldK == pos.koning(sterkeZijde) + 2 * push))
+          if (d <= 2 && !(d == 0 && squareK == pos.king(strongSide) + 2 * push))
               return ScaleFactor(38);
           else
               return ScaleFactor(75);
@@ -642,8 +642,8 @@ ScaleFactor endgameScaleFactor_KRPKB(const Position& pos) {
       // pawn from a reasonable distance and the defending king is near
       // the corner
       if (   rk == RANK_6
-          && distance(psq + 2 * push, veldK) <= 1
-          && (LegeAanval[BISHOP][bsq] & (psq + push))
+          && distance(psq + 2 * push, squareK) <= 1
+          && (EmptyAttack[BISHOP][bsq] & (psq + push))
           && file_distance(bsq, psq) >= 2)
           return ScaleFactor(12);
   }
@@ -653,26 +653,26 @@ ScaleFactor endgameScaleFactor_KRPKB(const Position& pos) {
 
 /// KRPP vs KRP. There is just a single rule: if the stronger side has no passed
 /// pawns and the defending king is actively placed, the position is drawish.
-template <Color sterkeZijde>
+template <Color strongSide>
 ScaleFactor endgameScaleFactor_KRPPKRP(const Position& pos) {
 
-  const Color zwakkeZijde = ~sterkeZijde;
-  assert(count_material(pos, sterkeZijde, MATL_ROOK, 2));
-  assert(count_material(pos, zwakkeZijde, MATL_ROOK, 1));
+  const Color weakSide = ~strongSide;
+  assert(count_material(pos, strongSide, MATL_ROOK, 2));
+  assert(count_material(pos, weakSide, MATL_ROOK, 1));
 
-  Square wpsq1 = pos.piece_list(sterkeZijde, PAWN)[0];
-  Square wpsq2 = pos.piece_list(sterkeZijde, PAWN)[1];
-  Square bksq = pos.koning(zwakkeZijde);
+  Square wpsq1 = pos.piece_list(strongSide, PAWN)[0];
+  Square wpsq2 = pos.piece_list(strongSide, PAWN)[1];
+  Square bksq = pos.king(weakSide);
 
   // Does the stronger side have a passed pawn?
-  if (pos.is_passed_pawn(sterkeZijde, wpsq1) || pos.is_passed_pawn(sterkeZijde, wpsq2))
+  if (pos.is_passed_pawn(strongSide, wpsq1) || pos.is_passed_pawn(strongSide, wpsq2))
       return NO_FACTOR;
 
-  Rank r = std::max(relative_rank(sterkeZijde, wpsq1), relative_rank(sterkeZijde, wpsq2));
+  Rank r = std::max(relative_rank(strongSide, wpsq1), relative_rank(strongSide, wpsq2));
 
   if (   file_distance(bksq, wpsq1) <= 1
       && file_distance(bksq, wpsq2) <= 1
-      && relative_rank(sterkeZijde, bksq) > r)
+      && relative_rank(strongSide, bksq) > r)
   {
       assert(r > RANK_1 && r < RANK_7);
       return ScaleFactor(KRPPKRPScaleFactors[r]);
@@ -681,20 +681,20 @@ ScaleFactor endgameScaleFactor_KRPPKRP(const Position& pos) {
 }
 
 
-template <Color sterkeZijde>
+template <Color strongSide>
 ScaleFactor endgameScaleFactor_KPsK(const Position& pos) 
 {
-	const Color zwakkeZijde = ~sterkeZijde;
-	assert(pos.non_pawn_material(sterkeZijde) == MATL_0);
-	assert(pos.aantal(sterkeZijde, PAWN) >= 2);
-	assert(count_material(pos, zwakkeZijde, MATL_0, 0));
+	const Color weakSide = ~strongSide;
+	assert(pos.non_pawn_material(strongSide) == MATL_0);
+	assert(pos.count(strongSide, PAWN) >= 2);
+	assert(count_material(pos, weakSide, MATL_0, 0));
 
-	Square veldK = pos.koning(zwakkeZijde);
-	Bitboard pawns = pos.pieces(sterkeZijde, PAWN);
+	Square squareK = pos.king(weakSide);
+	Bitboard pawns = pos.pieces(strongSide, PAWN);
 
-	if (!(pawns & ~bb_ranks_forward(zwakkeZijde, rij(veldK)))
+	if (!(pawns & ~bb_ranks_forward(weakSide, rank_of(squareK)))
 		&& !((pawns & ~FileABB) && (pawns & ~FileHBB))
-		&& file_distance(veldK, lsb(pawns)) <= 1)
+		&& file_distance(squareK, lsb(pawns)) <= 1)
 		return DRAW_FACTOR;
 
 	return NO_FACTOR;
@@ -719,52 +719,52 @@ remise
 */
 const Bitboard AverbakhRule = 0xfff7e3c180000000;
 
-template <Color sterkeZijde>
+template <Color strongSide>
 ScaleFactor endgameScaleFactor_KBPKB(const Position& pos)
 {
-	const Color zwakkeZijde = ~sterkeZijde;
-	assert(count_material(pos, sterkeZijde, MATL_BISHOP, 1));
-	assert(count_material(pos, zwakkeZijde, MATL_BISHOP, 0));
+	const Color weakSide = ~strongSide;
+	assert(count_material(pos, strongSide, MATL_BISHOP, 1));
+	assert(count_material(pos, weakSide, MATL_BISHOP, 0));
 
-	int weakSideToMove = pos.side_to_move() == zwakkeZijde;
+	int weakSideToMove = pos.side_to_move() == weakSide;
 	if (weakSideToMove
-		&& pos.attack_from<BISHOP>(pos.piece_square(sterkeZijde, PAWN)) & pos.pieces(zwakkeZijde, BISHOP)) //& ~ai.gepend[sterkeZijde])
+		&& pos.attack_from<BISHOP>(pos.piece_square(strongSide, PAWN)) & pos.pieces(weakSide, BISHOP)) //& ~ai.gepend[sterkeZijde])
 		return DRAW_FACTOR;
 
-	if (different_color(pos.piece_square(sterkeZijde, BISHOP), pos.piece_square(zwakkeZijde, BISHOP)))
+	if (different_color(pos.piece_square(strongSide, BISHOP), pos.piece_square(weakSide, BISHOP)))
 	{
-		Square witte_koning = pos.koning(sterkeZijde);
-		Square witte_loper = pos.piece_square(sterkeZijde, BISHOP);
-		Square pion = pos.piece_square(sterkeZijde, PAWN);
-		Square zwarte_koning = pos.koning(zwakkeZijde);
-		Square zwarte_loper = pos.piece_square(zwakkeZijde, BISHOP);
-		Bitboard wit_aanval = pos.attack_from<PAWN>(pion, WHITE) | pos.attack_from<BISHOP>(witte_loper) | pos.attack_from<KING>(witte_koning);
+		Square white_king = pos.king(strongSide);
+		Square white_bishop = pos.piece_square(strongSide, BISHOP);
+		Square pawn = pos.piece_square(strongSide, PAWN);
+		Square black_king = pos.king(weakSide);
+		Square black_bishop = pos.piece_square(weakSide, BISHOP);
+		Bitboard white_attack = pos.attack_from<PAWN>(pawn, WHITE) | pos.attack_from<BISHOP>(white_bishop) | pos.attack_from<KING>(white_king);
 		//Bord zwart_aanval = pos.aanval_van<LOPER>(zwarte_loper) | pos.aanval_van<KONING>(zwarte_koning);
-		if (relative_rank(sterkeZijde, pion) <= RANK_5)
+		if (relative_rank(strongSide, pawn) <= RANK_5)
 			return DRAW_FACTOR;
-		if (bb_forward(sterkeZijde, pion) & zwarte_koning && different_color(zwarte_koning, witte_loper))
+		if (bb_forward(strongSide, pawn) & black_king && different_color(black_king, white_bishop))
 			return DRAW_FACTOR;
-		if (bb_forward(sterkeZijde, pion) & (pos.attack_from<BISHOP>(zwarte_loper) | zwarte_loper)
-			&& (weakSideToMove || (!(wit_aanval & zwarte_loper))))
+		if (bb_forward(strongSide, pawn) & (pos.attack_from<BISHOP>(black_bishop) | black_bishop)
+			&& (weakSideToMove || (!(white_attack & black_bishop))))
 			return DRAW_FACTOR;
 	}
 	else
 	{
-		int flop = sterkeZijde == WHITE ? ((pos.pieces(WHITE, BISHOP) & DarkSquares) ? 0 : 07)
+		int flop = strongSide == WHITE ? ((pos.pieces(WHITE, BISHOP) & DarkSquares) ? 0 : 07)
 			: ((pos.pieces(BLACK, BISHOP) & ~DarkSquares) ? 070 : 077);
 
-		Square pion = Square(pos.piece_square(sterkeZijde, PAWN) ^ flop);
-		Square witte_koning = Square(pos.koning(sterkeZijde) ^ flop);
-		Square zwarte_koning = Square(pos.koning(zwakkeZijde) ^ flop);
+		Square pawn = Square(pos.piece_square(strongSide, PAWN) ^ flop);
+		Square white_king = Square(pos.king(strongSide) ^ flop);
+		Square black_king = Square(pos.king(weakSide) ^ flop);
 		//Veld witte_loper = Veld(pos.stuk_veld(sterkeZijde, LOPER) ^ flop);
 		// hier aangekomen hebben we lopers op donkere velden, en wit is de sterke partij
 
-		if (zwarte_koning > pion && lijn(pion) == lijn(zwarte_koning) && ~DarkSquares & zwarte_koning)
+		if (black_king > pawn && file_of(pawn) == file_of(black_king) && ~DarkSquares & black_king)
 			return DRAW_FACTOR;
 
-		if (VeldAfstand[pion][zwarte_koning] == 1 && rij(zwarte_koning) < rij(pion)
-			&& (abs(lijn(zwarte_koning) - lijn(witte_koning)) <= weakSideToMove)
-			&& !(AverbakhRule & pion))
+		if (SquareDistance[pawn][black_king] == 1 && rank_of(black_king) < rank_of(pawn)
+			&& (abs(file_of(black_king) - file_of(white_king)) <= weakSideToMove)
+			&& !(AverbakhRule & pawn))
 			return DRAW_FACTOR;
 	}
 
@@ -773,33 +773,33 @@ ScaleFactor endgameScaleFactor_KBPKB(const Position& pos)
 
 
 /// KBPP vs KB. It detects a few basic draws with opposite-colored bishops
-template <Color sterkeZijde>
+template <Color strongSide>
 ScaleFactor endgameScaleFactor_KBPPKB(const Position& pos)
 {
-  const Color zwakkeZijde = ~sterkeZijde;
-  assert(count_material(pos, sterkeZijde, MATL_BISHOP, 2));
-  assert(count_material(pos, zwakkeZijde, MATL_BISHOP, 0));
+  const Color weakSide = ~strongSide;
+  assert(count_material(pos, strongSide, MATL_BISHOP, 2));
+  assert(count_material(pos, weakSide, MATL_BISHOP, 0));
 
-  Square wbsq = pos.piece_square(sterkeZijde, BISHOP);
-  Square bbsq = pos.piece_square(zwakkeZijde, BISHOP);
+  Square wbsq = pos.piece_square(strongSide, BISHOP);
+  Square bbsq = pos.piece_square(weakSide, BISHOP);
 
   if (!different_color(wbsq, bbsq))
       return NO_FACTOR;
 
-  Square veldK = pos.koning(zwakkeZijde);
-  Square psq1 = pos.piece_list(sterkeZijde, PAWN)[0];
-  Square psq2 = pos.piece_list(sterkeZijde, PAWN)[1];
+  Square squareK = pos.king(weakSide);
+  Square psq1 = pos.piece_list(strongSide, PAWN)[0];
+  Square psq2 = pos.piece_list(strongSide, PAWN)[1];
   Square blockSq1, blockSq2;
 
-  if (relative_rank(sterkeZijde, psq1) > relative_rank(sterkeZijde, psq2))
+  if (relative_rank(strongSide, psq1) > relative_rank(strongSide, psq2))
   {
-      blockSq1 = psq1 + pawn_forward(sterkeZijde);
-      blockSq2 = make_square(lijn(psq2), rij(psq1));
+      blockSq1 = psq1 + pawn_forward(strongSide);
+      blockSq2 = make_square(file_of(psq2), rank_of(psq1));
   }
   else
   {
-      blockSq1 = psq2 + pawn_forward(sterkeZijde);
-      blockSq2 = make_square(lijn(psq1), rij(psq2));
+      blockSq1 = psq2 + pawn_forward(strongSide);
+      blockSq2 = make_square(file_of(psq1), rank_of(psq2));
   }
 
   switch (file_distance(psq1, psq2))
@@ -807,9 +807,9 @@ ScaleFactor endgameScaleFactor_KBPPKB(const Position& pos)
   case 0:
     // Both pawns are on the same file. It's an easy draw if the defender firmly
     // controls some square in the frontmost pawn's path.
-    if (   lijn(veldK) == lijn(blockSq1)
-        && relative_rank(sterkeZijde, veldK) >= relative_rank(sterkeZijde, blockSq1)
-        && different_color(veldK, wbsq))
+    if (   file_of(squareK) == file_of(blockSq1)
+        && relative_rank(strongSide, squareK) >= relative_rank(strongSide, blockSq1)
+        && different_color(squareK, wbsq))
         return DRAW_FACTOR;
     else
         return NO_FACTOR;
@@ -818,17 +818,17 @@ ScaleFactor endgameScaleFactor_KBPPKB(const Position& pos)
     // Pawns on adjacent files. It's a draw if the defender firmly controls the
     // square in front of the frontmost pawn's path, and the square diagonally
     // behind this square on the file of the other pawn.
-    if (   veldK == blockSq1
-        && different_color(veldK, wbsq)
+    if (   squareK == blockSq1
+        && different_color(squareK, wbsq)
         && (   bbsq == blockSq2
-            || (pos.attack_from<BISHOP>(blockSq2) & pos.pieces(zwakkeZijde, BISHOP))
+            || (pos.attack_from<BISHOP>(blockSq2) & pos.pieces(weakSide, BISHOP))
             || rank_distance(psq1, psq2) >= 2))
         return DRAW_FACTOR;
 
-    else if (   veldK == blockSq2
-             && different_color(veldK, wbsq)
+    else if (   squareK == blockSq2
+             && different_color(squareK, wbsq)
              && (   bbsq == blockSq1
-                 || (pos.attack_from<BISHOP>(blockSq1) & pos.pieces(zwakkeZijde, BISHOP))))
+                 || (pos.attack_from<BISHOP>(blockSq1) & pos.pieces(weakSide, BISHOP))))
         return DRAW_FACTOR;
     else
         return NO_FACTOR;
@@ -843,21 +843,21 @@ ScaleFactor endgameScaleFactor_KBPPKB(const Position& pos)
 /// KBP vs KN. There is a single rule: If the defending king is somewhere along
 /// the path of the pawn, and the square of the king is not of the same color as
 /// the stronger side's bishop, it's a draw.
-template <Color sterkeZijde>
+template <Color strongSide>
 ScaleFactor endgameScaleFactor_KBPKN(const Position& pos) 
 {
-  const Color zwakkeZijde = ~sterkeZijde;
-  assert(count_material(pos, sterkeZijde, MATL_BISHOP, 1));
-  assert(count_material(pos, zwakkeZijde, MATL_KNIGHT, 0));
+  const Color weakSide = ~strongSide;
+  assert(count_material(pos, strongSide, MATL_BISHOP, 1));
+  assert(count_material(pos, weakSide, MATL_KNIGHT, 0));
 
-  Square pawnSq = pos.piece_square(sterkeZijde, PAWN);
-  Square strongBishopSq = pos.piece_square(sterkeZijde, BISHOP);
-  Square weakKingSq = pos.koning(zwakkeZijde);
+  Square pawnSq = pos.piece_square(strongSide, PAWN);
+  Square strongBishopSq = pos.piece_square(strongSide, BISHOP);
+  Square weakKingSq = pos.king(weakSide);
 
-  if (   lijn(weakKingSq) == lijn(pawnSq)
-      && relative_rank(sterkeZijde, pawnSq) < relative_rank(sterkeZijde, weakKingSq)
+  if (   file_of(weakKingSq) == file_of(pawnSq)
+      && relative_rank(strongSide, pawnSq) < relative_rank(strongSide, weakKingSq)
       && (   different_color(weakKingSq, strongBishopSq)
-          || relative_rank(sterkeZijde, weakKingSq) <= RANK_6))
+          || relative_rank(strongSide, weakKingSq) <= RANK_6))
       return DRAW_FACTOR;
 
   return NO_FACTOR;
@@ -871,25 +871,25 @@ k7/P7/2N5/8/8/8/8/7K w - - 0 1
 K7/P2k4/8/8/8/8/7N/8 b - - 0 1
 K7/P2k4/8/8/8/8/8/7N b - - 0 1
 */
-template <Color sterkeZijde>
+template <Color strongSide>
 ScaleFactor endgameScaleFactor_KNPK(const Position& pos) 
 {
-  const Color zwakkeZijde = ~sterkeZijde;
-  assert(count_material(pos, sterkeZijde, MATL_KNIGHT, 1));
-  assert(count_material(pos, zwakkeZijde, MATL_0, 0));
+  const Color weakSide = ~strongSide;
+  assert(count_material(pos, strongSide, MATL_KNIGHT, 1));
+  assert(count_material(pos, weakSide, MATL_0, 0));
 
   // Assume sterkeZijde is white and the pawn is on files A-D
-  Square witte_koning = normalize_pawn_side(pos, sterkeZijde, pos.koning(sterkeZijde));
-  Square paard = normalize_pawn_side(pos, sterkeZijde, pos.piece_square(sterkeZijde, KNIGHT));
-  Square pion = normalize_pawn_side(pos, sterkeZijde, pos.piece_square(sterkeZijde, PAWN));
-  Square zwarte_koning = normalize_pawn_side(pos, sterkeZijde, pos.koning(zwakkeZijde));
+  Square white_king = normalize_pawn_side(pos, strongSide, pos.king(strongSide));
+  Square knight = normalize_pawn_side(pos, strongSide, pos.piece_square(strongSide, KNIGHT));
+  Square pawn = normalize_pawn_side(pos, strongSide, pos.piece_square(strongSide, PAWN));
+  Square black_king = normalize_pawn_side(pos, strongSide, pos.king(weakSide));
 
-  if (pion == SQ_A7 && distance(SQ_A8, zwarte_koning) <= 1)
+  if (pawn == SQ_A7 && distance(SQ_A8, black_king) <= 1)
       return DRAW_FACTOR;
 
-  if (pion == SQ_A7 && witte_koning == SQ_A8 &&
-	  (zwarte_koning == SQ_C7 && (!(pos.side_to_move() == sterkeZijde) ^ !(~DarkSquares & paard)) ||
-		  zwarte_koning == SQ_C8 && (!(pos.side_to_move() == sterkeZijde) ^ !(DarkSquares & paard))))
+  if (pawn == SQ_A7 && white_king == SQ_A8 &&
+	  (black_king == SQ_C7 && (!(pos.side_to_move() == strongSide) ^ !(~DarkSquares & knight)) ||
+		  black_king == SQ_C8 && (!(pos.side_to_move() == strongSide) ^ !(DarkSquares & knight))))
 	  return DRAW_FACTOR;
 
   return NO_FACTOR;
@@ -898,17 +898,17 @@ ScaleFactor endgameScaleFactor_KNPK(const Position& pos)
 
 /// KNP vs KB. If knight can block bishop from taking pawn, it's a win.
 /// Otherwise the position is drawn.
-template <Color sterkeZijde>
+template <Color strongSide>
 ScaleFactor endgameScaleFactor_KNPKB(const Position& pos) 
 {
-  const Color zwakkeZijde = ~sterkeZijde;
-  Square pawnSq = pos.piece_square(sterkeZijde, PAWN);
-  Square bishopSq = pos.piece_square(zwakkeZijde, BISHOP);
-  Square weakKingSq = pos.koning(zwakkeZijde);
+  const Color weakSide = ~strongSide;
+  Square pawnSq = pos.piece_square(strongSide, PAWN);
+  Square bishopSq = pos.piece_square(weakSide, BISHOP);
+  Square weakKingSq = pos.king(weakSide);
 
   // King needs to get close to promoting pawn to prevent knight from blocking.
   // Rules for this are very tricky, so just approximate.
-  if (bb_forward(sterkeZijde, pawnSq) & pos.attack_from<BISHOP>(bishopSq))
+  if (bb_forward(strongSide, pawnSq) & pos.attack_from<BISHOP>(bishopSq))
       return ScaleFactor(2 * distance(weakKingSq, pawnSq));
 
   return NO_FACTOR;
@@ -920,23 +920,23 @@ ScaleFactor endgameScaleFactor_KNPKB(const Position& pos)
 /// has at least a draw with the pawn as well. The exception is when the stronger
 /// side's pawn is far advanced and not on a rook file; in this case it is often
 /// possible to win (e.g. 8/4k3/3p4/3P4/6K1/8/8/8 w - - 0 1).
-template <Color sterkeZijde>
+template <Color strongSide>
 ScaleFactor endgameScaleFactor_KPKP(const Position& pos) 
 {
-  const Color zwakkeZijde = ~sterkeZijde;
-  assert(count_material(pos, sterkeZijde, MATL_0, 1));
-  assert(count_material(pos, zwakkeZijde, MATL_0, 1));
+  const Color weakSide = ~strongSide;
+  assert(count_material(pos, strongSide, MATL_0, 1));
+  assert(count_material(pos, weakSide, MATL_0, 1));
 
   // Assume sterkeZijde is white and the pawn is on files A-D
-  Square wksq = normalize_pawn_side(pos, sterkeZijde, pos.koning(sterkeZijde));
-  Square bksq = normalize_pawn_side(pos, sterkeZijde, pos.koning(zwakkeZijde));
-  Square psq  = normalize_pawn_side(pos, sterkeZijde, pos.piece_square(sterkeZijde, PAWN));
+  Square wksq = normalize_pawn_side(pos, strongSide, pos.king(strongSide));
+  Square bksq = normalize_pawn_side(pos, strongSide, pos.king(weakSide));
+  Square psq  = normalize_pawn_side(pos, strongSide, pos.piece_square(strongSide, PAWN));
 
-  Color us = sterkeZijde == pos.side_to_move() ? WHITE : BLACK;
+  Color us = strongSide == pos.side_to_move() ? WHITE : BLACK;
 
   // If the pawn has advanced to the fifth rank or further, and is not a
   // rook pawn, it's too dangerous to assume that it's at least a draw.
-  if (rij(psq) >= RANK_5 && lijn(psq) != FILE_A)
+  if (rank_of(psq) >= RANK_5 && file_of(psq) != FILE_A)
       return NO_FACTOR;
 
   // Probe the KPK bitbase with the weakest side's pawn removed. If it's a draw,
@@ -947,14 +947,14 @@ ScaleFactor endgameScaleFactor_KPKP(const Position& pos)
 
 void Endgames::initialize()
 {
-	if (!mapWaarde.empty())
+	if (!mapValue.empty())
 		return;
 
-	waarde_aantal = factor_aantal = 0;
+	value_count = factor_count = 0;
 
 	// end games with complete evaluation
-	waarde_functies[waarde_aantal++] = &endgameValue_KXK<WHITE>;    // index 0
-	waarde_functies[waarde_aantal++] = &endgameValue_KXK<BLACK>;  // index 1
+	value_functions[value_count++] = &endgameValue_KXK<WHITE>;    // index 0
+	value_functions[value_count++] = &endgameValue_KXK<BLACK>;  // index 1
 	//           KPNBRQ  KPNBRQ
 	add_value("0110000 0100000", &endgameValue_KPK<WHITE>,  &endgameValue_KPK<BLACK>);
 	add_value("0102000 0100000", &endgameValue_KNNK<WHITE>, &endgameValue_KNNK<BLACK>);
@@ -964,14 +964,14 @@ void Endgames::initialize()
 	//addValue("0100010 0100100", &endgameValue_KRKB<WHITE>, &endgameValue_KRKB<BLACK>);
 
 	// end games with scale factor
-	factor_functies[factor_aantal++] = &endgameScaleFactor_KBPsK<WHITE>;     // index 0 KB and pawns vs K
-	factor_functies[factor_aantal++] = &endgameScaleFactor_KBPsK<BLACK>;   // index 1
-	factor_functies[factor_aantal++] = &endgameScaleFactor_KQKRPs<WHITE>;    // index 2 KQ vs KR and pawns
-	factor_functies[factor_aantal++] = &endgameScaleFactor_KQKRPs<BLACK>;  // index 3
-	factor_functies[factor_aantal++] = &endgameScaleFactor_KPsK<WHITE>;      // index 4 K and pawns vs K
-	factor_functies[factor_aantal++] = &endgameScaleFactor_KPsK<BLACK>;    // index 5
-	factor_functies[factor_aantal++] = &endgameScaleFactor_KPKP<WHITE>;      // index 6 KP vs KP
-	factor_functies[factor_aantal++] = &endgameScaleFactor_KPKP<BLACK>;    // index 7
+	factor_functions[factor_count++] = &endgameScaleFactor_KBPsK<WHITE>;     // index 0 KB and pawns vs K
+	factor_functions[factor_count++] = &endgameScaleFactor_KBPsK<BLACK>;   // index 1
+	factor_functions[factor_count++] = &endgameScaleFactor_KQKRPs<WHITE>;    // index 2 KQ vs KR and pawns
+	factor_functions[factor_count++] = &endgameScaleFactor_KQKRPs<BLACK>;  // index 3
+	factor_functions[factor_count++] = &endgameScaleFactor_KPsK<WHITE>;      // index 4 K and pawns vs K
+	factor_functions[factor_count++] = &endgameScaleFactor_KPsK<BLACK>;    // index 5
+	factor_functions[factor_count++] = &endgameScaleFactor_KPKP<WHITE>;      // index 6 KP vs KP
+	factor_functions[factor_count++] = &endgameScaleFactor_KPKP<BLACK>;    // index 7
 	//                 KPNBRQ  KPNBRQ
 	add_scalefactor("0100001 0110000", &endgameScaleFactor_KQKP<WHITE>,    &endgameScaleFactor_KQKP<BLACK>);
 	add_scalefactor("0100010 0110000", &endgameScaleFactor_KRKP<WHITE>,    &endgameScaleFactor_KRKP<BLACK>);

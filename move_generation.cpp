@@ -8,243 +8,243 @@
 
 namespace 
 {
-	template<CastlingRight rokade, bool OnlyCheckMoves, bool Chess960>
-	MoveEx* write_castling(const Position& pos, MoveEx* zetten)
+	template<CastlingRight castling, bool OnlyCheckMoves, bool Chess960>
+	MoveEx* write_castling(const Position& pos, MoveEx* moves)
 	{
-		const Color Us = rokade <= WHITE_LONG ? WHITE : BLACK;
+		const Color Us = castling <= WHITE_LONG ? WHITE : BLACK;
 		const Color Them = (Us == WHITE ? BLACK : WHITE);
-		const bool korte_rokade = (rokade == WHITE_SHORT || rokade == BLACK_SHORT);
+		const bool short_castling = (castling == WHITE_SHORT || castling == BLACK_SHORT);
 
-		if (pos.castling_impeded(rokade) || !pos.castling_possible(rokade))
-			return zetten;
+		if (pos.castling_impeded(castling) || !pos.castling_possible(castling))
+			return moves;
 
-		const Square vanK = Chess960 ? pos.koning(Us) : relative_square(Us, SQ_E1);
-		const Square naarK = relative_square(Us, korte_rokade ? SQ_G1 : SQ_C1);
-		const Square richting = naarK > vanK ? LEFT : RIGHT;
+		const Square fromK = Chess960 ? pos.king(Us) : relative_square(Us, SQ_E1);
+		const Square toK = relative_square(Us, short_castling ? SQ_G1 : SQ_C1);
+		const Square direction = toK > fromK ? LEFT : RIGHT;
 
 		assert(!pos.check_givers());
 
 		if (Chess960)
 		{
-			for (Square veld = naarK; veld != vanK; veld += richting)
-				if (pos.attackers_to(veld) & pos.pieces(Them))
-					return zetten;
+			for (Square square = toK; square != fromK; square += direction)
+				if (pos.attackers_to(square) & pos.pieces(Them))
+					return moves;
 
-			Square vanT = pos.castling_rook_square(naarK);
-			if (attack_bb_rook(naarK, pos.pieces() ^ vanT) & pos.pieces(Them, ROOK, QUEEN))
-				return zetten;
+			Square fromR = pos.castling_rook_square(toK);
+			if (attack_bb_rook(toK, pos.pieces() ^ fromR) & pos.pieces(Them, ROOK, QUEEN))
+				return moves;
 		}
 		else
 		{
-			if (pos.attackers_to(naarK) & pos.pieces(Them))
-				return zetten;
-			if (pos.attackers_to(naarK + richting) & pos.pieces(Them))
-				return zetten;
+			if (pos.attackers_to(toK) & pos.pieces(Them))
+				return moves;
+			if (pos.attackers_to(toK + direction) & pos.pieces(Them))
+				return moves;
 		}
 
-		Move zet = make_move(CASTLING, vanK, naarK);
+		Move move = make_move(CASTLING, fromK, toK);
 
-		if (OnlyCheckMoves && !pos.gives_check(zet))
-			return zetten;
+		if (OnlyCheckMoves && !pos.gives_check(move))
+			return moves;
 
-		*zetten++ = zet;
-		return zetten;
+		*moves++ = move;
+		return moves;
 	}
 
 
 	template<Color Us, MoveGeneration Type, Square Delta>
-	MoveEx* write_promotions(const Position& pos, MoveEx* zetten, Square naar)
+	MoveEx* write_promotions(const Position& pos, MoveEx* moves, Square to)
 	{
 		const Color Them = (Us == WHITE ? BLACK : WHITE);
 
 		if (Type == GEN_CAPTURES_OR_PROMOTIONS || Type == GEN_EVASIONS || Type == GEN_ALL_MOVES)
-			*zetten++ = make_move(PROMOTION_Q, naar - Delta, naar);
+			*moves++ = make_move(PROMOTION_Q, to - Delta, to);
 
 		if (Type == GEN_QUIET_MOVES || Type == GEN_EVASIONS || Type == GEN_ALL_MOVES)
 		{
-			*zetten++ = make_move(PROMOTION_R, naar - Delta, naar);
-			*zetten++ = make_move(PROMOTION_B, naar - Delta, naar);
-			*zetten++ = make_move(PROMOTION_N, naar - Delta, naar);
+			*moves++ = make_move(PROMOTION_R, to - Delta, to);
+			*moves++ = make_move(PROMOTION_B, to - Delta, to);
+			*moves++ = make_move(PROMOTION_N, to - Delta, to);
 		}
 
-		if (Type == GEN_QUIET_CHECKS && (LegeAanval[KNIGHT][naar] & pos.koning(Them)))
-			*zetten++ = make_move(PROMOTION_N, naar - Delta, naar);
+		if (Type == GEN_QUIET_CHECKS && (EmptyAttack[KNIGHT][to] & pos.king(Them)))
+			*moves++ = make_move(PROMOTION_N, to - Delta, to);
 
-		return zetten;
+		return moves;
 	}
 
 
 	template<Color Us, MoveGeneration Type>
-	MoveEx* moves_for_pawn(const Position& pos, MoveEx* zetten, Bitboard target)
+	MoveEx* moves_for_pawn(const Position& pos, MoveEx* moves, Bitboard target)
 	{
 		const Color Them = (Us == WHITE ? BLACK : WHITE);
-		const Bitboard AchtsteRij = (Us == WHITE ? Rank8BB : Rank1BB);
-		const Bitboard ZevendeRij = (Us == WHITE ? Rank7BB : Rank2BB);
+		const Bitboard EighthRank = (Us == WHITE ? Rank8BB : Rank1BB);
+		const Bitboard SeventhRank = (Us == WHITE ? Rank7BB : Rank2BB);
 		const Bitboard ThirdRank = (Us == WHITE ? Rank3BB : Rank6BB);
 		const Square Forward = (Us == WHITE ? UP : DOWN);
-		const Square SlagRechts = (Us == WHITE ? UP_RIGHT : DOWN_LEFT);
-		const Square SlagLinks = (Us == WHITE ? UP_LEFT : DOWN_RIGHT);
+		const Square CaptureRight = (Us == WHITE ? UP_RIGHT : DOWN_LEFT);
+		const Square CaptureLeft = (Us == WHITE ? UP_LEFT : DOWN_RIGHT);
 
-		Bitboard legeVelden;
-		Bitboard pionnen7deRij = pos.pieces(Us, PAWN) &  ZevendeRij;
-		Bitboard pionnenNiet7deRij = pos.pieces(Us, PAWN) & ~ZevendeRij;
+		Bitboard emptySquares;
+		Bitboard pawns7thRank = pos.pieces(Us, PAWN) &  SeventhRank;
+		Bitboard pawnsNot7thRank = pos.pieces(Us, PAWN) & ~SeventhRank;
 
-		Bitboard jouwStukken = (Type == GEN_EVASIONS ? pos.pieces(Them) & target :
+		Bitboard theirPieces = (Type == GEN_EVASIONS ? pos.pieces(Them) & target :
 			Type == GEN_CAPTURES_OR_PROMOTIONS ? target : pos.pieces(Them));
 
 		if (Type != GEN_CAPTURES_OR_PROMOTIONS)
 		{
-			legeVelden = (Type == GEN_QUIET_MOVES || Type == GEN_QUIET_CHECKS ? target : ~pos.pieces());
+			emptySquares = (Type == GEN_QUIET_MOVES || Type == GEN_QUIET_CHECKS ? target : ~pos.pieces());
 
-			Bitboard bbEnkeleZet = shift_up<Us>(pionnenNiet7deRij) & legeVelden;
-			Bitboard bbDubbeleZet = shift_up<Us>(bbEnkeleZet & ThirdRank) & legeVelden;
+			Bitboard bbSinglePush = shift_up<Us>(pawnsNot7thRank) & emptySquares;
+			Bitboard bbDoublePush = shift_up<Us>(bbSinglePush & ThirdRank) & emptySquares;
 
 			if (Type == GEN_EVASIONS)
 			{
-				bbEnkeleZet &= target;
-				bbDubbeleZet &= target;
+				bbSinglePush &= target;
+				bbDoublePush &= target;
 			}
 
 			if (Type == GEN_QUIET_CHECKS)
 			{
-				bbEnkeleZet &= pos.attack_from<PAWN>(pos.koning(Them), Them);
-				bbDubbeleZet &= pos.attack_from<PAWN>(pos.koning(Them), Them);
+				bbSinglePush &= pos.attack_from<PAWN>(pos.king(Them), Them);
+				bbDoublePush &= pos.attack_from<PAWN>(pos.king(Them), Them);
 
-				Bitboard aftrekSchaak = pos.info()->xRay[~pos.side_to_move()];
-				if (pionnenNiet7deRij & aftrekSchaak)
+				Bitboard discoveredCheck = pos.info()->xRay[~pos.side_to_move()];
+				if (pawnsNot7thRank & discoveredCheck)
 				{
-					Bitboard aftrekVoorwaarts = shift_up<Us>(pionnenNiet7deRij & aftrekSchaak) & legeVelden & ~bb_file(pos.koning(Them));
-					Bitboard aftrekDubbel = shift_up<Us>(aftrekVoorwaarts & ThirdRank) & legeVelden;
+					Bitboard discoveredForward = shift_up<Us>(pawnsNot7thRank & discoveredCheck) & emptySquares & ~bb_file(pos.king(Them));
+					Bitboard discoveredDouble = shift_up<Us>(discoveredForward & ThirdRank) & emptySquares;
 
-					bbEnkeleZet |= aftrekVoorwaarts;
-					bbDubbeleZet |= aftrekDubbel;
+					bbSinglePush |= discoveredForward;
+					bbDoublePush |= discoveredDouble;
 				}
 			}
 
-			while (bbEnkeleZet)
+			while (bbSinglePush)
 			{
-				Square naar = pop_lsb(&bbEnkeleZet);
-				*zetten++ = make_move(PAWN, naar - Forward, naar);
+				Square to = pop_lsb(&bbSinglePush);
+				*moves++ = make_move(PAWN, to - Forward, to);
 			}
 
-			while (bbDubbeleZet)
+			while (bbDoublePush)
 			{
-				Square naar = pop_lsb(&bbDubbeleZet);
-				*zetten++ = make_move(PAWN, naar - Forward - Forward, naar);
+				Square to = pop_lsb(&bbDoublePush);
+				*moves++ = make_move(PAWN, to - Forward - Forward, to);
 			}
 		}
 
-		if (pionnen7deRij && (Type != GEN_EVASIONS || (target & AchtsteRij)))
+		if (pawns7thRank && (Type != GEN_EVASIONS || (target & EighthRank)))
 		{
 			if (Type == GEN_CAPTURES_OR_PROMOTIONS)
-				legeVelden = ~pos.pieces();
+				emptySquares = ~pos.pieces();
 
 			if (Type == GEN_EVASIONS)
-				legeVelden &= target;
+				emptySquares &= target;
 
-			Bitboard promotieRechts = shift_bb<SlagRechts>(pionnen7deRij) & jouwStukken;
-			Bitboard promotieLinks = shift_bb<SlagLinks>(pionnen7deRij) & jouwStukken;
-			Bitboard promotieVoorwaarts = shift_up<Us>(pionnen7deRij) & legeVelden;
+			Bitboard promotionRight = shift_bb<CaptureRight>(pawns7thRank) & theirPieces;
+			Bitboard promotionLeft = shift_bb<CaptureLeft>(pawns7thRank) & theirPieces;
+			Bitboard promotionForward = shift_up<Us>(pawns7thRank) & emptySquares;
 
-			while (promotieRechts)
-				zetten = write_promotions<Us, Type, SlagRechts>(pos, zetten, pop_lsb(&promotieRechts));
+			while (promotionRight)
+				moves = write_promotions<Us, Type, CaptureRight>(pos, moves, pop_lsb(&promotionRight));
 
-			while (promotieLinks)
-				zetten = write_promotions<Us, Type, SlagLinks>(pos, zetten, pop_lsb(&promotieLinks));
+			while (promotionLeft)
+				moves = write_promotions<Us, Type, CaptureLeft>(pos, moves, pop_lsb(&promotionLeft));
 
-			while (promotieVoorwaarts)
-				zetten = write_promotions<Us, Type, Forward>(pos, zetten, pop_lsb(&promotieVoorwaarts));
+			while (promotionForward)
+				moves = write_promotions<Us, Type, Forward>(pos, moves, pop_lsb(&promotionForward));
 		}
 
 		if (Type == GEN_CAPTURES_OR_PROMOTIONS || Type == GEN_EVASIONS || Type == GEN_ALL_MOVES)
 		{
-			Bitboard slagRechts = shift_bb<SlagRechts>(pionnenNiet7deRij) & jouwStukken;
-			Bitboard slagLinks = shift_bb<SlagLinks>(pionnenNiet7deRij) & jouwStukken;
+			Bitboard captureRight = shift_bb<CaptureRight>(pawnsNot7thRank) & theirPieces;
+			Bitboard captureLeft = shift_bb<CaptureLeft>(pawnsNot7thRank) & theirPieces;
 
-			while (slagRechts)
+			while (captureRight)
 			{
-				Square naar = pop_lsb(&slagRechts);
-				*zetten++ = make_move(PAWN, naar - SlagRechts, naar);
+				Square to = pop_lsb(&captureRight);
+				*moves++ = make_move(PAWN, to - CaptureRight, to);
 			}
 
-			while (slagLinks)
+			while (captureLeft)
 			{
-				Square naar = pop_lsb(&slagLinks);
-				*zetten++ = make_move(PAWN, naar - SlagLinks, naar);
+				Square to = pop_lsb(&captureLeft);
+				*moves++ = make_move(PAWN, to - CaptureLeft, to);
 			}
 
 			if (pos.enpassant_square() != SQ_NONE)
 			{
-				assert(rij(pos.enpassant_square()) == relative_rank(Us, RANK_6));
+				assert(rank_of(pos.enpassant_square()) == relative_rank(Us, RANK_6));
 
 				if (Type == GEN_EVASIONS && !(target & (pos.enpassant_square() - Forward)))
-					return zetten;
+					return moves;
 
-				slagRechts = pionnenNiet7deRij & pos.attack_from<PAWN>(pos.enpassant_square(), Them);
+				captureRight = pawnsNot7thRank & pos.attack_from<PAWN>(pos.enpassant_square(), Them);
 
-				assert(slagRechts);
+				assert(captureRight);
 
-				while (slagRechts)
-					*zetten++ = make_move(ENPASSANT, pop_lsb(&slagRechts), pos.enpassant_square());
+				while (captureRight)
+					*moves++ = make_move(ENPASSANT, pop_lsb(&captureRight), pos.enpassant_square());
 			}
 		}
 
-		return zetten;
+		return moves;
 	}
 
 
-	template<Color Us, PieceType stuk, bool OnlyCheckMoves>
-	MoveEx* moves_for_piece(const Position& pos, MoveEx* zetten, Bitboard target)
+	template<Color Us, PieceType piece, bool OnlyCheckMoves>
+	MoveEx* moves_for_piece(const Position& pos, MoveEx* moves, Bitboard target)
 	{
-		assert(stuk != KING && stuk != PAWN);
+		assert(piece != KING && piece != PAWN);
 
-		const Square* pl = pos.piece_list(Us, stuk);
+		const Square* pl = pos.piece_list(Us, piece);
 
-		for (Square van = *pl; van != SQ_NONE; van = *++pl)
+		for (Square from = *pl; from != SQ_NONE; from = *++pl)
 		{
 			if (OnlyCheckMoves)
 			{
-				if ((stuk == BISHOP || stuk == ROOK || stuk == QUEEN)
-					&& !(LegeAanval[stuk][van] & target & pos.info()->schaakVelden[stuk]))
+				if ((piece == BISHOP || piece == ROOK || piece == QUEEN)
+					&& !(EmptyAttack[piece][from] & target & pos.info()->checkSquares[piece]))
 					continue;
 
 				// aftrekschaaks worden in genereerZetten<GEN_RUSTIGE_SCHAAKS> geschreven
-				if (pos.info()->xRay[~pos.side_to_move()] & van)
+				if (pos.info()->xRay[~pos.side_to_move()] & from)
 					continue;
 			}
 
-			Bitboard velden = pos.attack_from<stuk>(van) & target;
+			Bitboard squares = pos.attack_from<piece>(from) & target;
 
 			if (OnlyCheckMoves)
-				velden &= pos.info()->schaakVelden[stuk];
+				squares &= pos.info()->checkSquares[piece];
 
-			while (velden)
-				*zetten++ = make_move(stuk, van, pop_lsb(&velden));
+			while (squares)
+				*moves++ = make_move(piece, from, pop_lsb(&squares));
 		}
 
-		return zetten;
+		return moves;
 	}
 
 
 	template<Color Us, MoveGeneration Type>
-	MoveEx* moves_for_all_pieces(const Position& pos, MoveEx* zetten, Bitboard target)
+	MoveEx* moves_for_all_pieces(const Position& pos, MoveEx* moves, Bitboard target)
 	{
 		const bool OnlyCheckMoves = Type == GEN_QUIET_CHECKS;
 
 		if (Type != GEN_CASTLING)
 		{
-			zetten = moves_for_pawn<Us, Type>(pos, zetten, target);
-			zetten = moves_for_piece<Us, KNIGHT, OnlyCheckMoves>(pos, zetten, target);
-			zetten = moves_for_piece<Us, BISHOP, OnlyCheckMoves>(pos, zetten, target);
-			zetten = moves_for_piece<Us, ROOK, OnlyCheckMoves>(pos, zetten, target);
-			zetten = moves_for_piece<Us, QUEEN, OnlyCheckMoves>(pos, zetten, target);
+			moves = moves_for_pawn<Us, Type>(pos, moves, target);
+			moves = moves_for_piece<Us, KNIGHT, OnlyCheckMoves>(pos, moves, target);
+			moves = moves_for_piece<Us, BISHOP, OnlyCheckMoves>(pos, moves, target);
+			moves = moves_for_piece<Us, ROOK, OnlyCheckMoves>(pos, moves, target);
+			moves = moves_for_piece<Us, QUEEN, OnlyCheckMoves>(pos, moves, target);
 
 			if (Type != GEN_QUIET_CHECKS && Type != GEN_EVASIONS)
 			{
-				Square veldK = pos.koning(Us);
-				Bitboard velden = pos.attack_from<KING>(veldK) & target;
-				while (velden)
-					*zetten++ = make_move(KING, veldK, pop_lsb(&velden));
+				Square squareK = pos.king(Us);
+				Bitboard squares = pos.attack_from<KING>(squareK) & target;
+				while (squares)
+					*moves++ = make_move(KING, squareK, pop_lsb(&squares));
 			}
 		}
 
@@ -252,33 +252,33 @@ namespace
 		{
 			if (pos.is_chess960())
 			{
-				zetten = write_castling<Us == WHITE ? WHITE_SHORT : BLACK_SHORT, OnlyCheckMoves, true>(pos, zetten);
-				zetten = write_castling<Us == WHITE ? WHITE_LONG : BLACK_LONG, OnlyCheckMoves, true>(pos, zetten);
+				moves = write_castling<Us == WHITE ? WHITE_SHORT : BLACK_SHORT, OnlyCheckMoves, true>(pos, moves);
+				moves = write_castling<Us == WHITE ? WHITE_LONG : BLACK_LONG, OnlyCheckMoves, true>(pos, moves);
 			}
 			else
 			{
-				zetten = write_castling<Us == WHITE ? WHITE_SHORT : BLACK_SHORT, OnlyCheckMoves, false>(pos, zetten);
-				zetten = write_castling<Us == WHITE ? WHITE_LONG : BLACK_LONG, OnlyCheckMoves, false>(pos, zetten);
+				moves = write_castling<Us == WHITE ? WHITE_SHORT : BLACK_SHORT, OnlyCheckMoves, false>(pos, moves);
+				moves = write_castling<Us == WHITE ? WHITE_LONG : BLACK_LONG, OnlyCheckMoves, false>(pos, moves);
 			}
 		}
 
-		return zetten;
+		return moves;
 	}
 
 
 	template<Color Us>
-	MoveEx* generate_pawn_advances(const Position& pos, MoveEx* zetten)
+	MoveEx* generate_pawn_advances(const Position& pos, MoveEx* moves)
 	{
 		const Bitboard RANK67 = Us == WHITE ? Rank6BB | Rank7BB : Rank3BB | Rank2BB;
 
-		Bitboard velden = shift_up<Us>(pos.pieces(Us, PAWN)) & RANK67 & ~pos.pieces();
-		while (velden)
+		Bitboard squares = shift_up<Us>(pos.pieces(Us, PAWN)) & RANK67 & ~pos.pieces();
+		while (squares)
 		{
-			Square naar = pop_lsb(&velden);
-			*zetten++ = make_move(PAWN, naar - pawn_forward(Us), naar);
+			Square to = pop_lsb(&squares);
+			*moves++ = make_move(PAWN, to - pawn_forward(Us), to);
 		}
 
-		return zetten;
+		return moves;
 	}
 
 	
@@ -286,19 +286,19 @@ namespace
 
 
 template<MoveGeneration Type>
-MoveEx* generateMoves(const Position& pos, MoveEx* zetten) 
+MoveEx* generateMoves(const Position& pos, MoveEx* moves) 
 {
 	assert(Type == GEN_CAPTURES_OR_PROMOTIONS || Type == GEN_QUIET_MOVES || Type == GEN_ALL_MOVES || Type == GEN_CASTLING);
 	assert(!pos.check_givers());
 
-	Color ik = pos.side_to_move();
+	Color us = pos.side_to_move();
 
-	Bitboard target = Type == GEN_CAPTURES_OR_PROMOTIONS ? pos.pieces(~ik)
+	Bitboard target = Type == GEN_CAPTURES_OR_PROMOTIONS ? pos.pieces(~us)
 		: Type == GEN_QUIET_MOVES ? ~pos.pieces()
-		: Type == GEN_ALL_MOVES ? ~pos.pieces(ik) : 0;
+		: Type == GEN_ALL_MOVES ? ~pos.pieces(us) : 0;
 
-	return ik == WHITE ? moves_for_all_pieces<WHITE, Type>(pos, zetten, target)
-		: moves_for_all_pieces<BLACK, Type>(pos, zetten, target);
+	return us == WHITE ? moves_for_all_pieces<WHITE, Type>(pos, moves, target)
+		: moves_for_all_pieces<BLACK, Type>(pos, moves, target);
 }
 
 template MoveEx* generateMoves<GEN_CAPTURES_OR_PROMOTIONS>(const Position&, MoveEx*);
@@ -307,126 +307,126 @@ template MoveEx* generateMoves<GEN_ALL_MOVES>(const Position&, MoveEx*);
 
 
 template<>
-MoveEx* generateMoves<GEN_QUIET_CHECKS>(const Position& pos, MoveEx* zetten) 
+MoveEx* generateMoves<GEN_QUIET_CHECKS>(const Position& pos, MoveEx* moves) 
 {
 	assert(!pos.check_givers());
 
-	Color ik = pos.side_to_move();
-	Bitboard aftrekSchaak = pos.discovered_check_possible();
+	Color us = pos.side_to_move();
+	Bitboard discoveredCheck = pos.discovered_check_possible();
 
-	while (aftrekSchaak)
+	while (discoveredCheck)
 	{
-		Square van = pop_lsb(&aftrekSchaak);
-		PieceType stuk = piece_type(pos.piece_on_square(van));
+		Square from = pop_lsb(&discoveredCheck);
+		PieceType piece = piece_type(pos.piece_on_square(from));
 
-		if (stuk == PAWN)
+		if (piece == PAWN)
 			continue;
 
-		Bitboard velden = pos.attack_from(stuk, van) & ~pos.pieces();
+		Bitboard squares = pos.attack_from(piece, from) & ~pos.pieces();
 
-		if (stuk == KING)
-			velden &= ~LegeAanval[QUEEN][pos.koning(~ik)];
+		if (piece == KING)
+			squares &= ~EmptyAttack[QUEEN][pos.king(~us)];
 
-		while (velden)
-			*zetten++ = make_move(stuk, van, pop_lsb(&velden));
+		while (squares)
+			*moves++ = make_move(piece, from, pop_lsb(&squares));
 	}
 
-	return ik == WHITE ? moves_for_all_pieces<WHITE, GEN_QUIET_CHECKS>(pos, zetten, ~pos.pieces())
-		: moves_for_all_pieces<BLACK, GEN_QUIET_CHECKS>(pos, zetten, ~pos.pieces());
+	return us == WHITE ? moves_for_all_pieces<WHITE, GEN_QUIET_CHECKS>(pos, moves, ~pos.pieces())
+		: moves_for_all_pieces<BLACK, GEN_QUIET_CHECKS>(pos, moves, ~pos.pieces());
 }
 
 
 template<>
-MoveEx* generateMoves<GEN_PAWN_ADVANCES>(const Position& pos, MoveEx* zetten)
+MoveEx* generateMoves<GEN_PAWN_ADVANCES>(const Position& pos, MoveEx* moves)
 {
 	assert(!pos.check_givers());
 
-	Color ik = pos.side_to_move();
-	return ik == WHITE ? generate_pawn_advances<WHITE>(pos, zetten)
-		: generate_pawn_advances<BLACK>(pos, zetten);
+	Color us = pos.side_to_move();
+	return us == WHITE ? generate_pawn_advances<WHITE>(pos, moves)
+		: generate_pawn_advances<BLACK>(pos, moves);
 }
 
 
 template<>
-MoveEx* generateMoves<GEN_QUEEN_CHECKS>(const Position& pos, MoveEx* zetten)
+MoveEx* generateMoves<GEN_QUEEN_CHECKS>(const Position& pos, MoveEx* moves)
 {
 	return pos.side_to_move() == WHITE 
-		? moves_for_piece<WHITE, QUEEN, true>(pos, zetten, ~pos.pieces())
-		: moves_for_piece<BLACK, QUEEN, true>(pos, zetten, ~pos.pieces());
+		? moves_for_piece<WHITE, QUEEN, true>(pos, moves, ~pos.pieces())
+		: moves_for_piece<BLACK, QUEEN, true>(pos, moves, ~pos.pieces());
 }
 
 template<>
-MoveEx* generateMoves<GEN_EVASIONS>(const Position& pos, MoveEx* zetten) 
+MoveEx* generateMoves<GEN_EVASIONS>(const Position& pos, MoveEx* moves) 
 {
 	assert(pos.check_givers());
 
-	Color ik = pos.side_to_move();
-	Square veldK = pos.koning(ik);
-	Bitboard aangevallenVelden = 0;
-	Bitboard verreAanvallers = pos.check_givers() & ~pos.pieces(KNIGHT, PAWN);
+	Color us = pos.side_to_move();
+	Square squareK = pos.king(us);
+	Bitboard attackedSquares = 0;
+	Bitboard distantAttackers = pos.check_givers() & ~pos.pieces(KNIGHT, PAWN);
 
-	while (verreAanvallers)
+	while (distantAttackers)
 	{
-		Square schaakveld = pop_lsb(&verreAanvallers);
-		aangevallenVelden |= bbVerbinding[schaakveld][veldK] ^ schaakveld;
+		Square checksquare = pop_lsb(&distantAttackers);
+		attackedSquares |= bbConnection[checksquare][squareK] ^ checksquare;
 	}
 
-	Bitboard velden = pos.attack_from<KING>(veldK) & ~pos.pieces(ik) & ~aangevallenVelden;
-	while (velden)
-		*zetten++ = make_move(KING, veldK, pop_lsb(&velden));
+	Bitboard squares = pos.attack_from<KING>(squareK) & ~pos.pieces(us) & ~attackedSquares;
+	while (squares)
+		*moves++ = make_move(KING, squareK, pop_lsb(&squares));
 
 	if (more_than_one(pos.check_givers()))
-		return zetten;
+		return moves;
 
-	Square schaakVeld = lsb(pos.check_givers());
-	Bitboard target = bb_between(schaakVeld, veldK) | schaakVeld;
+	Square checkSquare = lsb(pos.check_givers());
+	Bitboard target = bb_between(checkSquare, squareK) | checkSquare;
 
-	return ik == WHITE ? moves_for_all_pieces<WHITE, GEN_EVASIONS>(pos, zetten, target)
-		: moves_for_all_pieces<BLACK, GEN_EVASIONS>(pos, zetten, target);
+	return us == WHITE ? moves_for_all_pieces<WHITE, GEN_EVASIONS>(pos, moves, target)
+		: moves_for_all_pieces<BLACK, GEN_EVASIONS>(pos, moves, target);
 }
 
 
-MoveEx* generateLegalMoves(const Position& pos, MoveEx* zetten) 
+MoveEx* generateLegalMoves(const Position& pos, MoveEx* moves) 
 {
-	Bitboard gepend = pos.pinned_pieces();
-	Square veldK = pos.koning(pos.side_to_move());
-	MoveEx* pZet = zetten;
+	Bitboard pinned = pos.pinned_pieces();
+	Square squareK = pos.king(pos.side_to_move());
+	MoveEx* pMove = moves;
 
-	zetten = pos.check_givers() ? generateMoves<GEN_EVASIONS>(pos, zetten)
-		: generateMoves<GEN_ALL_MOVES>(pos, zetten);
-	while (pZet != zetten)
-		if ((gepend || from_square(*pZet) == veldK || move_type(*pZet) == ENPASSANT)
-			&& !pos.legal_move(*pZet))
-			*pZet = (--zetten)->zet;
+	moves = pos.check_givers() ? generateMoves<GEN_EVASIONS>(pos, moves)
+		: generateMoves<GEN_ALL_MOVES>(pos, moves);
+	while (pMove != moves)
+		if ((pinned || from_square(*pMove) == squareK || move_type(*pMove) == ENPASSANT)
+			&& !pos.legal_move(*pMove))
+			*pMove = (--moves)->move;
 		else
-			++pZet;
+			++pMove;
 
-	return zetten;
+	return moves;
 }
 
 
-MoveEx* generateCapturesOnSquare(const Position& pos, MoveEx* zetten, Square veld) 
+MoveEx* generateCapturesOnSquare(const Position& pos, MoveEx* moves, Square square) 
 {
-	Bitboard target = bbVeld[veld];
+	Bitboard target = bbSquare[square];
 
 	return pos.side_to_move() == WHITE
-		? moves_for_all_pieces<WHITE, GEN_CAPTURES_OR_PROMOTIONS>(pos, zetten, target)
-		: moves_for_all_pieces<BLACK, GEN_CAPTURES_OR_PROMOTIONS>(pos, zetten, target);
+		? moves_for_all_pieces<WHITE, GEN_CAPTURES_OR_PROMOTIONS>(pos, moves, target)
+		: moves_for_all_pieces<BLACK, GEN_CAPTURES_OR_PROMOTIONS>(pos, moves, target);
 }
 
 
-bool LegalMoveListContainsMove(const Position & pos, Move zet)
+bool LegalMoveListContainsMove(const Position & pos, Move move)
 {
-	MoveEx zetten[MAX_MOVES];
-	MoveEx* einde = pos.check_givers() ? generateMoves<GEN_EVASIONS>(pos, zetten)
-		: generateMoves<GEN_ALL_MOVES>(pos, zetten);
+	MoveEx moves[MAX_MOVES];
+	MoveEx* last = pos.check_givers() ? generateMoves<GEN_EVASIONS>(pos, moves)
+		: generateMoves<GEN_ALL_MOVES>(pos, moves);
 
-	MoveEx* pZet = zetten;
-	while (pZet != einde)
+	MoveEx* pMove = moves;
+	while (pMove != last)
 	{
-		if (pZet->zet == zet)
-			return pos.legal_move(zet);
-		pZet++;
+		if (pMove->move == move)
+			return pos.legal_move(move);
+		pMove++;
 	}
 	return false;
 }
@@ -434,35 +434,35 @@ bool LegalMoveListContainsMove(const Position & pos, Move zet)
 
 bool AtLeastOneLegalMove(const Position & pos)
 {
-	MoveEx zetten[MAX_MOVES];
-	MoveEx* einde = pos.check_givers() ? generateMoves<GEN_EVASIONS>(pos, zetten)
-		: generateMoves<GEN_ALL_MOVES>(pos, zetten);
+	MoveEx moves[MAX_MOVES];
+	MoveEx* last = pos.check_givers() ? generateMoves<GEN_EVASIONS>(pos, moves)
+		: generateMoves<GEN_ALL_MOVES>(pos, moves);
 
-	MoveEx* pZet = zetten;
-	while (pZet != einde)
+	MoveEx* pMove = moves;
+	while (pMove != last)
 	{
-		if (pos.legal_move(pZet->zet))
+		if (pos.legal_move(pMove->move))
 			return true;
-		pZet++;
+		pMove++;
 	}
 	return false;
 }
 
 
-bool LegalMoveListContainsCastling(const Position & pos, Move zet)
+bool LegalMoveListContainsCastling(const Position & pos, Move move)
 {
-	MoveEx zetten[MAX_MOVES];
+	MoveEx moves[MAX_MOVES];
 	if (pos.check_givers())
 		return false;
 
-	MoveEx* einde = generateMoves<GEN_CASTLING>(pos, zetten);
+	MoveEx* last = generateMoves<GEN_CASTLING>(pos, moves);
 
-	MoveEx* pZet = zetten;
-	while (pZet != einde)
+	MoveEx* pMove = moves;
+	while (pMove != last)
 	{
-		if (pZet->zet == zet)
+		if (pMove->move == move)
 			return true;
-		pZet++;
+		pMove++;
 	}
 	return false;
 }

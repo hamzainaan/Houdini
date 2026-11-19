@@ -8,7 +8,7 @@
 
 #ifdef USE_PEXT
 #  include <immintrin.h> // voor _pext_u64()
-#  define pext(bezet, mask) _pext_u64(bezet, mask)
+#  define pext(occupied, mask) _pext_u64(occupied, mask)
 #  define blsr_u64(b) _blsr_u64(b)
 #endif
 
@@ -42,53 +42,53 @@ const Bitboard Rank6BB = Rank1BB << 40;
 const Bitboard Rank7BB = Rank1BB << 48;
 const Bitboard Rank8BB = Rank1BB << 56;
 
-extern int8_t VeldAfstand[SQUARE_N][SQUARE_N];
+extern int8_t SquareDistance[SQUARE_N][SQUARE_N];
 
-extern Bitboard bbVeld[SQUARE_N];
-const Bitboard bbLijn[FILE_N] = { FileABB , FileBBB, FileCBB, FileDBB, FileEBB, FileFBB, FileGBB, FileHBB };
-const Bitboard bbRij[RANK_N] = { Rank1BB, Rank2BB, Rank3BB, Rank4BB, Rank5BB, Rank6BB, Rank7BB, Rank8BB };
-extern Bitboard bbAangrenzendeLijnen[FILE_N];
-extern Bitboard bbRijenVoorwaarts[COLOR_N][RANK_N];
-extern Bitboard bbTussen[SQUARE_N][SQUARE_N];
-extern Bitboard bbVerbinding[SQUARE_N][SQUARE_N];
-extern Bitboard bbVoorwaarts[COLOR_N][SQUARE_N];
-extern Bitboard VrijpionMask[COLOR_N][SQUARE_N];
-extern Bitboard PionAanvalBereik[COLOR_N][SQUARE_N];
-extern Bitboard PionAanval[COLOR_N][SQUARE_N];
-extern Bitboard LegeAanval[PIECE_TYPE_N][SQUARE_N];
-extern Bitboard KoningZone[SQUARE_N];
+extern Bitboard bbSquare[SQUARE_N];
+const Bitboard bbFile[FILE_N] = { FileABB , FileBBB, FileCBB, FileDBB, FileEBB, FileFBB, FileGBB, FileHBB };
+const Bitboard bbRank[RANK_N] = { Rank1BB, Rank2BB, Rank3BB, Rank4BB, Rank5BB, Rank6BB, Rank7BB, Rank8BB };
+extern Bitboard bbAdjacentFiles[FILE_N];
+extern Bitboard bbRanksForward[COLOR_N][RANK_N];
+extern Bitboard bbBetween[SQUARE_N][SQUARE_N];
+extern Bitboard bbConnection[SQUARE_N][SQUARE_N];
+extern Bitboard bbForward[COLOR_N][SQUARE_N];
+extern Bitboard PassedPawnMask[COLOR_N][SQUARE_N];
+extern Bitboard PawnAttackRange[COLOR_N][SQUARE_N];
+extern Bitboard PawnAttack[COLOR_N][SQUARE_N];
+extern Bitboard EmptyAttack[PIECE_TYPE_N][SQUARE_N];
+extern Bitboard KingZone[SQUARE_N];
 
 
 #define USE_BB_SHIFT
 #ifdef USE_BB_SHIFT
-  #define bb(veld) (1ULL << veld)
+  #define bb(square) (1ULL << square)
 #else
-  #define bb(veld) bbVeld[veld]
+  #define bb(square) bbSquare[square]
 #endif
 
-inline Bitboard operator&(Bitboard b, Square veld)
+inline Bitboard operator&(Bitboard b, Square square)
 {
-	return b & bb(veld);
+	return b & bb(square);
 }
 
-inline Bitboard operator|(Bitboard b, Square veld)
+inline Bitboard operator|(Bitboard b, Square square)
 {
-	return b | bb(veld);
+	return b | bb(square);
 }
 
-inline Bitboard operator^(Bitboard b, Square veld)
+inline Bitboard operator^(Bitboard b, Square square)
 {
-	return b ^ bb(veld);
+	return b ^ bb(square);
 }
 
-inline Bitboard& operator|=(Bitboard& b, Square veld)
+inline Bitboard& operator|=(Bitboard& b, Square square)
 {
-	return b |= bb(veld);
+	return b |= bb(square);
 }
 
-inline Bitboard& operator^=(Bitboard& b, Square veld)
+inline Bitboard& operator^=(Bitboard& b, Square square)
 {
-	return b ^= bb(veld);
+	return b ^= bb(square);
 }
 
 inline bool more_than_one(Bitboard b)
@@ -102,19 +102,19 @@ inline bool more_than_one(Bitboard b)
 
 #undef bb
 
-inline Bitboard bb_rank(Square veld)
+inline Bitboard bb_rank(Square square)
 {
-	return bbRij[rij(veld)];
+	return bbRank[rank_of(square)];
 }
 
-inline Bitboard bb_file(Square veld)
+inline Bitboard bb_file(Square square)
 {
-	return bbLijn[lijn(veld)];
+	return bbFile[file_of(square)];
 }
 
-inline Bitboard bb_file(File lijn)
+inline Bitboard bb_file(File file)
 {
-	return bbLijn[lijn];
+	return bbFile[file];
 }
 
 inline Bitboard bb(Square s) { return (1ULL << s); }
@@ -135,128 +135,128 @@ inline Bitboard shift_bb(Bitboard b) {
 
 inline Bitboard bb_adjacent_files(File f)
 {
-	return bbAangrenzendeLijnen[f];
+	return bbAdjacentFiles[f];
 }
 
-inline Bitboard bb_between(Square veld1, Square veld2)
+inline Bitboard bb_between(Square square1, Square square2)
 {
-	return bbTussen[veld1][veld2];
+	return bbBetween[square1][square2];
 }
 
-inline Bitboard bb_ranks_forward(Color kleur, Rank r)
+inline Bitboard bb_ranks_forward(Color color, Rank r)
 {
-	return bbRijenVoorwaarts[kleur][r];
+	return bbRanksForward[color][r];
 }
 
-inline Bitboard bb_ranks_forward(Color kleur, Square veld)
+inline Bitboard bb_ranks_forward(Color color, Square square)
 {
-	return bbRijenVoorwaarts[kleur][rij(veld)];
+	return bbRanksForward[color][rank_of(square)];
 }
 
-inline Bitboard bb_forward(Color kleur, Square veld)
+inline Bitboard bb_forward(Color color, Square square)
 {
-	return bbVoorwaarts[kleur][veld];
+	return bbForward[color][square];
 }
 
-inline Bitboard pawn_attack_range(Color kleur, Square veld)
+inline Bitboard pawn_attack_range(Color color, Square square)
 {
-	return PionAanvalBereik[kleur][veld];
+	return PawnAttackRange[color][square];
 }
 
-inline Bitboard passed_pawn_mask(Color kleur, Square veld)
+inline Bitboard passed_pawn_mask(Color color, Square square)
 {
-	return VrijpionMask[kleur][veld];
+	return PassedPawnMask[color][square];
 }
 
-inline bool on_a_line(Square veld1, Square veld2, Square veld3)
+inline bool on_a_line(Square square1, Square square2, Square square3)
 {
-	return bbVerbinding[veld1][veld2] & veld3;
+	return bbConnection[square1][square2] & square3;
 }
 
-inline int distance(Square x, Square y) { return VeldAfstand[x][y]; }
-inline int file_distance(Square x, Square y) { return abs(lijn(x) - lijn(y)); }
-inline int rank_distance(Square x, Square y) { return abs(rij(x) - rij(y)); }
+inline int distance(Square x, Square y) { return SquareDistance[x][y]; }
+inline int file_distance(Square x, Square y) { return abs(file_of(x) - file_of(y)); }
+inline int rank_distance(Square x, Square y) { return abs(rank_of(x) - rank_of(y)); }
 
-extern Bitboard* LoperAanvalTabel[64];
-extern Bitboard LoperMask[64];
-extern const Bitboard LoperMagics[64];
+extern Bitboard* BishopAttackTable[64];
+extern Bitboard BishopMask[64];
+extern const Bitboard BishopMagics[64];
 
-extern Bitboard* TorenAanvalTabel[64];
-extern Bitboard TorenMask[64];
-extern const Bitboard TorenMagics[64];
+extern Bitboard* RookAttackTable[64];
+extern Bitboard RookMask[64];
+extern const Bitboard RookMagics[64];
 
-inline Bitboard attack_bb_bishop(Square veld, Bitboard bezet)
+inline Bitboard attack_bb_bishop(Square square, Bitboard occupied)
 {
 #ifdef USE_PEXT
-	return LoperAanvalTabel[veld][pext(bezet, LoperMask[veld])];
+	return BishopAttackTable[square][pext(occupied, BishopMask[square])];
 #else
-	return LoperAanvalTabel[veld][((bezet & LoperMask[veld]) * LoperMagics[veld]) >> 55];
+	return BishopAttackTable[square][((occupied & BishopMask[square]) * BishopMagics[square]) >> 55];
 #endif
 }
 
-inline Bitboard attack_bb_rook(Square veld, Bitboard bezet)
+inline Bitboard attack_bb_rook(Square square, Bitboard occupied)
 {
 #ifdef USE_PEXT
-	return TorenAanvalTabel[veld][pext(bezet, TorenMask[veld])];
+	return RookAttackTable[square][pext(occupied, RookMask[square])];
 #else
-	return TorenAanvalTabel[veld][((bezet & TorenMask[veld]) * TorenMagics[veld]) >> 52];
+	return RookAttackTable[square][((occupied & RookMask[square]) * RookMagics[square]) >> 52];
 #endif
 }
 
 
-inline Bitboard attack_bb(PieceType stukT, Square veld, Bitboard bezet)
+inline Bitboard attack_bb(PieceType pieceT, Square square, Bitboard occupied)
 {
-	assert(stukT != PAWN);
+	assert(pieceT != PAWN);
 
-	switch (stukT)
+	switch (pieceT)
 	{
-	case BISHOP: return attack_bb_bishop(veld, bezet);
-	case ROOK: return attack_bb_rook(veld, bezet);
-	case QUEEN: return attack_bb_bishop(veld, bezet) | attack_bb_rook(veld, bezet);
-	default: return LegeAanval[stukT][veld];
+	case BISHOP: return attack_bb_bishop(square, occupied);
+	case ROOK: return attack_bb_rook(square, occupied);
+	case QUEEN: return attack_bb_bishop(square, occupied) | attack_bb_rook(square, occupied);
+	default: return EmptyAttack[pieceT][square];
 	}
 }
 
-template<Color kleur>
-inline Bitboard pion_aanval(Bitboard bb)
+template<Color color>
+inline Bitboard pawn_attack(Bitboard bb)
 {
-	if (kleur == WHITE)
+	if (color == WHITE)
 		return shift_bb<UP_LEFT>(bb) | shift_bb<UP_RIGHT>(bb);
 	else
 		return shift_bb<DOWN_LEFT>(bb) | shift_bb<DOWN_RIGHT>(bb);
 }
 
-template<Color kleur>
+template<Color color>
 inline Bitboard shift_up(Bitboard bb)
 {
-	if (kleur == WHITE)
+	if (color == WHITE)
 		return shift_bb<UP>(bb);
 	else
 		return shift_bb<DOWN>(bb);
 }
 
-template<Color kleur>
+template<Color color>
 inline Bitboard shift_down(Bitboard bb)
 {
-	if (kleur == WHITE)
+	if (color == WHITE)
 		return shift_bb<DOWN>(bb);
 	else
 		return shift_bb<UP>(bb);
 }
 
-template<Color kleur>
+template<Color color>
 inline Bitboard shift_upleft(Bitboard bb)
 {
-	if (kleur == WHITE)
+	if (color == WHITE)
 		return shift_bb<UP_LEFT>(bb);
 	else
 		return shift_bb<DOWN_LEFT>(bb);
 }
 
-template<Color kleur>
+template<Color color>
 inline Bitboard shift_upright(Bitboard bb)
 {
-	if (kleur == WHITE)
+	if (color == WHITE)
 		return shift_bb<UP_RIGHT>(bb);
 	else
 		return shift_bb<DOWN_RIGHT>(bb);
@@ -343,16 +343,16 @@ Square msb(Bitboard b);
 
 inline Square pop_lsb(Bitboard* b)
 {
-	const Square veld = lsb(*b);
+	const Square square = lsb(*b);
 #ifdef USE_PEXT
 	*b = blsr_u64(*b);
 #else
 	*b &= *b - 1;
 #endif
-	return veld;
+	return square;
 }
 
-inline Square frontmost_square(Color kleur, Bitboard b) { return kleur == WHITE ? msb(b) : lsb(b); }
-inline Square rearmost_square(Color kleur, Bitboard b) { return kleur == WHITE ? lsb(b) : msb(b); }
+inline Square frontmost_square(Color color, Bitboard b) { return color == WHITE ? msb(b) : lsb(b); }
+inline Square rearmost_square(Color color, Bitboard b) { return color == WHITE ? lsb(b) : msb(b); }
 
 #endif // #ifndef BITBOARD_H

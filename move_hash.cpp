@@ -7,71 +7,71 @@
 #include "bitboard.h"
 #include "move_hash.h"
 
-TranspositionTable HoofdHash;
+TranspositionTable MainHash;
 
 void TranspositionTable::change_size(size_t mbSize) 
 {
 	bool large_pages;
-	size_t nieuwClusterAantal = size_t(1) << msb((mbSize * 1024 * 1024) / sizeof(Cluster));
+	size_t newClusterCount = size_t(1) << msb((mbSize * 1024 * 1024) / sizeof(Cluster));
 
-	if (nieuwClusterAantal == clusterAantal)
+	if (newClusterCount == clusterCount)
 		return;
 
-	if (tabel)
-		free_large_page_mem(tabel);
-	clusterAantal = 0;
+	if (table)
+		free_large_page_mem(table);
+	clusterCount = 0;
 
-	tabel = (Cluster*)alloc_large_page_mem(nieuwClusterAantal * sizeof(Cluster), &large_pages, false, -1);
+	table = (Cluster*)alloc_large_page_mem(newClusterCount * sizeof(Cluster), &large_pages, false, -1);
 
-	if (!tabel)
+	if (!table)
 	{
 		std::cerr << "ERROR: Unable to allocate the requested hash size " << mbSize << " MB" << std::endl;
 		// probeer opnieuw met 1 MB
-		nieuwClusterAantal = 32768;
-		tabel = (Cluster*)alloc_large_page_mem(nieuwClusterAantal * sizeof(Cluster), &large_pages, true, -1);
+		newClusterCount = 32768;
+		table = (Cluster*)alloc_large_page_mem(newClusterCount * sizeof(Cluster), &large_pages, true, -1);
 	}
-	sync_cout << "info string " << nieuwClusterAantal * sizeof(Cluster) / (1024 * 1024) << " MB " 
+	sync_cout << "info string " << newClusterCount * sizeof(Cluster) / (1024 * 1024) << " MB " 
 		<< (large_pages ? "Large Page " : "") << "Hash" << sync_endl;
 
-	clusterAantal = nieuwClusterAantal;
-	clusterMask = (clusterAantal - 1) * sizeof(Cluster);
+	clusterCount = newClusterCount;
+	clusterMask = (clusterCount - 1) * sizeof(Cluster);
 }
 
 
 void TranspositionTable::clear() 
 {
-	std::memset(tabel, 0, clusterAantal * sizeof(Cluster));
+	std::memset(table, 0, clusterCount * sizeof(Cluster));
 }
 
-bool TranspositionTable::is_entry_in_use(const Key64 sleutel, Depth d) const
+bool TranspositionTable::is_entry_in_use(const Key64 key, Depth d) const
 {
-	TTTuple* tt = find_existing(sleutel);
+	TTTuple* tt = find_existing(key);
 	int dd = d / PLY;
-	return tt && (tt->vlaggen8 & IN_USE) && (dd >= tt->diepte8);
+	return tt && (tt->flags8 & IN_USE) && (dd >= tt->depth8);
 }
 
-void TranspositionTable::mark_entry_in_use(const Key64 sleutel, Depth diepte, uint8_t waarde)
+void TranspositionTable::mark_entry_in_use(const Key64 key, Depth depth, uint8_t value)
 {
-	uint16_t sleutel16 = sleutel >> 48;
-	TTTuple* tt = find_replace(sleutel);
-	if (tt->sleutel16 != sleutel16)
-		tt->save(sleutel, NO_VALUE, NO_BOUND, diepte, NO_MOVE,
-			NO_VALUE, HoofdHash.generatie());
-	tt->vlaggen8 = (tt->vlaggen8 & UsageMask) | waarde;
+	uint16_t key16 = key >> 48;
+	TTTuple* tt = find_replace(key);
+	if (tt->key16 != key16)
+		tt->save(key, NO_VALUE, NO_BOUND, depth, NO_MOVE,
+			NO_VALUE, MainHash.generation());
+	tt->flags8 = (tt->flags8 & UsageMask) | value;
 }
 
 
-TTTuple* TranspositionTable::find_existing(const Key64 sleutel) const
+TTTuple* TranspositionTable::find_existing(const Key64 key) const
 {
-	TTTuple* const ttt = tuple(sleutel);
-	uint16_t sleutel16 = sleutel >> 48;
+	TTTuple* const ttt = tuple(key);
+	uint16_t key16 = key >> 48;
 	//sleutel16 = std::max(sleutel16, (uint16_t)1);
 
 	for (int i = 0; i < ClusterSize; ++i)
-		if (ttt[i].sleutel16 == sleutel16)
+		if (ttt[i].key16 == key16)
 		{
-			if ((ttt[i].vlaggen8 & GenerationMask) != generatie8)
-				ttt[i].vlaggen8 = uint8_t(generatie8 + (ttt[i].vlaggen8 & FlagsMask));
+			if ((ttt[i].flags8 & GenerationMask) != generation8)
+				ttt[i].flags8 = uint8_t(generation8 + (ttt[i].flags8 & FlagsMask));
 
 			return &ttt[i];
 		}
@@ -80,22 +80,22 @@ TTTuple* TranspositionTable::find_existing(const Key64 sleutel) const
 }
 
 
-TTTuple * TranspositionTable::find_replace(const Key64 sleutel) const
+TTTuple * TranspositionTable::find_replace(const Key64 key) const
 {
-	TTTuple* const ttt = tuple(sleutel);
-	uint16_t sleutel16 = sleutel >> 48;
+	TTTuple* const ttt = tuple(key);
+	uint16_t key16 = key >> 48;
 
 	for (int i = 0; i < ClusterSize; ++i)
-		if (ttt[i].sleutel16 == 0 || ttt[i].sleutel16 == sleutel16)
+		if (ttt[i].key16 == 0 || ttt[i].key16 == key16)
 			return &ttt[i];
 
-	TTTuple* vervanging = ttt;
+	TTTuple* replacement = ttt;
 	for (int i = 1; i < ClusterSize; ++i)
-		if (vervanging->diepte8 - ((generatie8 - (vervanging->vlaggen8 & GenerationMask)) & GenerationMask)
-				> ttt[i].diepte8 - ((generatie8 - (ttt[i].vlaggen8 & GenerationMask)) & GenerationMask))
-			vervanging = &ttt[i];
+		if (replacement->depth8 - ((generation8 - (replacement->flags8 & GenerationMask)) & GenerationMask)
+				> ttt[i].depth8 - ((generation8 - (ttt[i].flags8 & GenerationMask)) & GenerationMask))
+			replacement = &ttt[i];
 
-	return vervanging;
+	return replacement;
 }
 
 
@@ -138,22 +138,22 @@ bool TranspositionTable::save_to_file(string uci_hash_file)
 
 	if (result)
 	{
-		uint64_t save_waarden[4];
-		save_waarden[0] = clusterAantal;
-		save_waarden[1] = generatie8;
-		save_waarden[2] = 0;
-		save_waarden[3] = 0;
-		result = fwrite(&save_waarden[0], sizeof(save_waarden[0]), 4, hashfile) == 4;
+		uint64_t save_values[4];
+		save_values[0] = clusterCount;
+		save_values[1] = generation8;
+		save_values[2] = 0;
+		save_values[3] = 0;
+		result = fwrite(&save_values[0], sizeof(save_values[0]), 4, hashfile) == 4;
 	}
 
-	uint64_t hash_grootte = clusterAantal;
-	Cluster *pp = tabel;
-	while (result && hash_grootte)
+	uint64_t hash_size = clusterCount;
+	Cluster *pp = table;
+	while (result && hash_size)
 	{
-		uint64_t blok_grootte = std::min(hash_grootte, uint64_t(32 * 1024 * 1024));
-		result = fwrite(pp, sizeof(Cluster), (size_t)blok_grootte, hashfile) == blok_grootte;
-		hash_grootte -= blok_grootte;
-		pp += blok_grootte;
+		uint64_t block_size = std::min(hash_size, uint64_t(32 * 1024 * 1024));
+		result = fwrite(pp, sizeof(Cluster), (size_t)block_size, hashfile) == block_size;
+		hash_size -= block_size;
+		pp += block_size;
 	}
 
 	fclose(hashfile);
@@ -163,8 +163,8 @@ bool TranspositionTable::save_to_file(string uci_hash_file)
 bool TranspositionTable::load_from_file(string uci_hash_file) 
 {
 	char ID[17];
-	uint64_t hash_grootte, blok_grootte;
-	uint64_t save_waarden[4];
+	uint64_t hash_size, block_size;
+	uint64_t save_values[4];
 
 	string file_name;
 	if (uci_hash_file == "" || uci_hash_file == "<empty>")
@@ -183,29 +183,29 @@ bool TranspositionTable::load_from_file(string uci_hash_file)
 		Result = memcmp(ID, hash_file_ID, 16) == 0;
 
 	if (Result)
-		Result = fread(&save_waarden[0], sizeof(save_waarden[0]), 4, hashfile) == 4;
+		Result = fread(&save_values[0], sizeof(save_values[0]), 4, hashfile) == 4;
 
 	if (Result)
 	{
-		hash_grootte = save_waarden[0];
+		hash_size = save_values[0];
 
-		if (Result && hash_grootte != clusterAantal)
+		if (Result && hash_size != clusterCount)
 		{
-			size_t mb = (size_t)((hash_grootte * sizeof(Cluster)) >> 20);
+			size_t mb = (size_t)((hash_size * sizeof(Cluster)) >> 20);
 			change_size(mb);
-			Result = hash_grootte == clusterAantal;
+			Result = hash_size == clusterCount;
 		}
 
 		if (Result)
-			generatie8 = (uint8_t)save_waarden[1];
+			generation8 = (uint8_t)save_values[1];
 
-		Cluster *pp = tabel;
-		while (Result && hash_grootte)
+		Cluster *pp = table;
+		while (Result && hash_size)
 		{
-			blok_grootte = std::min(hash_grootte, uint64_t(32 * 1024 * 1024));
-			Result = fread(pp, sizeof(Cluster), (size_t)blok_grootte, hashfile) == blok_grootte;
-			hash_grootte -= blok_grootte;
-			pp += blok_grootte;
+			block_size = std::min(hash_size, uint64_t(32 * 1024 * 1024));
+			Result = fread(pp, sizeof(Cluster), (size_t)block_size, hashfile) == block_size;
+			hash_size -= block_size;
+			pp += block_size;
 		}
 	}
 
@@ -220,9 +220,9 @@ int TranspositionTable::compute_hashfull() const
 	int cnt = 0;
 	for (int i = 0; i < i_max; i++)
 	{
-		const TTTuple* ttt = &tabel[i].entry[0];
+		const TTTuple* ttt = &table[i].entry[0];
 		for (int j = 0; j < ClusterSize; j++)
-			if (ttt[j].sleutel16 && (ttt[j].vlaggen8 & GenerationMask) == generatie8)
+			if (ttt[j].key16 && (ttt[j].flags8 & GenerationMask) == generation8)
 				cnt++;
 	}
 	return cnt * 1000 / (i_max * ClusterSize);

@@ -13,20 +13,20 @@ namespace Material
 {
 	struct Tuple
 	{
-		GamePhase game_phase() const { return GamePhase(partijFase); }
+		GamePhase game_phase() const { return GamePhase(gamePhase); }
 
-		bool has_value_function() const { return waardeFunctieIndex >= 0; }
+		bool has_value_function() const { return valueFunctionIndex >= 0; }
 		Value value_from_function(const Position& pos) const;
 
-		ScaleFactor scalefactor_from_function(const Position& pos, Color kleur) const;
+		ScaleFactor scalefactor_from_function(const Position& pos, Color color) const;
 
-		Key64 sleutel64;
-		int waardeFunctieIndex;
-		int schaalFunctieIndex[COLOR_N];
-		EvalValue waarde;
-		ScaleFactor conversie;
-		uint8_t factor[COLOR_N], partijFase;
-		bool conversie_is_geschat;
+		Key64 key64;
+		int valueFunctionIndex;
+		int scaleFunctionIndex[COLOR_N];
+		EvalValue value;
+		ScaleFactor conversionFactor;
+		uint8_t factor[COLOR_N], gamePhase;
+		bool conversion_is_estimated;
 		//char padding[8]; // Align to 32 bytes
 	};
 	static_assert(sizeof(Tuple) == 32, "Material Entry size incorrect");

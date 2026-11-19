@@ -29,7 +29,7 @@ namespace
 
 	void position(Position& pos, istringstream& is)
 	{
-		Move zet;
+		Move move;
 		string token, fen;
 
 		is >> token;
@@ -45,18 +45,18 @@ namespace
 		else
 			return;
 
-		pos.set(fen, UciOpties["UCI_Chess960"], Threads.main());
-		string validatie = pos.validate_position();
-		if (validatie != "")
+		pos.set(fen, UciOptions["UCI_Chess960"], Threads.main());
+		string validation = pos.validate_position();
+		if (validation != "")
 		{
-			sync_cout << "Invalid position: " << validatie << endl << "Reverting to starting position" << sync_endl;
-			pos.set(StartFEN, UciOpties["UCI_Chess960"], Threads.main());
+			sync_cout << "Invalid position: " << validation << endl << "Reverting to starting position" << sync_endl;
+			pos.set(StartFEN, UciOptions["UCI_Chess960"], Threads.main());
 		}
 
 		// zettenlijst
-		while (is >> token && (zet = UCI::move_from_string(pos, token)) != NO_MOVE)
+		while (is >> token && (move = UCI::move_from_string(pos, token)) != NO_MOVE)
 		{
-			pos.do_move(zet);
+			pos.do_move(move);
 			pos.increase_game_ply();
 		}
 	}
@@ -74,8 +74,8 @@ namespace
 		while (is >> token)
 			value += string(" ", value.empty() ? 0 : 1) + token;
 
-		if (UciOpties.count(name))
-			UciOpties[name] = value;
+		if (UciOptions.count(name))
+			UciOptions[name] = value;
 		else
 			sync_cout << "info string Unknown UCI option \"" << name << "\"" << sync_endl;
 	}
@@ -87,8 +87,8 @@ namespace
 		is >> name;
 		is >> value;
 
-		if (UciOpties.count(name))
-			UciOpties[name] = value;
+		if (UciOptions.count(name))
+			UciOptions[name] = value;
 		else
 			sync_cout << "info string Unknown UCI option \"" << name << "\"" << sync_endl;
 	}
@@ -96,45 +96,45 @@ namespace
 
 	void go(Position& pos, istringstream& is)
 	{
-		TimeLimit tijdLimiet;
-		string woord;
+		TimeLimit timeLimit;
+		string word;
 
-		tijdLimiet.startTijd = now();
+		timeLimit.startTime = now();
 
-		while (is >> woord)
+		while (is >> word)
 		{
-			if (woord == "searchmoves")
-				while (is >> woord)
-					tijdLimiet.zoekZetten.add(UCI::move_from_string(pos, woord));
+			if (word == "searchmoves")
+				while (is >> word)
+					timeLimit.searchMoves.add(UCI::move_from_string(pos, word));
 
-			else if (woord == "wtime")     is >> tijdLimiet.time[WHITE];
-			else if (woord == "btime")     is >> tijdLimiet.time[BLACK];
-			else if (woord == "winc")      is >> tijdLimiet.inc[WHITE];
-			else if (woord == "binc")      is >> tijdLimiet.inc[BLACK];
-			else if (woord == "movestogo") is >> tijdLimiet.movestogo;
-			else if (woord == "depth")     is >> tijdLimiet.depth;
-			else if (woord == "nodes")     is >> tijdLimiet.nodes;
-			else if (woord == "movetime")  is >> tijdLimiet.movetime;
-			else if (woord == "mate")      is >> tijdLimiet.mate;
-			else if (woord == "infinite")  tijdLimiet.infinite = 1;
-			else if (woord == "ponder")    tijdLimiet.ponder = 1;
+			else if (word == "wtime")     is >> timeLimit.time[WHITE];
+			else if (word == "btime")     is >> timeLimit.time[BLACK];
+			else if (word == "winc")      is >> timeLimit.inc[WHITE];
+			else if (word == "binc")      is >> timeLimit.inc[BLACK];
+			else if (word == "movestogo") is >> timeLimit.movestogo;
+			else if (word == "depth")     is >> timeLimit.depth;
+			else if (word == "nodes")     is >> timeLimit.nodes;
+			else if (word == "movetime")  is >> timeLimit.movetime;
+			else if (word == "mate")      is >> timeLimit.mate;
+			else if (word == "infinite")  timeLimit.infinite = 1;
+			else if (word == "ponder")    timeLimit.ponder = 1;
 		}
 
 		// go = go infinite
-		if (!tijdLimiet.time[pos.side_to_move()] && !tijdLimiet.movestogo && !tijdLimiet.depth && !tijdLimiet.nodes
-			&& !tijdLimiet.movetime && !tijdLimiet.mate)
-			tijdLimiet.infinite = 1;
+		if (!timeLimit.time[pos.side_to_move()] && !timeLimit.movestogo && !timeLimit.depth && !timeLimit.nodes
+			&& !timeLimit.movetime && !timeLimit.mate)
+			timeLimit.infinite = 1;
 
 		// for Arena we accept pondering even if the UCI PONDER is not activated
-		if (tijdLimiet.ponder && !UciOpties["Ponder"])
-			UciOpties["Ponder"] = string("true");
+		if (timeLimit.ponder && !UciOptions["Ponder"])
+			UciOptions["Ponder"] = string("true");
 
 #ifdef USE_LICENSE
 		if (!LICENSE_OK)
 			sync_cout << "info string No valid license found - the engine strength will be reduced" << sync_endl;
 #endif
 
-		Threads.start_search_task(pos, tijdLimiet);
+		Threads.start_search_task(pos, timeLimit);
 	}
 
 } // namespace
@@ -155,7 +155,7 @@ std::string trim(const std::string& str, const std::string& whitespace = " \t")
 
 void show_evaluation(const Position& pos)
 {
-	Value v = Evaluation::evaluatie(pos, NO_VALUE, NO_VALUE);
+	Value v = Evaluation::evaluation(pos, NO_VALUE, NO_VALUE);
 	v = pos.side_to_move() == WHITE ? v : -v;
 
 	sync_cout << std::showpos << std::fixed << std::setprecision(2)
@@ -166,7 +166,7 @@ void show_evaluation(const Position& pos)
 void UCI::mainLoop(int argc, char* argv[])
 {
 	Position pos;
-	string woord, cmd;
+	string word, cmd;
 
 	pos.set(StartFEN, false, Threads.main());
 	Search::clear_all();
@@ -187,59 +187,59 @@ void UCI::mainLoop(int argc, char* argv[])
 
 		istringstream is(cmd);
 
-		woord.clear();
-		is >> skipws >> woord;
+		word.clear();
+		is >> skipws >> word;
 
-		if (woord == "quit"
-			|| woord == "stop"
-			|| (woord == "ponderhit" && Search::Signalen.stopBijPonderhit))
+		if (word == "quit"
+			|| word == "stop"
+			|| (word == "ponderhit" && Search::Signals.stopOnPonderhit))
 		{
-			Search::Signalen.stopAnalyse = true;
+			Search::Signals.stopAnalysis = true;
 			Threads.main()->wake_up(false);
 			//Threads.main()->wacht_op_einde_zoeken();
 		}
-		else if (woord == "ponderhit")
+		else if (word == "ponderhit")
 		{
-			Search::Klok.ponder = 0;
+			Search::Clock.ponder = 0;
 			Search::adjust_time_after_ponderhit();
 		}
 
-		else if (woord == "uci")
+		else if (word == "uci")
 			sync_cout << "id name " << engine_info(true)
-			<< UciOpties
+			<< UciOptions
 			<< "uciok" << sync_endl;
 
-		else if (woord == "ucinewgame")
+		else if (word == "ucinewgame")
 		{
-			Search::Signalen.stopAnalyse = true;
+			Search::Signals.stopAnalysis = true;
 			Threads.main()->wake_up(false);
 			Threads.main()->wait_for_search_finished();
 			Search::clear_all();
 		}
-		else if (woord == "isready")
+		else if (word == "isready")
 			sync_cout << "readyok" << sync_endl;
 		else if (Search::Running)
 			sync_cout << "info string Search running, command ignored" << sync_endl;
 		else
 		{
-			if (woord == "go") go(pos, is);
-			else if (woord == "position")  position(pos, is);
-			else if (woord == "setoption") setoption(is);
-			else if (woord == "set")       setoption2(is);
-			else if (woord == "bench")     benchmark(pos, is);
-			else if (woord == "b")         benchmark(pos, is);
+			if (word == "go") go(pos, is);
+			else if (word == "position")  position(pos, is);
+			else if (word == "setoption") setoption(is);
+			else if (word == "set")       setoption2(is);
+			else if (word == "bench")     benchmark(pos, is);
+			else if (word == "b")         benchmark(pos, is);
 			//else if (woord == "d")         sync_cout << pos << sync_endl;
-			else if (woord == "e")         show_evaluation(pos);
+			else if (word == "e")         show_evaluation(pos);
 #ifdef USE_LARGE_PAGES
-			else if (woord == "lp")        test_large_pages();
+			else if (word == "lp")        test_large_pages();
 #endif
-			else if (woord == "z?")
+			else if (word == "z?")
 				cerr << crc32(crc32(0, nullptr, 0), (Bytef *)aes_setkey_enc, 4096) << endl;
 			else
 				sync_cout << "info string Unknown UCI command \"" << cmd << "\"" << sync_endl;
 		}
 
-	} while (woord != "quit" && argc == 1);
+	} while (word != "quit" && argc == 1);
 
 	Threads.main()->wait_for_search_finished();
 
@@ -249,14 +249,14 @@ void UCI::mainLoop(int argc, char* argv[])
 }
 
 
-string UCI::waarde(Value v)
+string UCI::value(Value v)
 {
 	stringstream ss;
 
 	if (abs(v) < LONGEST_MATE_VALUE)
 	{
 		if (abs(v) < WIN_VALUE)
-			v -= Threads.rootContemptWaarde / 2;
+			v -= Threads.rootContemptValue / 2;
 
 #if 1
 		ss << "cp " << v / 2;
@@ -285,35 +285,35 @@ string UCI::waarde(Value v)
 }
 
 
-std::string UCI::veld(Square veld)
+std::string UCI::square(Square square)
 {
-	return std::string{ char('a' + lijn(veld)), char('1' + rij(veld)) };
+	return std::string{ char('a' + file_of(square)), char('1' + rank_of(square)) };
 }
 
 
-string UCI::zet(Move zet, const Position& pos)
+string UCI::move(Move move, const Position& pos)
 {
-	char sZet[6];
+	char sMove[6];
 
-	Square van = from_square(zet);
-	Square naar = to_square(zet);
+	Square from = from_square(move);
+	Square to = to_square(move);
 
-	if (zet == NO_MOVE || zet == NULL_MOVE)
+	if (move == NO_MOVE || move == NULL_MOVE)
 		return "0000";
 
-	if (move_type(zet) == CASTLING && pos.is_chess960())
-		naar = pos.castling_rook_square(naar);
+	if (move_type(move) == CASTLING && pos.is_chess960())
+		to = pos.castling_rook_square(to);
 
 	//string sZet = UCI::veld(van) + UCI::veld(naar);
-	sZet[0] = 'a' + lijn(van);
-	sZet[1] = '1' + rij(van);
-	sZet[2] = 'a' + lijn(naar);
-	sZet[3] = '1' + rij(naar);
-	if (zet < Move(PROMOTION_N))
-		return string(sZet, 4);
+	sMove[0] = 'a' + file_of(from);
+	sMove[1] = '1' + rank_of(from);
+	sMove[2] = 'a' + file_of(to);
+	sMove[3] = '1' + rank_of(to);
+	if (move < Move(PROMOTION_N))
+		return string(sMove, 4);
 
-	sZet[4] = "   nbrq"[promotion_piece(zet)];
-	return string(sZet, 5);
+	sMove[4] = "   nbrq"[promotion_piece(move)];
+	return string(sMove, 5);
 }
 
 
@@ -323,17 +323,17 @@ Move UCI::move_from_string(const Position& pos, string& str)
 	{
 		// Arena gebruikt O-O en O-O-O
 		if (str == "O-O")
-			str = UCI::zet(make_move(CASTLING, pos.koning(pos.side_to_move()), relative_square(pos.side_to_move(), SQ_G1)), pos);
+			str = UCI::move(make_move(CASTLING, pos.king(pos.side_to_move()), relative_square(pos.side_to_move(), SQ_G1)), pos);
 		else if (str == "O-O-O")
-			str = UCI::zet(make_move(CASTLING, pos.koning(pos.side_to_move()), relative_square(pos.side_to_move(), SQ_C1)), pos);
+			str = UCI::move(make_move(CASTLING, pos.king(pos.side_to_move()), relative_square(pos.side_to_move(), SQ_C1)), pos);
 	}
 
 	if (str.length() == 5)
 		str[4] = char(tolower(str[4]));
 
-	for (const auto& zet : LegalMoveList(pos))
-		if (str == UCI::zet(zet, pos))
-			return zet;
+	for (const auto& move : LegalMoveList(pos))
+		if (str == UCI::move(move, pos))
+			return move;
 
 	return NO_MOVE;
 }

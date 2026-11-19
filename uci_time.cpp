@@ -5,11 +5,11 @@
 #include "uci_time.h"
 #include "uci.h"
 
-TimeManagement Tijdscontrole;
+TimeManagement TimeControl;
 
 namespace
 {
-	double zet_belang(int ply)
+	double move_importance(int ply)
 	{
 		const double XScale = 7.64;
 		const double XShift = 58.4;
@@ -23,47 +23,47 @@ namespace
 }
 
 
-void TimeManagement::initialize(TimeLimit& tijdLimiet, Color ik, int ply)
+void TimeManagement::initialize(TimeLimit& timeLimit, Color us, int ply)
 {
 	const int MovesHorizon = 50; 
 	const double MaxRatio = 7.09;
 	const double StealRatio = 0.35;
 	const int64_t MinimumTime = 1;
 
-	startTijd = tijdLimiet.startTijd;
+	startTime = timeLimit.startTime;
 
-	int MoveOverhead = 10 + UciOpties["Move Overhead"];
+	int MoveOverhead = 10 + UciOptions["Move Overhead"];
 		
-	optimaleTijd = maximumTijd = tijdLimiet.time[ik];
-	int maxZetten = tijdLimiet.movestogo ? std::min(tijdLimiet.movestogo, MovesHorizon) : MovesHorizon;
+	optimalTime = maximumTime = timeLimit.time[us];
+	int maxMoves = timeLimit.movestogo ? std::min(timeLimit.movestogo, MovesHorizon) : MovesHorizon;
 
-	double zetBelang = zet_belang(ply) * 0.89;
-	double andereZettenBelang = 0;
-	int64_t beschikbaar = tijdLimiet.time[ik] - MoveOverhead;
+	double moveImportance = move_importance(ply) * 0.89;
+	double otherMovesImportance = 0;
+	int64_t available = timeLimit.time[us] - MoveOverhead;
 
-	for (int n = 1; n <= maxZetten; n++)
+	for (int n = 1; n <= maxMoves; n++)
 	{
-		double ratio1 = zetBelang / (zetBelang + andereZettenBelang);
-		int64_t t1 = std::llround(beschikbaar * ratio1);
+		double ratio1 = moveImportance / (moveImportance + otherMovesImportance);
+		int64_t t1 = std::llround(available * ratio1);
 
-		double ratio2 = (MaxRatio * zetBelang) / (MaxRatio * zetBelang + andereZettenBelang);
-		double ratio3 = (zetBelang + StealRatio * andereZettenBelang) / (zetBelang + andereZettenBelang);
-		int64_t t2 = std::llround(beschikbaar * std::min(ratio2, ratio3));
+		double ratio2 = (MaxRatio * moveImportance) / (MaxRatio * moveImportance + otherMovesImportance);
+		double ratio3 = (moveImportance + StealRatio * otherMovesImportance) / (moveImportance + otherMovesImportance);
+		int64_t t2 = std::llround(available * std::min(ratio2, ratio3));
 
-		optimaleTijd = std::min(t1, optimaleTijd);
-		maximumTijd = std::min(t2, maximumTijd);
+		optimalTime = std::min(t1, optimalTime);
+		maximumTime = std::min(t2, maximumTime);
 
-		andereZettenBelang += zet_belang(ply + 2 * n);
-		beschikbaar += tijdLimiet.inc[ik] - MoveOverhead;
+		otherMovesImportance += move_importance(ply + 2 * n);
+		available += timeLimit.inc[us] - MoveOverhead;
 	}
 
-	optimaleTijd = std::max(optimaleTijd, MinimumTime);
-	maximumTijd = std::max(maximumTijd, MinimumTime);
+	optimalTime = std::max(optimalTime, MinimumTime);
+	maximumTime = std::max(maximumTime, MinimumTime);
 
-	if (UciOpties["Ponder"])
+	if (UciOptions["Ponder"])
 	{
-		optimaleTijd += optimaleTijd * 3 / 10;
-		optimaleTijd = std::min(optimaleTijd, maximumTijd);
+		optimalTime += optimalTime * 3 / 10;
+		optimalTime = std::min(optimalTime, maximumTime);
 	}
 
 	//	startTijd = tijdLimiet.startTijd;
@@ -95,11 +95,11 @@ void TimeManagement::initialize(TimeLimit& tijdLimiet, Color ik, int ply)
 
 int64_t TimeManagement::elapsed() const
 {
-	return int64_t(now() - startTijd);
+	return int64_t(now() - startTime);
 }
 
 void TimeManagement::adjustment_after_ponderhit()
 {
-	int64_t nieuweMaxTijd = maximumTijd + elapsed();
-	optimaleTijd = optimaleTijd * nieuweMaxTijd / maximumTijd;
+	int64_t newMaxTime = maximumTime + elapsed();
+	optimalTime = optimalTime * newMaxTime / maximumTime;
 }

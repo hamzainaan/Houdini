@@ -1,8 +1,8 @@
 /*
 */
 
-#ifndef ZOEK_SMP_H
-#define ZOEK_SMP_H
+#ifndef SEARCH_SMP_H
+#define SEARCH_SMP_H
 
 #include <atomic>
 #include <condition_variable>
@@ -24,11 +24,11 @@
 #undef WIN32_LEAN_AND_MEAN
 #undef NOMINMAX
 
-#include "eval_materiaal.h"
-#include "zet_keuze.h"
-#include "eval_pionstruct.h"
-#include "stelling.h"
-#include "zoeken.h"
+#include "eval_material.h"
+#include "move_selection.h"
+#include "eval_pawnstruct.h"
+#include "position.h"
+#include "search.h"
 #include "util_win32.h"
 
 #if defined(PREMIUM) || defined(PRO_LICENSE)
@@ -157,4 +157,4 @@ public:
 
 extern ThreadPool Threads;
 
-#endif // #ifndef ZOEK_SMP_H
+#endif // #ifndef SEARCH_SMP_H

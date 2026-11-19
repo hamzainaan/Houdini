@@ -1,13 +1,13 @@
 /*
 */
 
-#ifndef BOEK_H_INCLUDED
-#define BOEK_H_INCLUDED
+#ifndef BOOK_H_INCLUDED
+#define BOOK_H_INCLUDED
 
 #include <fstream>
 #include <string>
 
-#include "stelling.h"
+#include "position.h"
 
 namespace
 {
@@ -34,4 +34,4 @@ private:
 	bool lees_tupel(PolyglotTupel* tupel);
 };
 
-#endif // #ifndef BOEK_H_INCLUDED
+#endif // #ifndef BOOK_H_INCLUDED

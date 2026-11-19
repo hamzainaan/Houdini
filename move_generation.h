@@ -1,8 +1,8 @@
 /*
 */
 
-#ifndef ZET_GENERATIE_H
-#define ZET_GENERATIE_H
+#ifndef MOVE_GENERATION_H
+#define MOVE_GENERATION_H
 
 #include "houdini.h"
 
@@ -55,4 +55,4 @@ bool LegaleZettenLijstBevatZet(const Stelling& pos, Zet zet);
 bool MinstensEenLegaleZet(const Stelling& pos);
 bool LegaleZettenLijstBevatRokade(const Stelling& pos, Zet zet);
 
-#endif // #ifndef ZET_GENERATIE_H
+#endif // #ifndef MOVE_GENERATION_H

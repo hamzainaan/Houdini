@@ -4,8 +4,8 @@
 #include <iostream>
 
 #include "houdini.h"
-#include "bord.h"
-#include "zet_hash.h"
+#include "bitboard.h"
+#include "move_hash.h"
 
 TranspositieTabel HoofdHash;
 

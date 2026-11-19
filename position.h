@@ -1,11 +1,11 @@
 /*
 */
 
-#ifndef STELLING_H
-#define STELLING_H
+#ifndef POSITION_H
+#define POSITION_H
 
 #include "houdini.h"
-#include "bord.h"
+#include "bitboard.h"
 
 class Stelling;
 class Thread;
@@ -541,4 +541,4 @@ inline void Stelling::verplaats_stuk(Kleur kleur, Stuk stuk, Veld van, Veld naar
 	stukLijst[stuk][stukIndex[naar]] = naar;
 }
 
-#endif // #ifndef STELLING_H
+#endif // #ifndef POSITION_H

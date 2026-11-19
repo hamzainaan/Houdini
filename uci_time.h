@@ -1,8 +1,8 @@
 ﻿/*
 */
 
-#ifndef UCI_TIJD_H
-#define UCI_TIJD_H
+#ifndef UCI_TIME_H
+#define UCI_TIME_H
 
 #include "houdini.h"
 #include "util_tools.h"
@@ -45,4 +45,4 @@ private:
 
 extern Tijdsbeheer Tijdscontrole;
 
-#endif // #ifndef UCI_TIJD_H
+#endif // #ifndef UCI_TIME_H

@@ -3,7 +3,7 @@
 
 #include "houdini.h"
 #include "uci.h"
-#include "stelling.h"
+#include "position.h"
 
 
 namespace PST 

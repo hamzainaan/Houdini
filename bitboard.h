@@ -1,8 +1,8 @@
 /*
 */
 
-#ifndef BORD_H
-#define BORD_H
+#ifndef BITBOARD_H
+#define BITBOARD_H
 
 #include "houdini.h"
 
@@ -355,4 +355,4 @@ inline Veld pop_lsb(Bord* b)
 inline Veld voorste_veld(Kleur kleur, Bord b) { return kleur == WIT ? msb(b) : lsb(b); }
 inline Veld achterste_veld(Kleur kleur, Bord b) { return kleur == WIT ? lsb(b) : msb(b); }
 
-#endif // #ifndef BORD_H
+#endif // #ifndef BITBOARD_H

@@ -6,12 +6,12 @@
 #include <iostream>
 
 #include "houdini.h"
-#include "bord.h"
-#include "stelling.h"
+#include "bitboard.h"
+#include "position.h"
 #include "util_tools.h"
-#include "zoek_smp.h"
-#include "zet_generatie.h"
-#include "zet_hash.h"
+#include "search_smp.h"
+#include "move_generation.h"
+#include "move_hash.h"
 #include "uci.h"
 
 using std::string;

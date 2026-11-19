@@ -1,12 +1,12 @@
 /*
 */
 
-#ifndef ZET_HASH_H
-#define ZET_HASH_H
+#ifndef MOVE_HASH_H
+#define MOVE_HASH_H
 
 #include "houdini.h"
 #include "util_tools.h"
-#include "zoek_smp.h"
+#include "search_smp.h"
 
 using std::string;
 
@@ -114,4 +114,4 @@ private:
 
 extern TranspositieTabel HoofdHash;
 
-#endif // #ifndef ZET_HASH_H
+#endif // #ifndef MOVE_HASH_H

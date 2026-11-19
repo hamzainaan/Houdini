@@ -4,8 +4,8 @@
 #include <iostream>
 
 #include "houdini.h"
-#include "stelling.h"
-#include "zoeken.h"
+#include "position.h"
+#include "search.h"
 #include "egtb_nalimovprobe.h"
 
 typedef uint64_t INDEX;

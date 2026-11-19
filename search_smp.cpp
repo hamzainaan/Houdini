@@ -5,9 +5,9 @@
 #include <iomanip>
 
 #include "houdini.h"
-#include "zet_generatie.h"
-#include "zoeken.h"
-#include "zoek_smp.h"
+#include "move_generation.h"
+#include "search.h"
+#include "search_smp.h"
 #include "uci.h"
 
 ThreadPool Threads;

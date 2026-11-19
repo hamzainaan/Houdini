@@ -2,7 +2,7 @@
 */
 
 #include "houdini.h"
-#include "uci_tijd.h"
+#include "uci_time.h"
 #include "uci.h"
 
 Tijdsbeheer Tijdscontrole;

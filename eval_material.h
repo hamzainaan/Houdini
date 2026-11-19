@@ -1,12 +1,12 @@
 /*
 */
 
-#ifndef EVAL_MATERIAAL_H
-#define EVAL_MATERIAAL_H
+#ifndef EVAL_MATERIAL_H
+#define EVAL_MATERIAL_H
 
-#include "eval_eindspel.h"
+#include "eval_endgames.h"
 #include "util_tools.h"
-#include "stelling.h"
+#include "position.h"
 #include "houdini.h"
 
 namespace Materiaal 
@@ -36,4 +36,4 @@ namespace Materiaal
 	Tuple* probe(const Stelling& pos);
 }
 
-#endif // #ifndef EVAL_MATERIAAL_H
+#endif // #ifndef EVAL_MATERIAL_H

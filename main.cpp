@@ -3,12 +3,12 @@
 
 #include <iostream>
 
-#include "bord.h"
-#include "evaluatie.h"
-#include "stelling.h"
-#include "zoeken.h"
-#include "zoek_smp.h"
-#include "zet_hash.h"
+#include "bitboard.h"
+#include "evaluation.h"
+#include "position.h"
+#include "search.h"
+#include "search_smp.h"
+#include "move_hash.h"
 #include "uci.h"
 
 #ifdef USE_LICENSE

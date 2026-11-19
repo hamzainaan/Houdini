@@ -7,7 +7,7 @@
 #include <sstream>
 
 #include "util_tools.h"
-#include "zoek_smp.h"
+#include "search_smp.h"
 
 using namespace std;
 

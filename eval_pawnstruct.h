@@ -1,11 +1,11 @@
 /*
 */
 
-#ifndef EVAL_PIONSTRUCT_H
-#define EVAL_PIONSTRUCT_H
+#ifndef EVAL_PAWNSTRUCT_H
+#define EVAL_PAWNSTRUCT_H
 
 #include "util_tools.h"
-#include "stelling.h"
+#include "position.h"
 #include "houdini.h"
 
 namespace Pionnen 
@@ -77,4 +77,4 @@ namespace Pionnen
 	Tuple* probe(const Stelling& pos);
 } // namespace
 
-#endif // #ifndef EVAL_PIONSTRUCT_H
+#endif // #ifndef EVAL_PAWNSTRUCT_H

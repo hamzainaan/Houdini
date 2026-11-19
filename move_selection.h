@@ -1,12 +1,12 @@
 /*
 */
 
-#ifndef ZET_KEUZE_H
-#define ZET_KEUZE_H
+#ifndef MOVE_SELECTION_H
+#define MOVE_SELECTION_H
 
 #include "houdini.h"
-#include "zet_generatie.h"
-#include "stelling.h"
+#include "move_generation.h"
+#include "position.h"
 
 template<typename T>
 struct StukVeldTabel
@@ -160,4 +160,4 @@ namespace ZetKeuze
 	template<ZetGeneratie> void score(const Stelling& pos);
 }
 
-#endif // #ifndef ZET_KEUZE_H
+#endif // #ifndef MOVE_SELECTION_H

@@ -2,7 +2,7 @@
 see http://hardy.uhasselt.be/Toga/book_format.html
 */
 
-#include "boek.h"
+#include "book.h"
 #include "util_tools.h"
 
 using namespace std;

@@ -7,8 +7,8 @@
 #include <iostream>
 
 #include "houdini.h"
-#include "stelling.h"
-#include "zoeken.h"
+#include "position.h"
+#include "search.h"
 #include "syzygy\tbprobe.h"
 
 static bool SyzygyInUse = false;

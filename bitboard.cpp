@@ -2,7 +2,7 @@
 */
 
 #include "houdini.h"
-#include "bord.h"
+#include "bitboard.h"
 #include "util_tools.h"
 
 #ifndef USE_POPCNT

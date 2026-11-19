@@ -8,9 +8,9 @@
 
 #include "houdini.h"
 #include "util_tools.h"
-#include "stelling.h"
-#include "zoeken.h"
-#include "zoek_smp.h"
+#include "position.h"
+#include "search.h"
+#include "search_smp.h"
 #include "uci.h"
 
 using namespace std;

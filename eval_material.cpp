@@ -2,9 +2,9 @@
 */
 
 #include "houdini.h"
-#include "bord.h"
-#include "eval_materiaal.h"
-#include "zoek_smp.h"
+#include "bitboard.h"
+#include "eval_material.h"
+#include "search_smp.h"
 #include "uci.h"
 
 

@@ -2,8 +2,8 @@
 */
 
 #include "houdini.h"
-#include "zet_generatie.h"
-#include "stelling.h"
+#include "move_generation.h"
+#include "position.h"
 #include "util_tools.h"
 
 namespace 

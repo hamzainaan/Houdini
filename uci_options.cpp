@@ -6,12 +6,12 @@
 
 #include "houdini.h"
 #include "util_tools.h"
-#include "zoeken.h"
-#include "zoek_smp.h"
-#include "zet_hash.h"
+#include "search.h"
+#include "search_smp.h"
+#include "move_hash.h"
 #include "uci.h"
 #include "syzygy/tbprobe.h"
-#include "evaluatie.h"
+#include "evaluation.h"
 #ifdef USE_NALIMOV
 #	include "egtb_nalimovprobe.h"
 #endif

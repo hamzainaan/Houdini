@@ -4,8 +4,8 @@
 #include <iostream>
 
 #include "houdini.h"
-#include "zet_keuze.h"
-#include "zoek_smp.h"
+#include "move_selection.h"
+#include "search_smp.h"
 #include "uci.h"
 
 namespace

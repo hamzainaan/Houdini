@@ -2,10 +2,10 @@
 */
 
 #include "houdini.h"
-#include "bord.h"
-#include "eval_eindspel.h"
-#include "zet_generatie.h"
-#include "zoek_smp.h"
+#include "bitboard.h"
+#include "eval_endgames.h"
+#include "move_generation.h"
+#include "search_smp.h"
 
 using std::string;
 

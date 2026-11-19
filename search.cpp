@@ -5,16 +5,16 @@
 #include <sstream>
 
 #include "houdini.h"
-#include "evaluatie.h"
+#include "evaluation.h"
 #include "util_tools.h"
-#include "zet_generatie.h"
-#include "zet_keuze.h"
-#include "zoeken.h"
-#include "uci_tijd.h"
-#include "zoek_smp.h"
-#include "zet_hash.h"
+#include "move_generation.h"
+#include "move_selection.h"
+#include "search.h"
+#include "uci_time.h"
+#include "search_smp.h"
+#include "move_hash.h"
 #include "uci.h"
-#include "boek.h"
+#include "book.h"
 
 #ifdef USE_LICENSE
 #include "polarssl\aes.h"

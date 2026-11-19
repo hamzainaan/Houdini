@@ -1,12 +1,12 @@
 /*
 */
 
-#ifndef EVAL_EINDSPEL_H
-#define EVAL_EINDSPEL_H
+#ifndef EVAL_ENDGAMES_H
+#define EVAL_ENDGAMES_H
 
 #include <map>
 
-#include "stelling.h"
+#include "position.h"
 #include "houdini.h"
 
 typedef Waarde (*eindspel_waarde_fx)(const Stelling& pos);
@@ -40,4 +40,4 @@ template <Kleur sterkeZijde> SchaalFactor endgameScaleFactor_KPsK(const Stelling
 template <Kleur sterkeZijde> SchaalFactor endgameScaleFactor_KPKP(const Stelling& pos);
 
 
-#endif // #ifndef EVAL_EINDSPEL_H
+#endif // #ifndef EVAL_ENDGAMES_H

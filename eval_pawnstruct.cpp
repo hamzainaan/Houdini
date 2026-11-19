@@ -2,10 +2,10 @@
 */
 
 #include "houdini.h"
-#include "bord.h"
-#include "eval_pionstruct.h"
-#include "stelling.h"
-#include "zoek_smp.h"
+#include "bitboard.h"
+#include "eval_pawnstruct.h"
+#include "position.h"
+#include "search_smp.h"
 #include "uci.h"
 
 

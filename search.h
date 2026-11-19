@@ -1,15 +1,15 @@
 /*
 */
 
-#ifndef ZOEKEN_H
-#define ZOEKEN_H
+#ifndef SEARCH_H
+#define SEARCH_H
 
 #include <atomic>
 
 #include "houdini.h"
 #include "util_tools.h"
-#include "stelling.h"
-#include "uci_tijd.h"
+#include "position.h"
+#include "uci_time.h"
 
 #ifdef CHESSBASE
 #include "EngineTest.h"
@@ -89,4 +89,4 @@ namespace EGTB
 	extern bool UseRule50;
 }
 
-#endif // #ifndef ZOEKEN_H
+#endif // #ifndef SEARCH_H

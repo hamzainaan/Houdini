@@ -1,8 +1,8 @@
 /*
 */
 
-#ifndef EVALUATIE_H
-#define EVALUATIE_H
+#ifndef EVALUATION_H
+#define EVALUATION_H
 
 #include "houdini.h"
 
@@ -21,4 +21,4 @@ namespace Evaluatie
 	extern Score VeiligheidTabel[1024];
 }
 
-#endif // #ifndef EVALUATIE_H
+#endif // #ifndef EVALUATION_H

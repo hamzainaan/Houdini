@@ -6,12 +6,12 @@
 #include <iomanip>
 
 #include "houdini.h"
-#include "evaluatie.h"
-#include "zet_generatie.h"
-#include "stelling.h"
-#include "zoeken.h"
-#include "zoek_smp.h"
-#include "uci_tijd.h"
+#include "evaluation.h"
+#include "move_generation.h"
+#include "position.h"
+#include "search.h"
+#include "search_smp.h"
+#include "uci_time.h"
 #include "uci.h"
 #include "polarssl\aes.h"
 #include "zlib\zlib.h"

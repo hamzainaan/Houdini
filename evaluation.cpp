@@ -2,12 +2,12 @@
 */
 
 #include "houdini.h"
-#include "bord.h"
-#include "evaluatie.h"
-#include "eval_materiaal.h"
-#include "eval_pionstruct.h"
+#include "bitboard.h"
+#include "evaluation.h"
+#include "eval_material.h"
+#include "eval_pawnstruct.h"
 #include "uci.h"
-#include "zoek_smp.h"
+#include "search_smp.h"
 
 
 namespace Evaluatie

@@ -11,10 +11,10 @@
 #include "polarssl\aes.h"
 #include "polarssl\md5.h"
 
-#include "stelling.h"
-#include "zoeken.h"
-#include "evaluatie.h"
-#include "zoek_smp.h"
+#include "position.h"
+#include "search.h"
+#include "evaluation.h"
+#include "search_smp.h"
 
 //long getHardDriveComputerID();
 

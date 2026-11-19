@@ -116,13 +116,13 @@ namespace
 		return zet;
 	}
 
-	const int PieceOrder[STUK_N] =
+	const int PieceOrder[PIECE_N] =
 	{
 		0, 6, 1, 2, 3, 4, 5, 0,
 		0, 6, 1, 2, 3, 4, 5, 0
 	};
 
-	const int CaptureSortValues[STUK_N] =
+	const int CaptureSortValues[PIECE_N] =
 	{
 		0, 0, 198, 817, 836, 1270, 2521, 0,
 		0, 0, 198, 817, 836, 1270, 2521, 0
@@ -157,13 +157,13 @@ namespace MoveSelection
 		PositionInfo* st = pos.info();
 		st->mp_diepte = diepte;
 		st->mp_alleen_rustige_schaakzetten = alleen_rustige_schaakzetten;
-		st->mp_ttZet = ttZet && pos.geldige_zet(ttZet) ? ttZet : GEEN_ZET;
+		st->mp_ttZet = ttZet && pos.geldige_zet(ttZet) ? ttZet : NO_MOVE;
 
 		if (pos.schaak_gevers())
-			st->mp_etappe = st->mp_ttZet ? GA_UIT_SCHAAK : UIT_SCHAAK_GEN;
+			st->mp_etappe = st->mp_ttZet ? EVADE_CHECK : EVASIONS_GEN;
 		else
 		{
-			st->mp_etappe = st->mp_ttZet ? NORMAAL_ZOEKEN : GOEDE_SLAGEN_GEN;
+			st->mp_etappe = st->mp_ttZet ? NORMAL_SEARCH : GOOD_CAPTURES_GEN;
 			if (st->counterZetWaarden)
 			{
 				st->mp_counterZet = Move(pos.ti()->counterZetten.get(st->bewogenStuk, naar_veld(st->vorigeZet)));
@@ -175,35 +175,35 @@ namespace MoveSelection
 				}
 			}
 			else
-				st->mp_counterZet = GEEN_ZET;
+				st->mp_counterZet = NO_MOVE;
 		}
 	}
 
 	void init_qsearch(const Position& pos, Move ttZet, Depth diepte, Square veld)
 	{
-		assert(diepte <= DIEPTE_0);
+		assert(diepte <= DEPTH_0);
 		PositionInfo* st = pos.info();
 
 		if (pos.schaak_gevers())
-			st->mp_etappe = GA_UIT_SCHAAK;
+			st->mp_etappe = EVADE_CHECK;
 
-		else if (diepte == DIEPTE_0)
-			st->mp_etappe = QSEARCH_MET_SCHAAK;
+		else if (diepte == DEPTH_0)
+			st->mp_etappe = QSEARCH_WITH_CHECKS;
 
 		//else if (diepte == -PLY && delta < Waarde(50))
 		//	st->mp_etappe = QSEARCH_MET_DAMESCHAAK;
 
 		else if (diepte >= -4 * PLY)
-			st->mp_etappe = QSEARCH_ZONDER_SCHAAK;
+			st->mp_etappe = QSEARCH_WITHOUT_CHECKS;
 
 		else
 		{
-			st->mp_etappe = TERUGSLAG_GEN;
+			st->mp_etappe = RECAPTURE_GEN;
 			st->mp_slagVeld = veld;
 			return;
 		}
 
-		st->mp_ttZet = ttZet && pos.geldige_zet(ttZet) ? ttZet : GEEN_ZET;
+		st->mp_ttZet = ttZet && pos.geldige_zet(ttZet) ? ttZet : NO_MOVE;
 		if (!st->mp_ttZet)
 			++st->mp_etappe;
 	}
@@ -217,13 +217,13 @@ namespace MoveSelection
 		st->mp_ttZet = ttZet
 			&& pos.geldige_zet(ttZet)
 			&& pos.slag_of_promotie(ttZet)
-			&& pos.see_test(ttZet, st->mp_threshold) ? ttZet : GEEN_ZET;
+			&& pos.see_test(ttZet, st->mp_threshold) ? ttZet : NO_MOVE;
 
 		st->mp_etappe = st->mp_ttZet ? PROBCUT : PROBCUT_GEN;
 	}
 
 	template<>
-	void score<GEN_SLAG_OF_PROMOTIE>(const Position& pos)
+	void score<GEN_CAPTURES_OR_PROMOTIONS>(const Position& pos)
 	{
 		PositionInfo* st = pos.info();
 		for (MoveEx *z = st->mp_huidigeZet; z < st->mp_eindeLijst; z++)
@@ -232,14 +232,14 @@ namespace MoveSelection
 	}
 
 	template<>
-	void score<GEN_RUSTIGE_ZETTEN>(const Position& pos)
+	void score<GEN_QUIET_MOVES>(const Position& pos)
 	{
 		const MoveValueStats& history = pos.ti()->history;
 
 		PositionInfo* st = pos.info();
-		const CounterMoveValues* cm = st->counterZetWaarden ? st->counterZetWaarden : &pos.ni()->counterZetStatistieken[GEEN_STUK][SQ_A1];
-		const CounterMoveValues* fm = (st - 1)->counterZetWaarden ? (st - 1)->counterZetWaarden : &pos.ni()->counterZetStatistieken[GEEN_STUK][SQ_A1];
-		const CounterMoveValues* f2 = (st - 3)->counterZetWaarden ? (st - 3)->counterZetWaarden : &pos.ni()->counterZetStatistieken[GEEN_STUK][SQ_A1];
+		const CounterMoveValues* cm = st->counterZetWaarden ? st->counterZetWaarden : &pos.ni()->counterZetStatistieken[NO_PIECE][SQ_A1];
+		const CounterMoveValues* fm = (st - 1)->counterZetWaarden ? (st - 1)->counterZetWaarden : &pos.ni()->counterZetStatistieken[NO_PIECE][SQ_A1];
+		const CounterMoveValues* f2 = (st - 3)->counterZetWaarden ? (st - 3)->counterZetWaarden : &pos.ni()->counterZetStatistieken[NO_PIECE][SQ_A1];
 
 		Square dreiging = st->mp_diepte < 6 * PLY ? pos.bereken_dreiging() : SQ_NONE;
 
@@ -258,7 +258,7 @@ namespace MoveSelection
 	}
 
 	template<>
-	void score<GEN_GA_UIT_SCHAAK>(const Position& pos)
+	void score<GEN_EVASIONS>(const Position& pos)
 	{
 		PositionInfo* st = pos.info();
 		const MoveValueStats& history = pos.ti()->evasionHistory;
@@ -285,23 +285,23 @@ namespace MoveSelection
 
 		switch (st->mp_etappe)
 		{
-		case NORMAAL_ZOEKEN: case GA_UIT_SCHAAK:
-		case QSEARCH_MET_SCHAAK: case QSEARCH_ZONDER_SCHAAK: 
+		case NORMAL_SEARCH: case EVADE_CHECK:
+		case QSEARCH_WITH_CHECKS: case QSEARCH_WITHOUT_CHECKS: 
 		//case QSEARCH_MET_DAMESCHAAK:
 		case PROBCUT:
 			st->mp_eindeLijst = (st - 1)->mp_eindeLijst;
 			++st->mp_etappe;
 			return st->mp_ttZet;
 
-		case GOEDE_SLAGEN_GEN:
+		case GOOD_CAPTURES_GEN:
 			st->mp_huidigeZet = (st - 1)->mp_eindeLijst;
 			st->mp_eindeSlechteSlag = st->mp_huidigeZet;
 			st->mp_uitgesteld_aantal = 0;
-			st->mp_eindeLijst = genereerZetten<GEN_SLAG_OF_PROMOTIE>(pos, st->mp_huidigeZet);
-			score<GEN_SLAG_OF_PROMOTIE>(pos);
-			st->mp_etappe = GOEDE_SLAGEN;
+			st->mp_eindeLijst = genereerZetten<GEN_CAPTURES_OR_PROMOTIONS>(pos, st->mp_huidigeZet);
+			score<GEN_CAPTURES_OR_PROMOTIONS>(pos);
+			st->mp_etappe = GOOD_CAPTURES;
 
-		case GOEDE_SLAGEN:
+		case GOOD_CAPTURES:
 			while (st->mp_huidigeZet < st->mp_eindeLijst)
 			{
 				Move zet = vind_beste_zet(st->mp_huidigeZet++, st->mp_eindeLijst);
@@ -333,7 +333,7 @@ namespace MoveSelection
 
 		case KILLERS1:
 			// counter move
-			st->mp_etappe = LxP_SLAGEN_GEN;
+			st->mp_etappe = BxN_CAPTURES_GEN;
 			{
 				Move zet = st->mp_counterZet;
 				if (zet && zet != st->mp_ttZet && zet != st->killers[0]
@@ -342,17 +342,17 @@ namespace MoveSelection
 					return zet;
 			}
 
-		case LxP_SLAGEN_GEN:
+		case BxN_CAPTURES_GEN:
 			st->mp_huidigeZet = (st - 1)->mp_eindeLijst;
-			st->mp_etappe = LxP_SLAGEN;
+			st->mp_etappe = BxN_CAPTURES;
 
-		case LxP_SLAGEN:
+		case BxN_CAPTURES:
 			while (st->mp_huidigeZet < st->mp_eindeSlechteSlag)
 			{
 				Move zet = *st->mp_huidigeZet++;
-				if (stuk_type(pos.stuk_op_veld(naar_veld(zet))) == PAARD && stuk_type(pos.stuk_op_veld(van_veld(zet))) == LOPER)
+				if (stuk_type(pos.stuk_op_veld(naar_veld(zet))) == KNIGHT && stuk_type(pos.stuk_op_veld(van_veld(zet))) == BISHOP)
 				{
-					*(st->mp_huidigeZet - 1) = GEEN_ZET;
+					*(st->mp_huidigeZet - 1) = NO_MOVE;
 					return zet;
 				}
 			}
@@ -362,16 +362,16 @@ namespace MoveSelection
 			if (st->mp_alleen_rustige_schaakzetten && st->zetNummer >= 1)
 			{
 				MoveEx* z = st->mp_huidigeZet;
-				z = genereerZetten<GEN_RUSTIGE_SCHAAKS>(pos, z);
-				z = genereerZetten<GEN_PION_OPMARS>(pos, z);
+				z = genereerZetten<GEN_QUIET_CHECKS>(pos, z);
+				z = genereerZetten<GEN_PAWN_ADVANCES>(pos, z);
 				st->mp_eindeLijst = z;
-				score<GEN_RUSTIGE_ZETTEN>(pos);
+				score<GEN_QUIET_MOVES>(pos);
 				insertion_sort(st->mp_huidigeZet, st->mp_eindeLijst);
 			}
 			else
 			{
-				st->mp_eindeLijst = genereerZetten<GEN_RUSTIGE_ZETTEN>(pos, st->mp_huidigeZet);
-				score<GEN_RUSTIGE_ZETTEN>(pos);
+				st->mp_eindeLijst = genereerZetten<GEN_QUIET_MOVES>(pos, st->mp_huidigeZet);
+				score<GEN_QUIET_MOVES>(pos);
 
 				MoveEx* sorteer_tot = st->mp_eindeLijst;
 				// op lage diepte: sorteer enkel maar de positieve zetten; dus eerst een partitie maken
@@ -384,9 +384,9 @@ namespace MoveSelection
 				//	insertion_sort(st->mp_huidigeZet, sorteer_tot);
 				//partial_insertion_sort(st->mp_huidigeZet, st->mp_eindeLijst, SorteerWaarde(4000 - 4000 * (st->mp_diepte / PLY)));
 			}
-			st->mp_etappe = RUSTIGE_ZETTEN;
+			st->mp_etappe = QUIET_MOVES;
 
-		case RUSTIGE_ZETTEN:
+		case QUIET_MOVES:
 			while (st->mp_huidigeZet < st->mp_eindeLijst)
 			{
 				Move zet = *st->mp_huidigeZet++;
@@ -401,9 +401,9 @@ namespace MoveSelection
 
 			st->mp_huidigeZet = (st - 1)->mp_eindeLijst;
 			st->mp_eindeLijst = st->mp_eindeSlechteSlag;
-			st->mp_etappe = SLECHTE_SLAGEN;
+			st->mp_etappe = BAD_CAPTURES;
 
-		case SLECHTE_SLAGEN:
+		case BAD_CAPTURES:
 			while (st->mp_huidigeZet < st->mp_eindeLijst)
 			{
 				Move zet = *st->mp_huidigeZet++;
@@ -411,39 +411,39 @@ namespace MoveSelection
 					return zet;
 			}
 			if (!st->mp_uitgesteld_aantal)
-				return GEEN_ZET;
+				return NO_MOVE;
 
-			st->mp_etappe = UITGESTELDE_ZETTEN;
+			st->mp_etappe = POSTPONED_MOVES;
 			st->mp_uitgesteld_huidig = 0;
 
-		case UITGESTELDE_ZETTEN:
+		case POSTPONED_MOVES:
 			if (st->mp_uitgesteld_huidig != st->mp_uitgesteld_aantal)
 				return Move(st->mp_uitgesteld[st->mp_uitgesteld_huidig++]);
-			return GEEN_ZET;
+			return NO_MOVE;
 
-		case UIT_SCHAAK_GEN:
+		case EVASIONS_GEN:
 			st->mp_huidigeZet = (st - 1)->mp_eindeLijst;
-			st->mp_eindeLijst = genereerZetten<GEN_GA_UIT_SCHAAK>(pos, st->mp_huidigeZet);
-			score<GEN_GA_UIT_SCHAAK>(pos);
-			st->mp_etappe = UIT_SCHAAK_LUS;
+			st->mp_eindeLijst = genereerZetten<GEN_EVASIONS>(pos, st->mp_huidigeZet);
+			score<GEN_EVASIONS>(pos);
+			st->mp_etappe = EVASIONS_LOOP;
 
-		case UIT_SCHAAK_LUS:
+		case EVASIONS_LOOP:
 			while (st->mp_huidigeZet < st->mp_eindeLijst)
 			{
 				Move zet = vind_beste_zet(st->mp_huidigeZet++, st->mp_eindeLijst);
 				if (zet != st->mp_ttZet)
 					return zet;
 			}
-			return GEEN_ZET;
+			return NO_MOVE;
 
 		case QSEARCH_1: case QSEARCH_2: 
 		//case QSEARCH_3:
 			st->mp_huidigeZet = (st - 1)->mp_eindeLijst;
-			st->mp_eindeLijst = genereerZetten<GEN_SLAG_OF_PROMOTIE>(pos, st->mp_huidigeZet);
-			score<GEN_SLAG_OF_PROMOTIE>(pos);
+			st->mp_eindeLijst = genereerZetten<GEN_CAPTURES_OR_PROMOTIONS>(pos, st->mp_huidigeZet);
+			score<GEN_CAPTURES_OR_PROMOTIONS>(pos);
 			++st->mp_etappe;
 
-		case QSEARCH_1_SLAGZETTEN: case QSEARCH_2_SLAGZETTEN: 
+		case QSEARCH_1_CAPTURES: case QSEARCH_2_CAPTURES: 
 		//case QSEARCH_3_SLAGZETTEN:
 			while (st->mp_huidigeZet < st->mp_eindeLijst)
 			{
@@ -452,18 +452,18 @@ namespace MoveSelection
 					return zet;
 			}
 
-			if (st->mp_etappe == QSEARCH_2_SLAGZETTEN)
-				return GEEN_ZET;
+			if (st->mp_etappe == QSEARCH_2_CAPTURES)
+				return NO_MOVE;
 
 			st->mp_huidigeZet = (st - 1)->mp_eindeLijst;
 			//if (st->mp_etappe == QSEARCH_3_SLAGZETTEN)
 			//	st->mp_eindeLijst = genereerZetten<GEN_DAME_SCHAAK>(pos, st->mp_huidigeZet);
 			//else
-				st->mp_eindeLijst = genereerZetten<GEN_RUSTIGE_SCHAAKS>(pos, st->mp_huidigeZet);
+				st->mp_eindeLijst = genereerZetten<GEN_QUIET_CHECKS>(pos, st->mp_huidigeZet);
 			//score<GEN_RUSTIGE_ZETTEN>(pos);
 			++st->mp_etappe;
 
-		case QSEARCH_SCHAAKZETTEN: 
+		case QSEARCH_CHECKS: 
 		//case QSEARCH_DAMESCHAAKZETTEN:
 			while (st->mp_huidigeZet < st->mp_eindeLijst)
 			{
@@ -472,41 +472,41 @@ namespace MoveSelection
 				if (zet != st->mp_ttZet)
 					return zet;
 			}
-			return GEEN_ZET;
+			return NO_MOVE;
 
 		case PROBCUT_GEN:
 			st->mp_huidigeZet = (st - 1)->mp_eindeLijst;
-			st->mp_eindeLijst = genereerZetten<GEN_SLAG_OF_PROMOTIE>(pos, st->mp_huidigeZet);
-			score<GEN_SLAG_OF_PROMOTIE>(pos);
-			st->mp_etappe = PROBCUT_SLAGZETTEN;
+			st->mp_eindeLijst = genereerZetten<GEN_CAPTURES_OR_PROMOTIONS>(pos, st->mp_huidigeZet);
+			score<GEN_CAPTURES_OR_PROMOTIONS>(pos);
+			st->mp_etappe = PROBCUT_CAPTURES;
 
-		case PROBCUT_SLAGZETTEN:
+		case PROBCUT_CAPTURES:
 			while (st->mp_huidigeZet < st->mp_eindeLijst)
 			{
 				Move zet = vind_beste_zet(st->mp_huidigeZet++, st->mp_eindeLijst);
 				if (zet != st->mp_ttZet && pos.see_test(zet, st->mp_threshold))
 					return zet;
 			}
-			return GEEN_ZET;
+			return NO_MOVE;
 
-		case TERUGSLAG_GEN:
+		case RECAPTURE_GEN:
 			st->mp_huidigeZet = (st - 1)->mp_eindeLijst;
 			st->mp_eindeLijst = genereerSlagzettenOpVeld(pos, st->mp_huidigeZet, st->mp_slagVeld);
-			score<GEN_SLAG_OF_PROMOTIE>(pos);
-			st->mp_etappe = TERUGSLAG_ZETTEN;
+			score<GEN_CAPTURES_OR_PROMOTIONS>(pos);
+			st->mp_etappe = RECAPTURE_MOVES;
 
-		case TERUGSLAG_ZETTEN:
+		case RECAPTURE_MOVES:
 			while (st->mp_huidigeZet < st->mp_eindeLijst)
 			{
 				Move zet = vind_beste_zet(st->mp_huidigeZet++, st->mp_eindeLijst);
 				if (naar_veld(zet) == st->mp_slagVeld)
 					return zet;
 			}
-			return GEEN_ZET;
+			return NO_MOVE;
 
 		default:
 			assert(false);
-			return GEEN_ZET;
+			return NO_MOVE;
 		}
 	}
 }

@@ -8,13 +8,13 @@
 
 namespace PST 
 {
-	Score psq[STUK_N][VELD_N];
+	Score psq[PIECE_N][SQUARE_N];
 
-#if !defined(USE_LICENSE) && !defined(IMPORT_TABELLEN)
+#if !defined(USE_LICENSE) && !defined(IMPORT_TABLES)
 
 #define SC(mg, eg) maak_score(mg, eg)
 
-	static const Score PST[DAME + 1][64] =
+	static const Score PST[QUEEN + 1][64] =
 	{
 		{},
 		// PST_K[64]
@@ -89,16 +89,16 @@ namespace PST
 
 	void initialisatie()
 	{
-#if !defined(USE_LICENSE) && !defined(IMPORT_TABELLEN)
-		for (PieceType stuk = KONING; stuk <= DAME; ++stuk)
+#if !defined(USE_LICENSE) && !defined(IMPORT_TABLES)
+		for (PieceType stuk = KING; stuk <= QUEEN; ++stuk)
 		{
 			for (Square s = SQ_A1; s <= SQ_H8; ++s)
 			{
 				Score waarde = PST[stuk][s];
-				if (stuk == PION) waarde = score_muldiv(waarde, 128, 256);
-				if (stuk == DAME) waarde = score_muldiv(waarde, 220, 256);
-				psq[maak_stuk(WIT, stuk)][~s] = waarde;
-				psq[maak_stuk(ZWART, stuk)][s] = -waarde;
+				if (stuk == PAWN) waarde = score_muldiv(waarde, 128, 256);
+				if (stuk == QUEEN) waarde = score_muldiv(waarde, 220, 256);
+				psq[maak_stuk(WHITE, stuk)][~s] = waarde;
+				psq[maak_stuk(BLACK, stuk)][s] = -waarde;
 			}
 		}
 
@@ -136,7 +136,7 @@ namespace PST
 			3, 3, 3, 3, 3, 3, 3, 3,
 			4, 4, 4, 4, 4, 4, 4, 4
 		};
-		const int PstMult[DAME + 1][6] =
+		const int PstMult[QUEEN + 1][6] =
 		{
 			{},
 			{ 15,  5,-12,-18,  0,  2 },
@@ -147,15 +147,15 @@ namespace PST
 			{ 0,  0, -4,  8, -8, -2 }
 		};
 
-		for (PieceType stuk = KONING; stuk <= DAME; ++stuk)
+		for (PieceType stuk = KING; stuk <= QUEEN; ++stuk)
 		{
 			for (Square s = SQ_A1; s <= SQ_H8; ++s)
 			{
 				int mg = (PstMult[stuk][0] * PstRankQuad[s] + PstMult[stuk][1] * PstFileQuad[s]) / 2 + PstMult[stuk][2] * PstRank[s];
 				int eg = (PstMult[stuk][3] * PstRankQuad[s] + PstMult[stuk][4] * PstFileQuad[s]) / 2 + PstMult[stuk][5] * PstRank[s];
 				Score waarde = maak_score(mg, eg);
-				psq[maak_stuk(WIT, stuk)][~s] += waarde;
-				psq[maak_stuk(ZWART, stuk)][s] -= waarde;
+				psq[maak_stuk(WHITE, stuk)][~s] += waarde;
+				psq[maak_stuk(BLACK, stuk)][s] -= waarde;
 			}
 		}
 #if 0
@@ -164,8 +164,8 @@ namespace PST
 			int mg = (TUNE_1 * PstRankQuad[s] + TUNE_2 * PstFileQuad[s]) / 2 + TUNE_3 * PstRank[s];
 			int eg = (TUNE_4 * PstRankQuad[s] + TUNE_5 * PstFileQuad[s]) / 2 + TUNE_6 * PstRank[s];
 			Score waarde = maak_score(mg, eg);
-			psq[WIT][PION][~s] += waarde;
-			psq[ZWART][PION][s] -= waarde;
+			psq[WHITE][PAWN][~s] += waarde;
+			psq[BLACK][PAWN][s] -= waarde;
 		}
 #endif
 #endif

@@ -50,15 +50,15 @@ namespace
 				HScore += 17;
 		}
 
-		const int MAX_FASE = 32;
+		const int MAX_PHASE = 32;
 		int fase = (WP + ZP) + (WL + ZL) + 3 * (WT + ZT) + 6 * (WD + ZD);
-		fase = std::min(fase, MAX_FASE);
+		fase = std::min(fase, MAX_PHASE);
 		double conversie;
 
 		if (fase == 0)
 			conversie = 1.3;	// pionneneindspel
 		else
-			conversie = 0.95 + 0.21 * fase / MAX_FASE;
+			conversie = 0.95 + 0.21 * fase / MAX_PHASE;
 
 		if (WL == 1 && ZL == 1 && ((WLL && ZLD) || (WLD && ZLL)))
 		{
@@ -228,7 +228,7 @@ namespace Material
 		if (schaalFunctieIndex[kleur] >= 0)
 		{
 			ScaleFactor sf = (*Threads.endgames.factor_functies[schaalFunctieIndex[kleur]])(pos);
-			if (sf != GEEN_FACTOR)
+			if (sf != NO_FACTOR)
 				return sf;
 		}
 		return ScaleFactor(factor[kleur]);
@@ -246,27 +246,27 @@ namespace Material
 
 		std::memset(e, 0, sizeof(Tuple));
 		e->sleutel64 = sleutel;
-		e->factor[WIT] = e->factor[ZWART] = (uint8_t)NORMAAL_FACTOR;
+		e->factor[WHITE] = e->factor[BLACK] = (uint8_t)NORMAL_FACTOR;
 		e->partijFase = pos.partij_fase();
 		e->conversie = MAX_FACTOR;
-		e->waardeFunctieIndex = e->schaalFunctieIndex[WIT] = e->schaalFunctieIndex[ZWART] = -1;
+		e->waardeFunctieIndex = e->schaalFunctieIndex[WHITE] = e->schaalFunctieIndex[BLACK] = -1;
 
 		e->waarde = imbalanceH(
-			pos.aantal(WIT, PION), pos.aantal(WIT, PAARD), pos.aantal(WIT, LOPER),
-			popcount(pos.stukken(WIT, LOPER) & ~DonkereVelden), popcount(pos.stukken(WIT, LOPER) & DonkereVelden),
-			pos.aantal(WIT, TOREN), pos.aantal(WIT, DAME),
-			pos.aantal(ZWART, PION), pos.aantal(ZWART, PAARD), pos.aantal(ZWART, LOPER),
-			popcount(pos.stukken(ZWART, LOPER) & ~DonkereVelden), popcount(pos.stukken(ZWART, LOPER) & DonkereVelden),
-			pos.aantal(ZWART, TOREN), pos.aantal(ZWART, DAME), e->conversie);
+			pos.aantal(WHITE, PAWN), pos.aantal(WHITE, KNIGHT), pos.aantal(WHITE, BISHOP),
+			popcount(pos.stukken(WHITE, BISHOP) & ~DarkSquares), popcount(pos.stukken(WHITE, BISHOP) & DarkSquares),
+			pos.aantal(WHITE, ROOK), pos.aantal(WHITE, QUEEN),
+			pos.aantal(BLACK, PAWN), pos.aantal(BLACK, KNIGHT), pos.aantal(BLACK, BISHOP),
+			popcount(pos.stukken(BLACK, BISHOP) & ~DarkSquares), popcount(pos.stukken(BLACK, BISHOP) & DarkSquares),
+			pos.aantal(BLACK, ROOK), pos.aantal(BLACK, QUEEN), e->conversie);
 
 		e->waardeFunctieIndex = Threads.endgames.probe_waarde(pos.materiaal_sleutel());
 		if (e->waardeFunctieIndex >= 0)
 			return e;
 
-		for (Color kleur = WIT; kleur <= ZWART; ++kleur)
-			if (!meer_dan_een(pos.stukken(~kleur)) && pos.niet_pion_materiaal(kleur) >= MATL_TOREN)
+		for (Color kleur = WHITE; kleur <= BLACK; ++kleur)
+			if (!meer_dan_een(pos.stukken(~kleur)) && pos.niet_pion_materiaal(kleur) >= MATL_ROOK)
 			{
-				e->waardeFunctieIndex = kleur == WIT ? 0 : 1;  // endgameValue_KXK
+				e->waardeFunctieIndex = kleur == WHITE ? 0 : 1;  // endgameValue_KXK
 				return e;
 			}
 
@@ -279,51 +279,51 @@ namespace Material
 			return e;
 		}
 
-		for (Color kleur = WIT; kleur <= ZWART; ++kleur)
+		for (Color kleur = WHITE; kleur <= BLACK; ++kleur)
 		{
-			if (pos.niet_pion_materiaal(kleur) == MATL_LOPER && pos.aantal(kleur, LOPER) == 1 && pos.aantal(kleur, PION) >= 1)
-				e->schaalFunctieIndex[kleur] = kleur == WIT ? 0 : 1;  // endgameScaleFactor_KBPsK
+			if (pos.niet_pion_materiaal(kleur) == MATL_BISHOP && pos.aantal(kleur, BISHOP) == 1 && pos.aantal(kleur, PAWN) >= 1)
+				e->schaalFunctieIndex[kleur] = kleur == WHITE ? 0 : 1;  // endgameScaleFactor_KBPsK
 
-			else if (!pos.aantal(kleur, PION) && pos.niet_pion_materiaal(kleur) == MATL_DAME && pos.aantal(kleur, DAME) == 1
-				&& pos.aantal(~kleur, TOREN) == 1 && pos.aantal(~kleur, PION) >= 1)
-				e->schaalFunctieIndex[kleur] = kleur == WIT ? 2 : 3;  // endgameScaleFactor_KQKRPs
+			else if (!pos.aantal(kleur, PAWN) && pos.niet_pion_materiaal(kleur) == MATL_QUEEN && pos.aantal(kleur, QUEEN) == 1
+				&& pos.aantal(~kleur, ROOK) == 1 && pos.aantal(~kleur, PAWN) >= 1)
+				e->schaalFunctieIndex[kleur] = kleur == WHITE ? 2 : 3;  // endgameScaleFactor_KQKRPs
 		}
 
-		MaterialValue npm_w = pos.niet_pion_materiaal(WIT);
-		MaterialValue npm_b = pos.niet_pion_materiaal(ZWART);
+		MaterialValue npm_w = pos.niet_pion_materiaal(WHITE);
+		MaterialValue npm_b = pos.niet_pion_materiaal(BLACK);
 
-		if (npm_w + npm_b == MATL_0 && pos.stukken(PION)) // pionneneindspel, maar niet KPK
+		if (npm_w + npm_b == MATL_0 && pos.stukken(PAWN)) // pionneneindspel, maar niet KPK
 		{
-			if (!pos.aantal(ZWART, PION))
+			if (!pos.aantal(BLACK, PAWN))
 			{
-				assert(pos.aantal(WIT, PION) >= 2);
-				e->schaalFunctieIndex[WIT] = 4;  // endgameScaleFactor_KPsK<WIT>
+				assert(pos.aantal(WHITE, PAWN) >= 2);
+				e->schaalFunctieIndex[WHITE] = 4;  // endgameScaleFactor_KPsK<WIT>
 			}
-			else if (!pos.aantal(WIT, PION))
+			else if (!pos.aantal(WHITE, PAWN))
 			{
-				assert(pos.aantal(ZWART, PION) >= 2);
-				e->schaalFunctieIndex[ZWART] = 5;  // endgameScaleFactor_KPsK<ZWART>
+				assert(pos.aantal(BLACK, PAWN) >= 2);
+				e->schaalFunctieIndex[BLACK] = 5;  // endgameScaleFactor_KPsK<ZWART>
 			}
-			else if (pos.aantal(WIT, PION) == 1 && pos.aantal(ZWART, PION) == 1)
+			else if (pos.aantal(WHITE, PAWN) == 1 && pos.aantal(BLACK, PAWN) == 1)
 			{
-				e->schaalFunctieIndex[WIT] = 6;    // endgameScaleFactor_KPKP<WIT>
-				e->schaalFunctieIndex[ZWART] = 7;  // endgameScaleFactor_KPKP<ZWART>
+				e->schaalFunctieIndex[WHITE] = 6;    // endgameScaleFactor_KPKP<WIT>
+				e->schaalFunctieIndex[BLACK] = 7;  // endgameScaleFactor_KPKP<ZWART>
 			}
 		}
 
-		if (!pos.aantal(WIT, PION) && npm_w - npm_b <= MATL_LOPER)
-			e->factor[WIT] = uint8_t(npm_w < MATL_TOREN ? REMISE_FACTOR :
-				npm_b <= MATL_LOPER ? ScaleFactor(6) : ScaleFactor(22));
+		if (!pos.aantal(WHITE, PAWN) && npm_w - npm_b <= MATL_BISHOP)
+			e->factor[WHITE] = uint8_t(npm_w < MATL_ROOK ? DRAW_FACTOR :
+				npm_b <= MATL_BISHOP ? ScaleFactor(6) : ScaleFactor(22));
 
-		if (!pos.aantal(ZWART, PION) && npm_b - npm_w <= MATL_LOPER)
-			e->factor[ZWART] = uint8_t(npm_b <  MATL_TOREN ? REMISE_FACTOR :
-				npm_w <= MATL_LOPER ? ScaleFactor(6) : ScaleFactor(22));
+		if (!pos.aantal(BLACK, PAWN) && npm_b - npm_w <= MATL_BISHOP)
+			e->factor[BLACK] = uint8_t(npm_b <  MATL_ROOK ? DRAW_FACTOR :
+				npm_w <= MATL_BISHOP ? ScaleFactor(6) : ScaleFactor(22));
 
-		if (pos.aantal(WIT, PION) == 1 && npm_w - npm_b <= MATL_LOPER)
-			e->factor[WIT] = (uint8_t)EEN_PION_FACTOR;
+		if (pos.aantal(WHITE, PAWN) == 1 && npm_w - npm_b <= MATL_BISHOP)
+			e->factor[WHITE] = (uint8_t)ONE_PAWN_FACTOR;
 
-		if (pos.aantal(ZWART, PION) == 1 && npm_b - npm_w <= MATL_LOPER)
-			e->factor[ZWART] = (uint8_t)EEN_PION_FACTOR;
+		if (pos.aantal(BLACK, PAWN) == 1 && npm_b - npm_w <= MATL_BISHOP)
+			e->factor[BLACK] = (uint8_t)ONE_PAWN_FACTOR;
 
 		e->conversie_is_geschat = true;
 

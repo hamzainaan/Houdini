@@ -71,56 +71,56 @@ void trace_tm_msg(int MoveNumber, int elapsed, int optimum, const char *MSG);
 typedef uint64_t Key64;
 typedef uint64_t Bitboard;
 
-const int MAX_ZETTEN = 220;
+const int MAX_MOVES = 220;
 const int MAX_PLY = 128;
 const int MAX_PV = 63;
 
 enum Move : unsigned int
 {
-	GEEN_ZET,
-	NULL_ZET = 65
+	NO_MOVE,
+	NULL_MOVE = 65
 };
 
 typedef uint16_t MoveCompact;
 
 enum MoveType
 {
-	ROKADE     =  9 << 12,
+	CASTLING     =  9 << 12,
 	ENPASSANT  = 10 << 12,
-	PROMOTIE_P = 11 << 12,
-	PROMOTIE_L = 12 << 12,
-	PROMOTIE_T = 13 << 12,
-	PROMOTIE_D = 14 << 12
+	PROMOTION_N = 11 << 12,
+	PROMOTION_B = 12 << 12,
+	PROMOTION_R = 13 << 12,
+	PROMOTION_Q = 14 << 12
 };
 
 enum Color
 {
-	WIT, ZWART, KLEUR_N = 2
+	WHITE, BLACK, COLOR_N = 2
 };
 
 enum CastlingRight : uint8_t
 {
-	GEEN_ROKADE,
-	WIT_KORT = 1,
-	WIT_LANG = 2,
-	ZWART_KORT = 4,
-	ZWART_LANG = 8,
-	ALLE_ROKADE = WIT_KORT | WIT_LANG | ZWART_KORT | ZWART_LANG,
-	ROKADE_MOGELIJK_N = 16
+	NO_CASTLING,
+	WHITE_SHORT = 1,
+	WHITE_LONG = 2,
+	BLACK_SHORT = 4,
+	BLACK_LONG = 8,
+	ALL_CASTLING = WHITE_SHORT | WHITE_LONG | BLACK_SHORT | BLACK_LONG,
+	CASTLING_RIGHT_N = 16
 };
 
 enum GamePhase
 {
-	MIDDENSPEL_FASE = 26,
+	MIDDLEGAME_PHASE = 26,
 };
 
 enum ScaleFactor
 {
-	REMISE_FACTOR = 0,
-	EEN_PION_FACTOR = 75,
-	NORMAAL_FACTOR = 100,
+	DRAW_FACTOR = 0,
+	ONE_PAWN_FACTOR = 75,
+	NORMAL_FACTOR = 100,
 	MAX_FACTOR = 200,
-	GEEN_FACTOR = 255
+	NO_FACTOR = 255
 };
 
 enum SortValue : int
@@ -134,79 +134,79 @@ typedef int16_t SortValueCompact;
 enum EvalValue : int
 {
 	EVAL_0 = 0,
-	REMISE_EVAL = 0,
-	GEEN_EVAL = 199999,
-	PION_EVAL = 100 * 16,
-	LOPER_EVAL = 360 * 16
+	DRAW_EVAL = 0,
+	NO_EVAL = 199999,
+	PAWN_EVAL = 100 * 16,
+	BISHOP_EVAL = 360 * 16
 };
 
 enum MaterialValue : int
 {  // eenheid = 8 cp
 	MATL_0 = 0,
-	MATL_PAARD = 41,
-	MATL_LOPER = 42,
-	MATL_TOREN = 64,
-	MATL_DAME = 127,
+	MATL_KNIGHT = 41,
+	MATL_BISHOP = 42,
+	MATL_ROOK = 64,
+	MATL_QUEEN = 127,
 };
 
 enum SeeValue : int
 {
 	SEE_0 = 0,
-	SEE_PION = 100,
-	SEE_PAARD = 325,
-	SEE_LOPER = 350,
-	SEE_TOREN = 500,
-	SEE_DAME = 950
+	SEE_PAWN = 100,
+	SEE_KNIGHT = 325,
+	SEE_BISHOP = 350,
+	SEE_ROOK = 500,
+	SEE_QUEEN = 950
 };
 
 enum Value : int  // in 1/200 pion
 {
-	WAARDE_0 = 0,
-	WAARDE_1 = 1,
-	REMISE_WAARDE = 0,
-	WINST_WAARDE = 15000,
-	EGTB_WIN_WAARDE = 28000,
-	LANGSTE_MAT_WAARDE = 29800,   // geen 30000 omdat cutechess-cli dat dan als een matscore interpreteert
-	MAT_WAARDE = 32700,
-	HOOGSTE_WAARDE = 32750,
-	GEEN_WAARDE = 32750,
+	VALUE_0 = 0,
+	VALUE_1 = 1,
+	DRAW_VALUE = 0,
+	WIN_VALUE = 15000,
+	EGTB_WIN_VALUE = 28000,
+	LONGEST_MATE_VALUE = 29800,   // geen 30000 omdat cutechess-cli dat dan als een matscore interpreteert
+	MATE_VALUE = 32700,
+	HIGHEST_VALUE = 32750,
+	NO_VALUE = 32750,
 };
 
 #define DEFAULT_DRAW_VALUE Value(24)
-#define WAARDE_TEMPO Value(24)
-#define WAARDE_PION Value(200)
+#define VALUE_TEMPO Value(24)
+#define VALUE_PAWN Value(200)
 
 enum PieceType : uint8_t
 {
-	GEEN_STUKTYPE, KONING, PION, PAARD, LOPER, TOREN, DAME,
-	ALLE_STUKKEN = 0, STUKKEN_ZONDER_KONING = 7,
-	STUKTYPE_N = 8
+	NO_PIECE_TYPE, KING, PAWN, KNIGHT, BISHOP, ROOK, QUEEN,
+	ALL_PIECES = 0, PIECES_WITHOUT_KING = 7,
+	PIECE_TYPE_N = 8
 };
 
 enum Piece : uint8_t
 {
-	GEEN_STUK,
-	W_KONING = 1, W_PION, W_PAARD, W_LOPER, W_TOREN, W_DAME,
-	Z_KONING = 9, Z_PION, Z_PAARD, Z_LOPER, Z_TOREN, Z_DAME,
-	STUK_N = 16
+	NO_PIECE,
+	W_KING = 1, W_PAWN, W_KNIGHT, W_BISHOP, W_ROOK, W_QUEEN,
+	B_KING = 9, B_PAWN, B_KNIGHT, B_BISHOP, B_ROOK, B_QUEEN,
+	PIECE_N = 16
 };
 
-const MaterialValue MateriaalWaarden[STUK_N] =
+const MaterialValue MateriaalWaarden[PIECE_N] =
 {
-	MATL_0, MATL_0, MATL_0, MATL_PAARD, MATL_LOPER, MATL_TOREN, MATL_DAME, MATL_0,
-	MATL_0, MATL_0, MATL_0, MATL_PAARD, MATL_LOPER, MATL_TOREN, MATL_DAME, MATL_0
+	MATL_0, MATL_0, MATL_0, MATL_KNIGHT, MATL_BISHOP, MATL_ROOK, MATL_QUEEN, MATL_0,
+	MATL_0, MATL_0, MATL_0, MATL_KNIGHT, MATL_BISHOP, MATL_ROOK, MATL_QUEEN, MATL_0
 };
 
 inline Value WaardeVanMateriaal(MaterialValue v) { return Value(16 * (int)v); }
 
-const int StukFase[STUK_N] =
+const int StukFase[PIECE_N] =
 {
 	0, 0, 0, 1, 1, 3, 6, 0,
 	0, 0, 0, 1, 1, 3, 6, 0
 };
 
-const int MATERIAAL_HASH_GROOTTE = 16384;
-const int PION_HASH_GROOTTE = 16384;
+const int MATERIAL_HASH_SIZE = 16384;
+const int PAWN_HASH_SIZE = 16384;
 
 const int DEFAULT_BENCHMARK_DEPTH = 12;
 
@@ -216,9 +216,9 @@ enum Depth
 	MAIN_THREAD_INC = 9,
 	OTHER_THREAD_INC = 9,
 
-	DIEPTE_0 = 0,
-	GEEN_DIEPTE = -6 * int(PLY),
-	MAX_DIEPTE = MAX_PLY * int(PLY)
+	DEPTH_0 = 0,
+	NO_DEPTH = -6 * int(PLY),
+	MAX_DEPTH = MAX_PLY * int(PLY)
 };
 
 enum Square : int8_t
@@ -233,39 +233,39 @@ enum Square : int8_t
 	SQ_A8, SQ_B8, SQ_C8, SQ_D8, SQ_E8, SQ_F8, SQ_G8, SQ_H8,
 	SQ_NONE = 127,
 
-	VELD_N = 64,
+	SQUARE_N = 64,
 
-	BOVEN = 8,
-	ONDER = -8,
-	LINKS = -1,
-	RECHTS = 1,
+	UP = 8,
+	DOWN = -8,
+	LEFT = -1,
+	RIGHT = 1,
 
-	RECHTSBOVEN = (int8_t)BOVEN + RECHTS,
-	RECHTSONDER = (int8_t)ONDER + RECHTS,
-	LINKSONDER = (int8_t)ONDER + LINKS,
-	LINKSBOVEN = (int8_t)BOVEN + LINKS
+	UP_RIGHT = (int8_t)UP + RIGHT,
+	DOWN_RIGHT = (int8_t)DOWN + RIGHT,
+	DOWN_LEFT = (int8_t)DOWN + LEFT,
+	UP_LEFT = (int8_t)UP + LEFT
 };
 
 enum File
 {
-	LIJN_A, LIJN_B, LIJN_C, LIJN_D, LIJN_E, LIJN_F, LIJN_G, LIJN_H, LIJN_N
+	FILE_A, FILE_B, FILE_C, FILE_D, FILE_E, FILE_F, FILE_G, FILE_H, FILE_N
 };
 
 enum Rank
 {
-	RIJ_1, RIJ_2, RIJ_3, RIJ_4, RIJ_5, RIJ_6, RIJ_7, RIJ_8, RIJ_N
+	RANK_1, RANK_2, RANK_3, RANK_4, RANK_5, RANK_6, RANK_7, RANK_8, RANK_N
 };
 
 enum PickMoveStage
 {
-	NORMAAL_ZOEKEN, GOEDE_SLAGEN_GEN, GOEDE_SLAGEN, KILLERS, KILLERS1, LxP_SLAGEN_GEN, LxP_SLAGEN,
-		/*RUSTIGE_ZETTEN_GEN,*/ RUSTIGE_ZETTEN, SLECHTE_SLAGEN, UITGESTELDE_ZETTEN,
-	GA_UIT_SCHAAK, UIT_SCHAAK_GEN, UIT_SCHAAK_LUS,
-	QSEARCH_MET_SCHAAK, QSEARCH_1, QSEARCH_1_SLAGZETTEN, QSEARCH_SCHAAKZETTEN,
-	QSEARCH_ZONDER_SCHAAK, QSEARCH_2, QSEARCH_2_SLAGZETTEN,
+	NORMAL_SEARCH, GOOD_CAPTURES_GEN, GOOD_CAPTURES, KILLERS, KILLERS1, BxN_CAPTURES_GEN, BxN_CAPTURES,
+		/*RUSTIGE_ZETTEN_GEN,*/ QUIET_MOVES, BAD_CAPTURES, POSTPONED_MOVES,
+	EVADE_CHECK, EVASIONS_GEN, EVASIONS_LOOP,
+	QSEARCH_WITH_CHECKS, QSEARCH_1, QSEARCH_1_CAPTURES, QSEARCH_CHECKS,
+	QSEARCH_WITHOUT_CHECKS, QSEARCH_2, QSEARCH_2_CAPTURES,
 	//QSEARCH_MET_DAMESCHAAK, QSEARCH_3, QSEARCH_3_SLAGZETTEN, QSEARCH_DAMESCHAAKZETTEN,
-	PROBCUT, PROBCUT_GEN, PROBCUT_SLAGZETTEN,
-	TERUGSLAG_GEN, TERUGSLAG_ZETTEN
+	PROBCUT, PROBCUT_GEN, PROBCUT_CAPTURES,
+	RECAPTURE_GEN, RECAPTURE_MOVES
 };
 
 enum Score : int
@@ -360,12 +360,12 @@ inline Square operator~(Square veld)
 
 inline Value geeft_mat(int ply)
 {
-	return Value(MAT_WAARDE - ply);
+	return Value(MATE_VALUE - ply);
 }
 
 inline Value staat_mat(int ply)
 {
-	return Value(-MAT_WAARDE + ply);
+	return Value(-MATE_VALUE + ply);
 }
 
 inline Square maak_veld(File f, Rank r)
@@ -385,7 +385,7 @@ inline PieceType stuk_type(Piece stuk)
 
 inline Color stuk_kleur(Piece stuk)
 {
-	assert(stuk != GEEN_STUK);
+	assert(stuk != NO_PIECE);
 	return Color(stuk >> 3);
 }
 
@@ -422,17 +422,17 @@ inline bool verschillende_kleur(Square v1, Square v2)
 
 inline Square pion_vooruit(Color kleur)
 {
-	return kleur == WIT ? BOVEN : ONDER;
+	return kleur == WHITE ? UP : DOWN;
 }
 
 inline Square veld_voor(Color kleur, Square veld)
 {
-	return kleur == WIT ? veld + BOVEN : veld + ONDER;
+	return kleur == WHITE ? veld + UP : veld + DOWN;
 }
 
 inline Square veld_achter(Color kleur, Square veld)
 {
-	return kleur == WIT ? veld - BOVEN : veld - ONDER;
+	return kleur == WHITE ? veld - UP : veld - DOWN;
 }
 
 inline Square van_veld(Move zet)
@@ -452,12 +452,12 @@ inline MoveType zet_type(Move zet)
 
 inline PieceType promotie_stuk(Move zet)
 {
-	return PieceType(PAARD + (((zet >> 12) & 15) - (PROMOTIE_P >> 12)));
+	return PieceType(KNIGHT + (((zet >> 12) & 15) - (PROMOTION_N >> 12)));
 }
 
 inline PieceType stuk_van_zet(Move zet)
 {
-	assert(zet < Move(ROKADE));
+	assert(zet < Move(CASTLING));
 	return PieceType((zet >> 12) & 7);
 }
 
@@ -474,7 +474,7 @@ inline Move maak_zet(MoveType type, Square van, Square naar)
 
 inline bool is_ok(Move zet)
 {
-	return zet != GEEN_ZET && zet != NULL_ZET;
+	return zet != NO_MOVE && zet != NULL_MOVE;
 }
 
 template <int Capacity>
@@ -502,6 +502,6 @@ struct FixedMoveList
 };
 
 typedef FixedMoveList<MAX_PV> PrincipalVariation;
-typedef FixedMoveList<MAX_ZETTEN> MaxMoveList;
+typedef FixedMoveList<MAX_MOVES> MaxMoveList;
 
 #endif // #ifndef HOUDINI_H

@@ -22,7 +22,7 @@ namespace Bitboards
 	void initialisatie();
 }
 
-const Bitboard DonkereVelden = 0xAA55AA55AA55AA55ULL;
+const Bitboard DarkSquares = 0xAA55AA55AA55AA55ULL;
 
 const Bitboard FileABB = 0x0101010101010101ULL;
 const Bitboard FileBBB = FileABB << 1;
@@ -42,21 +42,21 @@ const Bitboard Rank6BB = Rank1BB << 40;
 const Bitboard Rank7BB = Rank1BB << 48;
 const Bitboard Rank8BB = Rank1BB << 56;
 
-extern int8_t VeldAfstand[VELD_N][VELD_N];
+extern int8_t VeldAfstand[SQUARE_N][SQUARE_N];
 
-extern Bitboard bbVeld[VELD_N];
-const Bitboard bbLijn[LIJN_N] = { FileABB , FileBBB, FileCBB, FileDBB, FileEBB, FileFBB, FileGBB, FileHBB };
-const Bitboard bbRij[RIJ_N] = { Rank1BB, Rank2BB, Rank3BB, Rank4BB, Rank5BB, Rank6BB, Rank7BB, Rank8BB };
-extern Bitboard bbAangrenzendeLijnen[LIJN_N];
-extern Bitboard bbRijenVoorwaarts[KLEUR_N][RIJ_N];
-extern Bitboard bbTussen[VELD_N][VELD_N];
-extern Bitboard bbVerbinding[VELD_N][VELD_N];
-extern Bitboard bbVoorwaarts[KLEUR_N][VELD_N];
-extern Bitboard VrijpionMask[KLEUR_N][VELD_N];
-extern Bitboard PionAanvalBereik[KLEUR_N][VELD_N];
-extern Bitboard PionAanval[KLEUR_N][VELD_N];
-extern Bitboard LegeAanval[STUKTYPE_N][VELD_N];
-extern Bitboard KoningZone[VELD_N];
+extern Bitboard bbVeld[SQUARE_N];
+const Bitboard bbLijn[FILE_N] = { FileABB , FileBBB, FileCBB, FileDBB, FileEBB, FileFBB, FileGBB, FileHBB };
+const Bitboard bbRij[RANK_N] = { Rank1BB, Rank2BB, Rank3BB, Rank4BB, Rank5BB, Rank6BB, Rank7BB, Rank8BB };
+extern Bitboard bbAangrenzendeLijnen[FILE_N];
+extern Bitboard bbRijenVoorwaarts[COLOR_N][RANK_N];
+extern Bitboard bbTussen[SQUARE_N][SQUARE_N];
+extern Bitboard bbVerbinding[SQUARE_N][SQUARE_N];
+extern Bitboard bbVoorwaarts[COLOR_N][SQUARE_N];
+extern Bitboard VrijpionMask[COLOR_N][SQUARE_N];
+extern Bitboard PionAanvalBereik[COLOR_N][SQUARE_N];
+extern Bitboard PionAanval[COLOR_N][SQUARE_N];
+extern Bitboard LegeAanval[PIECE_TYPE_N][SQUARE_N];
+extern Bitboard KoningZone[SQUARE_N];
 
 
 #define USE_BB_SHIFT
@@ -124,12 +124,12 @@ inline Bitboard bb4(Square s1, Square s2, Square s3, Square s4) { return (1ULL <
 
 template<Square Delta>
 inline Bitboard shift_bb(Bitboard b) {
-	return  Delta == BOVEN ? b << 8
-		: Delta == ONDER ? b >> 8
-		: Delta == RECHTSBOVEN ? (b & ~FileHBB) << 9
-		: Delta == RECHTSONDER ? (b & ~FileHBB) >> 7
-		: Delta == LINKSBOVEN ? (b & ~FileABB) << 7
-		: Delta == LINKSONDER ? (b & ~FileABB) >> 9
+	return  Delta == UP ? b << 8
+		: Delta == DOWN ? b >> 8
+		: Delta == UP_RIGHT ? (b & ~FileHBB) << 9
+		: Delta == DOWN_RIGHT ? (b & ~FileHBB) >> 7
+		: Delta == UP_LEFT ? (b & ~FileABB) << 7
+		: Delta == DOWN_LEFT ? (b & ~FileABB) >> 9
 		: 0;
 }
 
@@ -206,13 +206,13 @@ inline Bitboard aanval_bb_toren(Square veld, Bitboard bezet)
 
 inline Bitboard aanval_bb(PieceType stukT, Square veld, Bitboard bezet)
 {
-	assert(stukT != PION);
+	assert(stukT != PAWN);
 
 	switch (stukT)
 	{
-	case LOPER: return aanval_bb_loper(veld, bezet);
-	case TOREN: return aanval_bb_toren(veld, bezet);
-	case DAME: return aanval_bb_loper(veld, bezet) | aanval_bb_toren(veld, bezet);
+	case BISHOP: return aanval_bb_loper(veld, bezet);
+	case ROOK: return aanval_bb_toren(veld, bezet);
+	case QUEEN: return aanval_bb_loper(veld, bezet) | aanval_bb_toren(veld, bezet);
 	default: return LegeAanval[stukT][veld];
 	}
 }
@@ -220,46 +220,46 @@ inline Bitboard aanval_bb(PieceType stukT, Square veld, Bitboard bezet)
 template<Color kleur>
 inline Bitboard pion_aanval(Bitboard bb)
 {
-	if (kleur == WIT)
-		return shift_bb<LINKSBOVEN>(bb) | shift_bb<RECHTSBOVEN>(bb);
+	if (kleur == WHITE)
+		return shift_bb<UP_LEFT>(bb) | shift_bb<UP_RIGHT>(bb);
 	else
-		return shift_bb<LINKSONDER>(bb) | shift_bb<RECHTSONDER>(bb);
+		return shift_bb<DOWN_LEFT>(bb) | shift_bb<DOWN_RIGHT>(bb);
 }
 
 template<Color kleur>
 inline Bitboard shift_up(Bitboard bb)
 {
-	if (kleur == WIT)
-		return shift_bb<BOVEN>(bb);
+	if (kleur == WHITE)
+		return shift_bb<UP>(bb);
 	else
-		return shift_bb<ONDER>(bb);
+		return shift_bb<DOWN>(bb);
 }
 
 template<Color kleur>
 inline Bitboard shift_down(Bitboard bb)
 {
-	if (kleur == WIT)
-		return shift_bb<ONDER>(bb);
+	if (kleur == WHITE)
+		return shift_bb<DOWN>(bb);
 	else
-		return shift_bb<BOVEN>(bb);
+		return shift_bb<UP>(bb);
 }
 
 template<Color kleur>
 inline Bitboard shift_upleft(Bitboard bb)
 {
-	if (kleur == WIT)
-		return shift_bb<LINKSBOVEN>(bb);
+	if (kleur == WHITE)
+		return shift_bb<UP_LEFT>(bb);
 	else
-		return shift_bb<LINKSONDER>(bb);
+		return shift_bb<DOWN_LEFT>(bb);
 }
 
 template<Color kleur>
 inline Bitboard shift_upright(Bitboard bb)
 {
-	if (kleur == WIT)
-		return shift_bb<RECHTSBOVEN>(bb);
+	if (kleur == WHITE)
+		return shift_bb<UP_RIGHT>(bb);
 	else
-		return shift_bb<RECHTSONDER>(bb);
+		return shift_bb<DOWN_RIGHT>(bb);
 }
 
 
@@ -352,7 +352,7 @@ inline Square pop_lsb(Bitboard* b)
 	return veld;
 }
 
-inline Square voorste_veld(Color kleur, Bitboard b) { return kleur == WIT ? msb(b) : lsb(b); }
-inline Square achterste_veld(Color kleur, Bitboard b) { return kleur == WIT ? lsb(b) : msb(b); }
+inline Square voorste_veld(Color kleur, Bitboard b) { return kleur == WHITE ? msb(b) : lsb(b); }
+inline Square achterste_veld(Color kleur, Bitboard b) { return kleur == WHITE ? lsb(b) : msb(b); }
 
 #endif // #ifndef BITBOARD_H

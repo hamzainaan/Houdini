@@ -15,27 +15,27 @@ struct AttackInfo {
 
 enum endgame_kind
 {
-	eindspel_none,
-	eindspel_white_minor,
-	eindspel_black_minor,
-	eindspel_white_pawn,
-	eindspel_black_pawn,
-	eindspel_theoretical_draw,
-	eindspel_minor_minor,
-	eindspel_KBN_K,
-	eindspel_KP_K,
-	eindspel_KPs_KPs,
-	eindspel_KR_KP_white,
-	eindspel_KR_KP_black,
-	eindspel_KQ_KRP_white,
-	eindspel_KQ_KRP_black,
-	eindspel_KQ_KP,
-	eindspel_KB_KP,
-	eindspel_KBP_KB_identical,
-	eindspel_KBP_KB_opposite,
-	eindspel_KB_KPP,
-	eindspel_KBPP_KB_opposite,
-	eindspel_KRP_KB,
+	endgame_none,
+	endgame_white_minor,
+	endgame_black_minor,
+	endgame_white_pawn,
+	endgame_black_pawn,
+	endgame_theoretical_draw,
+	endgame_minor_minor,
+	endgame_KBN_K,
+	endgame_KP_K,
+	endgame_KPs_KPs,
+	endgame_KR_KP_white,
+	endgame_KR_KP_black,
+	endgame_KQ_KRP_white,
+	endgame_KQ_KRP_black,
+	endgame_KQ_KP,
+	endgame_KB_KP,
+	endgame_KBP_KB_identical,
+	endgame_KBP_KB_opposite,
+	endgame_KB_KPP,
+	endgame_KBPP_KB_opposite,
+	endgame_KRP_KB,
 	ENDGAME_COUNT
 };
 
@@ -409,27 +409,27 @@ Value eindspel_waarde_KRP_KB(const Position& pos, AttackInfo& ai, const Pawns::E
 
 void ext_init_eindspel_functions()
 {
-	eindspel_waarde_functies[eindspel_none] = NULL;
-	eindspel_waarde_functies[eindspel_white_minor] = &eindspel_waarde_white_minor;
-	eindspel_waarde_functies[eindspel_black_minor] = &eindspel_waarde_black_minor;
-	eindspel_waarde_functies[eindspel_white_pawn] = &eindspel_waarde_white_pawn;
-	eindspel_waarde_functies[eindspel_black_pawn] = &eindspel_waarde_black_pawn;
-	eindspel_waarde_functies[eindspel_theoretical_draw] = &eindspel_waarde_theoretical_draw;
-	eindspel_waarde_functies[eindspel_minor_minor] = &eindspel_waarde_minor_minor;
-	eindspel_waarde_functies[eindspel_KBN_K] = &eindspel_waarde_KBN_K;
-	eindspel_waarde_functies[eindspel_KP_K] = &eindspel_waarde_KP_K;
-	eindspel_waarde_functies[eindspel_KPs_KPs] = &eindspel_waarde_KPs_KPs;
-	eindspel_waarde_functies[eindspel_KR_KP_white] = &eindspel_waarde_KR_KP_white;
-	eindspel_waarde_functies[eindspel_KR_KP_black] = &eindspel_waarde_KR_KP_black;
-	eindspel_waarde_functies[eindspel_KQ_KRP_white] = &eindspel_waarde_KQ_KRP_white;
-	eindspel_waarde_functies[eindspel_KQ_KRP_black] = &eindspel_waarde_KQ_KRP_black;
-	eindspel_waarde_functies[eindspel_KQ_KP] = &eindspel_waarde_KQ_KP;
-	eindspel_waarde_functies[eindspel_KBP_KB_identical] = &eindspel_waarde_KBP_KB_identical;
-	eindspel_waarde_functies[eindspel_KB_KP] = &eindspel_waarde_KB_KP;
-	eindspel_waarde_functies[eindspel_KBP_KB_opposite] = &eindspel_waarde_KBP_KB_opposite;
-	eindspel_waarde_functies[eindspel_KB_KPP] = &eindspel_waarde_KB_KPP;
-	eindspel_waarde_functies[eindspel_KBPP_KB_opposite] = &eindspel_waarde_KBPP_KB_opposite;
-	eindspel_waarde_functies[eindspel_KRP_KB] = &eindspel_waarde_KRP_KB;
+	eindspel_waarde_functies[endgame_none] = NULL;
+	eindspel_waarde_functies[endgame_white_minor] = &eindspel_waarde_white_minor;
+	eindspel_waarde_functies[endgame_black_minor] = &eindspel_waarde_black_minor;
+	eindspel_waarde_functies[endgame_white_pawn] = &eindspel_waarde_white_pawn;
+	eindspel_waarde_functies[endgame_black_pawn] = &eindspel_waarde_black_pawn;
+	eindspel_waarde_functies[endgame_theoretical_draw] = &eindspel_waarde_theoretical_draw;
+	eindspel_waarde_functies[endgame_minor_minor] = &eindspel_waarde_minor_minor;
+	eindspel_waarde_functies[endgame_KBN_K] = &eindspel_waarde_KBN_K;
+	eindspel_waarde_functies[endgame_KP_K] = &eindspel_waarde_KP_K;
+	eindspel_waarde_functies[endgame_KPs_KPs] = &eindspel_waarde_KPs_KPs;
+	eindspel_waarde_functies[endgame_KR_KP_white] = &eindspel_waarde_KR_KP_white;
+	eindspel_waarde_functies[endgame_KR_KP_black] = &eindspel_waarde_KR_KP_black;
+	eindspel_waarde_functies[endgame_KQ_KRP_white] = &eindspel_waarde_KQ_KRP_white;
+	eindspel_waarde_functies[endgame_KQ_KRP_black] = &eindspel_waarde_KQ_KRP_black;
+	eindspel_waarde_functies[endgame_KQ_KP] = &eindspel_waarde_KQ_KP;
+	eindspel_waarde_functies[endgame_KBP_KB_identical] = &eindspel_waarde_KBP_KB_identical;
+	eindspel_waarde_functies[endgame_KB_KP] = &eindspel_waarde_KB_KP;
+	eindspel_waarde_functies[endgame_KBP_KB_opposite] = &eindspel_waarde_KBP_KB_opposite;
+	eindspel_waarde_functies[endgame_KB_KPP] = &eindspel_waarde_KB_KPP;
+	eindspel_waarde_functies[endgame_KBPP_KB_opposite] = &eindspel_waarde_KBPP_KB_opposite;
+	eindspel_waarde_functies[endgame_KRP_KB] = &eindspel_waarde_KRP_KB;
 }
 
 endgame_kind bereken_eindspel_index(int WPion, int WP, int WL, int WLL, int WLD, int WT, int WD,
@@ -462,44 +462,44 @@ endgame_kind bereken_eindspel_index(int WPion, int WP, int WL, int WLL, int WLD,
 	if (WPion + WT + WD + ZPion + ZT + ZD == 0 && WAantal <= 1 && ZAantal <= 1)
 	{
 		if (WAantal == 1 && ZAantal == 1)
-			return eindspel_minor_minor;
+			return endgame_minor_minor;
 		else
-			return eindspel_theoretical_draw;
+			return endgame_theoretical_draw;
 	}
 
 	if (WAantal == 0 && WPion == 1 && ZAantal + ZPion == 1 && ZL == 1
 		|| ZAantal == 0 && ZPion == 1 && WAantal + WPion == 1 && WL == 1)
-		return eindspel_KB_KP;
+		return endgame_KB_KP;
 
 	if (WAantal == 0 && WPion == 2 && ZAantal + ZPion == 1 && ZL == 1
 		|| ZAantal == 0 && ZPion == 2 && WAantal + WPion == 1 && WL == 1)
-		return eindspel_KB_KPP;
+		return endgame_KB_KPP;
 
 	if (een_tegen_een && (WLL == 1 && ZLL == 1 || WLD == 1 && ZLD == 1) && WPion + ZPion == 1)
-		return eindspel_KBP_KB_identical;
+		return endgame_KBP_KB_identical;
 
 	if (een_tegen_een && (WLL == 1 && ZLD == 1 || WLD == 1 && ZLL == 1)
 		&& (WPion == 1 && ZPion <= 1 || ZPion == 1 && WPion <= 1))
-		return eindspel_KBP_KB_opposite;
+		return endgame_KBP_KB_opposite;
 
 	if (een_tegen_een && (WLL == 1 && ZLD == 1 || WLD == 1 && ZLL == 1)
 		&& (WPion == 2 && ZPion <= 2 || ZPion == 2 && WPion <= 2))
-		return eindspel_KBPP_KB_opposite;
+		return endgame_KBPP_KB_opposite;
 
 	if (een_tegen_een && (WT == 1 && ZL == 1 && WPion == 1 && ZPion == 0 || ZT == 1 && WL == 1 && ZPion == 1 && WPion == 0))
-		return eindspel_KRP_KB;
+		return endgame_KRP_KB;
 
 	if (WAantal == 0 && ZAantal == 0 && WPion + ZPion != 0)
-		return eindspel_KPs_KPs;
+		return endgame_KPs_KPs;
 
 	if (WAantal == 0 && ZAantal == 0 && WPion + ZPion == 1)
-		return eindspel_KP_K;
+		return endgame_KP_K;
 
 	if (WP == 1 && WL == 1 && WAantal + WPion == 2 && ZAantal + ZPion == 0)
-		return eindspel_KBN_K;
+		return endgame_KBN_K;
 
 	if (ZP == 1 && ZL == 1 && WAantal + WPion == 0 && ZAantal + ZPion == 2)
-		return eindspel_KBN_K;
+		return endgame_KBN_K;
 
-	return eindspel_none;
+	return endgame_none;
 }

@@ -55,17 +55,17 @@ Value Syzygy_probe_wdl(Position& pos, Value alfa, Value beta)
 	v = syzygy_probe_wdl(pos, &success);
 
 	if (success == 0)
-		return GEEN_WAARDE;
+		return NO_VALUE;
 
 	pos.verhoog_tb_hits();
 
 	int drawScore = EGTB::UseRule50 ? 1 : 0;
 	if (v > drawScore)
-		return Value(LANGSTE_MAT_WAARDE - pos.info()->ply);
+		return Value(LONGEST_MATE_VALUE - pos.info()->ply);
 	else if (v < -drawScore)
-		return Value(-LANGSTE_MAT_WAARDE + pos.info()->ply);
+		return Value(-LONGEST_MATE_VALUE + pos.info()->ply);
 	else
-		return REMISE_WAARDE;
+		return DRAW_VALUE;
 }
 
 Value Syzygy_probe_dtz(Position& pos, Value alfa, Value beta)
@@ -76,16 +76,16 @@ Value Syzygy_probe_dtz(Position& pos, Value alfa, Value beta)
 	v = syzygy_probe_dtz(pos, &success);
 
 	if (success == 0)
-		return GEEN_WAARDE;
+		return NO_VALUE;
 
 	pos.verhoog_tb_hits();
 
 	int move50 = pos.vijftig_zetten_teller();
 
 	if (v > 0 && (!EGTB::UseRule50 || move50 + v <= 100))  // gewonnen
-		return std::max(Value(LANGSTE_MAT_WAARDE - (pos.info()->ply + v)), EGTB_WIN_WAARDE + WAARDE_1);
+		return std::max(Value(LONGEST_MATE_VALUE - (pos.info()->ply + v)), EGTB_WIN_VALUE + VALUE_1);
 	else if (v < 0 && (!EGTB::UseRule50 || move50 - v <= 100))  // verloren
-		return std::min(Value(-LANGSTE_MAT_WAARDE + (pos.info()->ply - v)), -EGTB_WIN_WAARDE - WAARDE_1);
+		return std::min(Value(-LONGEST_MATE_VALUE + (pos.info()->ply - v)), -EGTB_WIN_VALUE - VALUE_1);
 	else // remise, of meer dan 50 zetten nodig om te winnen of te verliezen
-		return REMISE_WAARDE;
+		return DRAW_VALUE;
 }

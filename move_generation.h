@@ -10,14 +10,14 @@ class Position;
 
 enum MoveGeneration 
 {
-	GEN_SLAG_OF_PROMOTIE,
-	GEN_RUSTIGE_ZETTEN,
-	GEN_RUSTIGE_SCHAAKS,
-	GEN_GA_UIT_SCHAAK,
-	GEN_ALLE_ZETTEN,
-	GEN_PION_OPMARS,
-	GEN_DAME_SCHAAK,
-	GEN_ROKADE
+	GEN_CAPTURES_OR_PROMOTIONS,
+	GEN_QUIET_MOVES,
+	GEN_QUIET_CHECKS,
+	GEN_EVASIONS,
+	GEN_ALL_MOVES,
+	GEN_PAWN_ADVANCES,
+	GEN_QUEEN_CHECKS,
+	GEN_CASTLING
 };
 
 struct MoveEx 
@@ -48,7 +48,7 @@ struct LegalMoveList
 
 private:
 	MoveEx* einde;
-	MoveEx zetten[MAX_ZETTEN];
+	MoveEx zetten[MAX_MOVES];
 };
 
 bool LegaleZettenLijstBevatZet(const Position& pos, Move zet);

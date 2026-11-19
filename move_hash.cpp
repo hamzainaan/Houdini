@@ -47,7 +47,7 @@ bool TranspositionTable::is_entry_in_use(const Key64 sleutel, Depth d) const
 {
 	TTTuple* tt = zoek_bestaand(sleutel);
 	int dd = d / PLY;
-	return tt && (tt->vlaggen8 & IN_GEBRUIK) && (dd >= tt->diepte8);
+	return tt && (tt->vlaggen8 & IN_USE) && (dd >= tt->diepte8);
 }
 
 void TranspositionTable::mark_entry_in_use(const Key64 sleutel, Depth diepte, uint8_t waarde)
@@ -55,9 +55,9 @@ void TranspositionTable::mark_entry_in_use(const Key64 sleutel, Depth diepte, ui
 	uint16_t sleutel16 = sleutel >> 48;
 	TTTuple* tt = zoek_vervang(sleutel);
 	if (tt->sleutel16 != sleutel16)
-		tt->bewaar(sleutel, GEEN_WAARDE, GEEN_LIMIET, diepte, GEEN_ZET,
-			GEEN_WAARDE, HoofdHash.generatie());
-	tt->vlaggen8 = (tt->vlaggen8 & GebruikMask) | waarde;
+		tt->bewaar(sleutel, NO_VALUE, NO_BOUND, diepte, NO_MOVE,
+			NO_VALUE, HoofdHash.generatie());
+	tt->vlaggen8 = (tt->vlaggen8 & UsageMask) | waarde;
 }
 
 
@@ -67,11 +67,11 @@ TTTuple* TranspositionTable::zoek_bestaand(const Key64 sleutel) const
 	uint16_t sleutel16 = sleutel >> 48;
 	//sleutel16 = std::max(sleutel16, (uint16_t)1);
 
-	for (int i = 0; i < ClusterGrootte; ++i)
+	for (int i = 0; i < ClusterSize; ++i)
 		if (ttt[i].sleutel16 == sleutel16)
 		{
-			if ((ttt[i].vlaggen8 & GeneratieMask) != generatie8)
-				ttt[i].vlaggen8 = uint8_t(generatie8 + (ttt[i].vlaggen8 & VlaggenMask));
+			if ((ttt[i].vlaggen8 & GenerationMask) != generatie8)
+				ttt[i].vlaggen8 = uint8_t(generatie8 + (ttt[i].vlaggen8 & FlagsMask));
 
 			return &ttt[i];
 		}
@@ -85,14 +85,14 @@ TTTuple * TranspositionTable::zoek_vervang(const Key64 sleutel) const
 	TTTuple* const ttt = tuple(sleutel);
 	uint16_t sleutel16 = sleutel >> 48;
 
-	for (int i = 0; i < ClusterGrootte; ++i)
+	for (int i = 0; i < ClusterSize; ++i)
 		if (ttt[i].sleutel16 == 0 || ttt[i].sleutel16 == sleutel16)
 			return &ttt[i];
 
 	TTTuple* vervanging = ttt;
-	for (int i = 1; i < ClusterGrootte; ++i)
-		if (vervanging->diepte8 - ((generatie8 - (vervanging->vlaggen8 & GeneratieMask)) & GeneratieMask)
-				> ttt[i].diepte8 - ((generatie8 - (ttt[i].vlaggen8 & GeneratieMask)) & GeneratieMask))
+	for (int i = 1; i < ClusterSize; ++i)
+		if (vervanging->diepte8 - ((generatie8 - (vervanging->vlaggen8 & GenerationMask)) & GenerationMask)
+				> ttt[i].diepte8 - ((generatie8 - (ttt[i].vlaggen8 & GenerationMask)) & GenerationMask))
 			vervanging = &ttt[i];
 
 	return vervanging;
@@ -216,14 +216,14 @@ bool TranspositionTable::load_from_file(string uci_hash_file)
 
 int TranspositionTable::bereken_hashfull() const
 {
-	const int i_max = 999 / ClusterGrootte + 1;
+	const int i_max = 999 / ClusterSize + 1;
 	int cnt = 0;
 	for (int i = 0; i < i_max; i++)
 	{
 		const TTTuple* ttt = &tabel[i].entry[0];
-		for (int j = 0; j < ClusterGrootte; j++)
-			if (ttt[j].sleutel16 && (ttt[j].vlaggen8 & GeneratieMask) == generatie8)
+		for (int j = 0; j < ClusterSize; j++)
+			if (ttt[j].sleutel16 && (ttt[j].vlaggen8 & GenerationMask) == generatie8)
 				cnt++;
 	}
-	return cnt * 1000 / (i_max * ClusterGrootte);
+	return cnt * 1000 / (i_max * ClusterSize);
 }

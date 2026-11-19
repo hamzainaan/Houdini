@@ -25,21 +25,21 @@ namespace
 
 void TimeManagement::initialisatie(TimeLimit& tijdLimiet, Color ik, int ply)
 {
-	const int ZettenHorizon = 50; 
+	const int MovesHorizon = 50; 
 	const double MaxRatio = 7.09;
 	const double StealRatio = 0.35;
-	const int64_t MinimumTijd = 1;
+	const int64_t MinimumTime = 1;
 
 	startTijd = tijdLimiet.startTijd;
 
-	int ZetOverhead = 10 + UciOpties["Move Overhead"];
+	int MoveOverhead = 10 + UciOpties["Move Overhead"];
 		
 	optimaleTijd = maximumTijd = tijdLimiet.time[ik];
-	int maxZetten = tijdLimiet.movestogo ? std::min(tijdLimiet.movestogo, ZettenHorizon) : ZettenHorizon;
+	int maxZetten = tijdLimiet.movestogo ? std::min(tijdLimiet.movestogo, MovesHorizon) : MovesHorizon;
 
 	double zetBelang = zet_belang(ply) * 0.89;
 	double andereZettenBelang = 0;
-	int64_t beschikbaar = tijdLimiet.time[ik] - ZetOverhead;
+	int64_t beschikbaar = tijdLimiet.time[ik] - MoveOverhead;
 
 	for (int n = 1; n <= maxZetten; n++)
 	{
@@ -54,11 +54,11 @@ void TimeManagement::initialisatie(TimeLimit& tijdLimiet, Color ik, int ply)
 		maximumTijd = std::min(t2, maximumTijd);
 
 		andereZettenBelang += zet_belang(ply + 2 * n);
-		beschikbaar += tijdLimiet.inc[ik] - ZetOverhead;
+		beschikbaar += tijdLimiet.inc[ik] - MoveOverhead;
 	}
 
-	optimaleTijd = std::max(optimaleTijd, MinimumTijd);
-	maximumTijd = std::max(maximumTijd, MinimumTijd);
+	optimaleTijd = std::max(optimaleTijd, MinimumTime);
+	maximumTijd = std::max(maximumTijd, MinimumTime);
 
 	if (UciOpties["Ponder"])
 	{

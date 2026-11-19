@@ -29,9 +29,9 @@ struct RootMove
 	bool vind_ponder_zet_in_tt(Position& pos);
 	void vervolledig_pv_met_tt(Position& pos);
 
-	Depth diepte = DIEPTE_0;
-	Value score = -HOOGSTE_WAARDE;
-	Value vorigeScore = -HOOGSTE_WAARDE;
+	Depth diepte = DEPTH_0;
+	Value score = -HIGHEST_VALUE;
+	Value vorigeScore = -HIGHEST_VALUE;
 	Value startWaarde;
 	PrincipalVariation pv;
 };
@@ -41,7 +41,7 @@ struct RootMoves
 	RootMoves() : zetAantal(0) {}
 
 	int zetAantal, dummy;
-	RootMove zetten[MAX_ZETTEN];
+	RootMove zetten[MAX_MOVES];
 
 	void add(RootMove rootZet) { zetten[zetAantal++] = rootZet; }
 	RootMove& operator[](int index) { return zetten[index]; }

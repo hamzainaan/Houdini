@@ -12,7 +12,7 @@
 #include "uci.h"
 
 #ifdef USE_LICENSE
-extern bool LICENTIE_OK;
+extern bool LICENSE_OK;
 void lees_licentie_tabellen();
 #endif
 
@@ -29,17 +29,17 @@ int main(int argc, char* argv[])
 	Evaluation::initialisatie();
 	Pawns::initialisatie();
 
-#ifdef EXPORT_TABELLEN
+#ifdef EXPORT_TABLES
 	Search::export_tabel();
 	Evaluation::export_tabel();
 	PST::export_tabel();
 #endif
 #ifdef USE_LICENSE
 	lees_licentie_tabellen();
-	if (!LICENTIE_OK)
+	if (!LICENSE_OK)
 		std::cout << "info string No valid license found - the engine strength will be reduced" << std::endl;
 #endif
-#ifdef IMPORT_TABELLEN
+#ifdef IMPORT_TABLES
 	Search::import_tabel();
 	Evaluation::import_tabel();
 	PST::import_tabel();

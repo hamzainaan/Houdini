@@ -9,10 +9,10 @@
 uint8_t PopCnt16[1 << 16];
 #endif
 
-int8_t VeldAfstand[VELD_N][VELD_N];
+int8_t VeldAfstand[SQUARE_N][SQUARE_N];
 
-Bitboard TorenMask[VELD_N];
-Bitboard LoperMask[VELD_N];
+Bitboard TorenMask[SQUARE_N];
+Bitboard LoperMask[SQUARE_N];
 Bitboard* LoperAanvalTabel[64];
 Bitboard* TorenAanvalTabel[64];
 
@@ -69,17 +69,17 @@ const Bitboard TorenMagics[64] =
 };
 
 
-Bitboard bbVeld[VELD_N];
-Bitboard bbAangrenzendeLijnen[LIJN_N];
-Bitboard bbRijenVoorwaarts[KLEUR_N][RIJ_N];
-Bitboard bbTussen[VELD_N][VELD_N];
-Bitboard bbVerbinding[VELD_N][VELD_N];
-Bitboard bbVoorwaarts[KLEUR_N][VELD_N];
-Bitboard VrijpionMask[KLEUR_N][VELD_N];
-Bitboard PionAanvalBereik[KLEUR_N][VELD_N];
-Bitboard PionAanval[KLEUR_N][VELD_N];
-Bitboard LegeAanval[STUKTYPE_N][VELD_N];
-Bitboard KoningZone[VELD_N];
+Bitboard bbVeld[SQUARE_N];
+Bitboard bbAangrenzendeLijnen[FILE_N];
+Bitboard bbRijenVoorwaarts[COLOR_N][RANK_N];
+Bitboard bbTussen[SQUARE_N][SQUARE_N];
+Bitboard bbVerbinding[SQUARE_N][SQUARE_N];
+Bitboard bbVoorwaarts[COLOR_N][SQUARE_N];
+Bitboard VrijpionMask[COLOR_N][SQUARE_N];
+Bitboard PionAanvalBereik[COLOR_N][SQUARE_N];
+Bitboard PionAanval[COLOR_N][SQUARE_N];
+Bitboard LegeAanval[PIECE_TYPE_N][SQUARE_N];
+Bitboard KoningZone[SQUARE_N];
 
 namespace
 {
@@ -160,7 +160,7 @@ const uint64_t DeBruijn64 = 0x3F79D71B4CB0A89ULL;
 const uint32_t DeBruijn32 = 0x783A9B23;
 
 int MSBTable[256];
-Square BSFTable[VELD_N];
+Square BSFTable[SQUARE_N];
 
 unsigned bsf_index(Bitboard b)
 {
@@ -209,7 +209,7 @@ Square msb(Bitboard b)
 
 #endif // NO_BSF
 
-const int KP_delta[][8] = { {}, { 9, 7, -7, -9, 8, 1, -1, -8 }, {}, { 17, 15, 10, 6, -6, -10, -15, -17 } };
+const int KN_delta[][8] = { {}, { 9, 7, -7, -9, 8, 1, -1, -8 }, {}, { 17, 15, 10, 6, -6, -10, -15, -17 } };
 
 void Bitboards::initialisatie()
 {
@@ -228,13 +228,13 @@ void Bitboards::initialisatie()
 		MSBTable[b] = MSBTable[b - 1] + !meer_dan_een(b);
 #endif
 
-	for (File lijn = LIJN_A; lijn <= LIJN_H; ++lijn)
-		bbAangrenzendeLijnen[lijn] = (lijn > LIJN_A ? bbLijn[lijn - 1] : 0) | (lijn < LIJN_H ? bbLijn[lijn + 1] : 0);
+	for (File lijn = FILE_A; lijn <= FILE_H; ++lijn)
+		bbAangrenzendeLijnen[lijn] = (lijn > FILE_A ? bbLijn[lijn - 1] : 0) | (lijn < FILE_H ? bbLijn[lijn + 1] : 0);
 
-	for (Rank rij = RIJ_1; rij < RIJ_8; ++rij)
-		bbRijenVoorwaarts[WIT][rij] = ~(bbRijenVoorwaarts[ZWART][rij + 1] = bbRijenVoorwaarts[ZWART][rij] | bbRij[rij]);
+	for (Rank rij = RANK_1; rij < RANK_8; ++rij)
+		bbRijenVoorwaarts[WHITE][rij] = ~(bbRijenVoorwaarts[BLACK][rij + 1] = bbRijenVoorwaarts[BLACK][rij] | bbRij[rij]);
 
-	for (Color kleur = WIT; kleur <= ZWART; ++kleur)
+	for (Color kleur = WHITE; kleur <= BLACK; ++kleur)
 		for (Square veld = SQ_A1; veld <= SQ_H8; ++veld)
 		{
 			bbVoorwaarts[kleur][veld] = bbRijenVoorwaarts[kleur][rij(veld)] & bbLijn[lijn(veld)];
@@ -248,17 +248,17 @@ void Bitboards::initialisatie()
 
 	for (Square veld = SQ_A1; veld <= SQ_H8; ++veld)
 	{
-		PionAanval[WIT][veld] = pion_aanval<WIT>(bbVeld[veld]);
-		PionAanval[ZWART][veld] = pion_aanval<ZWART>(bbVeld[veld]);
+		PionAanval[WHITE][veld] = pion_aanval<WHITE>(bbVeld[veld]);
+		PionAanval[BLACK][veld] = pion_aanval<BLACK>(bbVeld[veld]);
 	}
 
-	for (PieceType stuk = KONING; stuk <= PAARD; ++(++stuk))
+	for (PieceType stuk = KING; stuk <= KNIGHT; ++(++stuk))
 		for (Square veld = SQ_A1; veld <= SQ_H8; ++veld)
 		{
 			Bitboard b = 0;
 			for (int i = 0; i < 8; ++i)
 			{
-				Square naar = veld + Square(KP_delta[stuk][i]);
+				Square naar = veld + Square(KN_delta[stuk][i]);
 				if (naar >= SQ_A1 && naar <= SQ_H8 && afstand(veld, naar) < 3)
 					b |= naar;
 			}
@@ -267,14 +267,14 @@ void Bitboards::initialisatie()
 
 	for (Square veld = SQ_A1; veld <= SQ_H8; ++veld)
 	{
-		Bitboard b = LegeAanval[KONING][veld];
-		if (lijn(veld) == LIJN_A)
+		Bitboard b = LegeAanval[KING][veld];
+		if (lijn(veld) == FILE_A)
 			b |= b << 1;
-		else if (lijn(veld) == LIJN_H)
+		else if (lijn(veld) == FILE_H)
 			b |= b >> 1;
-		if (rij(veld) == RIJ_1)
+		if (rij(veld) == RANK_1)
 			b |= b << 8;
-		else if (rij(veld) == RIJ_8)
+		else if (rij(veld) == RANK_8)
 			b |= b >> 8;
 		KoningZone[veld] = b;
 	}
@@ -283,11 +283,11 @@ void Bitboards::initialisatie()
 
 	for (Square veld1 = SQ_A1; veld1 <= SQ_H8; ++veld1)
 	{
-		LegeAanval[LOPER][veld1] = aanval_bb_loper(veld1, 0);
-		LegeAanval[TOREN][veld1] = aanval_bb_toren(veld1, 0);
-		LegeAanval[DAME][veld1] = LegeAanval[LOPER][veld1] | LegeAanval[TOREN][veld1];
+		LegeAanval[BISHOP][veld1] = aanval_bb_loper(veld1, 0);
+		LegeAanval[ROOK][veld1] = aanval_bb_toren(veld1, 0);
+		LegeAanval[QUEEN][veld1] = LegeAanval[BISHOP][veld1] | LegeAanval[ROOK][veld1];
 
-		for (PieceType stuk = LOPER; stuk <= TOREN; ++stuk)
+		for (PieceType stuk = BISHOP; stuk <= ROOK; ++stuk)
 			for (Square veld2 = SQ_A1; veld2 <= SQ_H8; ++veld2)
 			{
 				if (!(LegeAanval[stuk][veld1] & veld2))

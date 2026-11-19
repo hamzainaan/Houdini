@@ -22,16 +22,16 @@ namespace Material
 
 		Key64 sleutel64;
 		int waardeFunctieIndex;
-		int schaalFunctieIndex[KLEUR_N];
+		int schaalFunctieIndex[COLOR_N];
 		EvalValue waarde;
 		ScaleFactor conversie;
-		uint8_t factor[KLEUR_N], partijFase;
+		uint8_t factor[COLOR_N], partijFase;
 		bool conversie_is_geschat;
 		//char padding[8]; // Align to 32 bytes
 	};
 	static_assert(sizeof(Tuple) == 32, "Material Entry size incorrect");
 
-	typedef HashTable<Tuple, MATERIAAL_HASH_GROOTTE> Table;
+	typedef HashTable<Tuple, MATERIAL_HASH_SIZE> Table;
 
 	Tuple* probe(const Position& pos);
 }

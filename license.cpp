@@ -19,7 +19,7 @@
 //long getHardDriveComputerID();
 
 uint32_t ElfCustomer;
-bool LICENTIE_OK;
+bool LICENSE_OK;
 
 char Stat_Stream[1792] =
 { 'H', 'A', 'L', '_', 'S', 'T', 'A', 'T' };
@@ -96,7 +96,7 @@ void Lees_Licentie(char *ACTIVATIONKEY, char *HARDWAREKEY)
 	char buf[256];
 	DWORD dwType, dwBufSize;
 	//DWORD VolumeSerialNumber;
-	LICENTIE_OK = FALSE;
+	LICENSE_OK = FALSE;
 
 	if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, KEY_PRODUCT, 0, KEY_QUERY_VALUE, &hKey) == ERROR_SUCCESS)
 	{
@@ -115,7 +115,7 @@ void Lees_Licentie(char *ACTIVATIONKEY, char *HARDWAREKEY)
 					if (ProductId == 20081 || ProductId == 20082
 						|| ProductId == 18941 || ProductId == 18942 || ProductId == 18944
 						|| ProductId == 28051 || ProductId == 28052)
-						LICENTIE_OK = TRUE;
+						LICENSE_OK = TRUE;
 				}
 			}
 		}
@@ -136,12 +136,12 @@ void Lees_Licentie(char *ACTIVATIONKEY, char *HARDWAREKEY)
 					uint32_t Key2 = (hex_byte(buf + 2) << 24) | (hex_byte(buf + 5) << 8) | (hex_byte(buf + 12)) | (hex_byte(buf + 15) << 16);
 
 					if (Key2 == ((Key1 * LIC1) ^ (ElfCustomer * LIC3)))
-						LICENTIE_OK = TRUE;
+						LICENSE_OK = TRUE;
 				}
 			}
 		}
 #endif
-		if (LICENTIE_OK)
+		if (LICENSE_OK)
 		{
 			dwType = REG_SZ;
 			dwBufSize = 64;
@@ -149,7 +149,7 @@ void Lees_Licentie(char *ACTIVATIONKEY, char *HARDWAREKEY)
 		}
 		RegCloseKey(hKey);
 	}
-	if (LICENTIE_OK)
+	if (LICENSE_OK)
 	{
 		HARDWAREKEY[0] = 0;
 		uint8_t hardwarecode = hex_byte(ACTIVATIONKEY);
@@ -244,14 +244,14 @@ void do_decompress(Bytef *in, Bytef *out, char *ACTIVATIONKEY, char *HARDWAREKEY
 	out_len = *((int *)(in + 4));
 	if (out_len > bufsize)
 	{
-		LICENTIE_OK = false;
+		LICENSE_OK = false;
 		return;
 	}
 
 	int z_error = uncompress(out, &out_len, in + 8, in_len - 4);
 	if (z_error)
 	{
-		LICENTIE_OK = false;
+		LICENSE_OK = false;
 		return;
 	}
 
@@ -290,7 +290,7 @@ void do_decompress(Bytef *in, Bytef *out, char *ACTIVATIONKEY, char *HARDWAREKEY
 
 	out_len = *((uLongf *)stream1);
 	if (out_len > bufsize)
-		LICENTIE_OK = false;
+		LICENSE_OK = false;
 	else
 	{
 		in_len -= 4;
@@ -299,7 +299,7 @@ void do_decompress(Bytef *in, Bytef *out, char *ACTIVATIONKEY, char *HARDWAREKEY
 			in_len--;
 		z_error = uncompress(out, &out_len, (const Bytef *)stream1 + 4, in_len);
 		if (z_error)
-			LICENTIE_OK = false;
+			LICENSE_OK = false;
 	}
 
 	free(stream1);
@@ -317,11 +317,11 @@ void lees_licentie_tabellen()
 #else
 	Chessbase_License = new EngineTest("Houdini 6");
 #endif
-	LICENTIE_OK = !Chessbase_License->IsNotActivated()
+	LICENSE_OK = !Chessbase_License->IsNotActivated()
 		&& Chessbase_License->TestDate1() && Chessbase_License->TestDate2()
 		&& Chessbase_License->TestNEngine() && Chessbase_License->TestNEngine2()
 		&& Chessbase_License->TestProductKey() && Chessbase_License->TestHardDiskSerial();
-	if (!LICENTIE_OK)
+	if (!LICENSE_OK)
 		Chessbase_License->SetNotActivated1();
 	for (int i = 0; i < 32; i++)
 		ACTIVATIONKEY[i] = i + 48;
@@ -332,11 +332,11 @@ void lees_licentie_tabellen()
 #else
 	Lees_Licentie(ACTIVATIONKEY, HARDWAREKEY);
 #endif
-	if (!LICENTIE_OK)
+	if (!LICENSE_OK)
 		return;
 
 //#define LEES_IMPORT
-#ifdef LEES_IMPORT
+#ifdef READ_IMPORT
 	FILE *f = fopen("R:\\Schaak\\h6-pst-import.dat", "rb");
 	int in_len = (int)fread(Stat_Stream + 12, 1, sizeof(Stat_Stream) - 12, f);
 	fclose(f);
@@ -357,11 +357,11 @@ void lees_licentie_tabellen()
 	Pawn_Stream[880] = 56;
 
 	do_decompress((Bytef *)Stat_Stream + 8, (Bytef *)PST::psq, ACTIVATIONKEY, HARDWAREKEY, sizeof(PST::psq));
-	if (!LICENTIE_OK)
+	if (!LICENSE_OK)
 		return;
 
 	do_decompress((Bytef *)Lmat_Stream + 8, (Bytef *)Search::LMReducties, ACTIVATIONKEY, HARDWAREKEY, sizeof(Search::LMReducties));
-	if (!LICENTIE_OK)
+	if (!LICENSE_OK)
 		return;
 
 	do_decompress((Bytef *)Veil_Stream + 8, (Bytef *)Evaluation::VeiligheidTabel, ACTIVATIONKEY, HARDWAREKEY, sizeof(Evaluation::VeiligheidTabel));

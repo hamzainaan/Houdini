@@ -12,19 +12,19 @@ using std::string;
 
 enum TTFlags : uint8_t
 {
-	GEEN_LIMIET,
-	DREIGING_WIT   = 1,
-	DREIGING_ZWART = 2,
-	IN_GEBRUIK = 4,
-	ONDERGRENS = 64,
-	BOVENGRENS = 128,
-	EXACTE_WAARDE = BOVENGRENS | ONDERGRENS
+	NO_BOUND,
+	THREAT_WHITE   = 1,
+	THREAT_BLACK = 2,
+	IN_USE = 4,
+	LOWER_BOUND = 64,
+	UPPER_BOUND = 128,
+	EXACT_VALUE = UPPER_BOUND | LOWER_BOUND
 };
 
-const uint8_t GeneratieMask = 0x38;
-const uint8_t VlaggenMask   = 0xc7;
-const uint8_t DreigingMask  = 0x03;
-const uint8_t GebruikMask   = 0xfb;
+const uint8_t GenerationMask = 0x38;
+const uint8_t FlagsMask   = 0xc7;
+const uint8_t ThreatMask  = 0x03;
+const uint8_t UsageMask   = 0xfb;
 
 struct TTTuple 
 {
@@ -32,8 +32,8 @@ struct TTTuple
 	Value waarde() const { return (Value)waarde16; }
 	Value eval() const { return (Value)eval16; }
 	Depth diepte() const { return Depth(diepte8 * int(PLY) + PLY - 1); }
-	TTFlags limiet() const { return (TTFlags)(vlaggen8 & EXACTE_WAARDE); }
-	TTFlags dreiging() const { return (TTFlags)(vlaggen8 & DreigingMask); }
+	TTFlags limiet() const { return (TTFlags)(vlaggen8 & EXACT_VALUE); }
+	TTFlags dreiging() const { return (TTFlags)(vlaggen8 & ThreatMask); }
 
 	void bewaar(Key64 k, Value v, uint8_t vlaggen, Depth d, Move z, Value evaluatie, uint8_t gen)
 	{
@@ -44,7 +44,7 @@ struct TTTuple
 
 		if (k16 != sleutel16
 			|| dd > diepte8 - 4
-			|| (vlaggen & EXACTE_WAARDE) == EXACTE_WAARDE)
+			|| (vlaggen & EXACT_VALUE) == EXACT_VALUE)
 		{
 			sleutel16 = k16;
 			waarde16 = (int16_t)v;
@@ -70,11 +70,11 @@ private:
 class TranspositionTable 
 {
 	static const int CacheLineSize = 64;
-	static const int ClusterGrootte = 3;
+	static const int ClusterSize = 3;
 
 	struct Cluster
 	{
-		TTTuple entry[ClusterGrootte];
+		TTTuple entry[ClusterSize];
 		char padding[2];
 	};
 
@@ -82,7 +82,7 @@ class TranspositionTable
 
 public:
 	~TranspositionTable() { free_large_page_mem(tabel); }
-	void nieuwe_generatie() { generatie8 = (generatie8 + 8) & GeneratieMask; }
+	void nieuwe_generatie() { generatie8 = (generatie8 + 8) & GenerationMask; }
 	uint8_t generatie() const { return generatie8; }
 	int tuple_vervang_waarde(TTTuple* t) const;
 	TTTuple* zoek_bestaand(const Key64 sleutel) const;

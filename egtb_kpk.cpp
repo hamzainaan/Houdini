@@ -790,14 +790,14 @@ namespace
 	// bit 13-14: white pawn file (from LIJN_A to LIJN_D)
 	// bit 15-17: white pawn RIJ_7 - rank (from RIJ_7 - RIJ_7 to RIJ_7 - RIJ_2)
 	unsigned index(Color ik, Square zK, Square wK, Square pion) {
-		return wK | (zK << 6) | (ik << 12) | (lijn(pion) << 13) | ((RIJ_7 - rij(pion)) << 15);
+		return wK | (zK << 6) | (ik << 12) | (lijn(pion) << 13) | ((RANK_7 - rij(pion)) << 15);
 	}
 } // namespace
 
 
 bool Bitbases::probe(Square wK, Square pion, Square zK, Color ik)
 {
-  assert(lijn(pion) <= LIJN_D);
+  assert(lijn(pion) <= FILE_D);
 
   unsigned idx = index(ik, zK, wK, pion);
   return KPKBitbase[idx / 32] & (1 << (idx & 0x1F));

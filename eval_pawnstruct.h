@@ -30,40 +30,40 @@ namespace Pawns
 
 		int pionnen_op_kleur(Color kleur, Square veld) const
 		{
-			return pionnenOpKleur[kleur][!!(DonkereVelden & veld)];
+			return pionnenOpKleur[kleur][!!(DarkSquares & veld)];
 		}
 
 		int pionnen_niet_op_kleur(Color kleur, Square veld) const
 		{
-			return pionnenOpKleur[kleur][!(DonkereVelden & veld)];
+			return pionnenOpKleur[kleur][!(DarkSquares & veld)];
 		}
 
-		template<Color IK>
+		template<Color Us>
 		Score koning_veiligheid(const Position& pos)
 		{
-			if (koningVeld[IK] != pos.koning(IK) || rokadeMogelijkheden[IK] != pos.rokade_mogelijkheden(IK))
-				koningVeiligheid[IK] = bereken_koning_veiligheid<IK>(pos);
-			return koningVeiligheid[IK];
+			if (koningVeld[Us] != pos.koning(Us) || rokadeMogelijkheden[Us] != pos.rokade_mogelijkheden(Us))
+				koningVeiligheid[Us] = bereken_koning_veiligheid<Us>(pos);
+			return koningVeiligheid[Us];
 		}
 
-		template<Color IK>
+		template<Color Us>
 		Score bereken_koning_veiligheid(const Position& pos);
 
 		Key64 sleutel64;
-		Bitboard vrijPionnen[KLEUR_N];
-		Bitboard pionAanval[KLEUR_N];
-		Bitboard veiligVoorPion[KLEUR_N];
+		Bitboard vrijPionnen[COLOR_N];
+		Bitboard pionAanval[COLOR_N];
+		Bitboard veiligVoorPion[COLOR_N];
 		Score score;
-		Score koningVeiligheid[KLEUR_N];
-		uint8_t koningVeld[KLEUR_N];
-		uint8_t rokadeMogelijkheden[KLEUR_N];
-		uint8_t halfOpenLijnen[KLEUR_N];
-		uint8_t pionBereik[KLEUR_N];
+		Score koningVeiligheid[COLOR_N];
+		uint8_t koningVeld[COLOR_N];
+		uint8_t rokadeMogelijkheden[COLOR_N];
+		uint8_t halfOpenLijnen[COLOR_N];
+		uint8_t pionBereik[COLOR_N];
 		int asymmetrie;
-		uint8_t pionnenOpKleur[KLEUR_N][KLEUR_N]; // [kleur][kleur veld]
+		uint8_t pionnenOpKleur[COLOR_N][COLOR_N]; // [kleur][kleur veld]
 		int gemiddeldeLijn, nPionnen;
 		bool conversie_moeilijk;
-		int safety[KLEUR_N];
+		int safety[COLOR_N];
 		int lijn_breedte;
 		//int open_lijnen;
 		char padding[20]; // Align to 128 bytes
@@ -71,7 +71,7 @@ namespace Pawns
 	static_assert(offsetof(struct Tuple, halfOpenLijnen) == 72, "offset wrong");
 	static_assert(sizeof(Tuple) == 128, "Pawn Entry size incorrect");
 
-	typedef HashTable<Tuple, PION_HASH_GROOTTE> Table;
+	typedef HashTable<Tuple, PAWN_HASH_SIZE> Table;
 
 	void initialisatie();
 	Tuple* probe(const Position& pos);

@@ -22,7 +22,7 @@ struct PieceSquareTable
 	}
 
 protected:
-	T tabel[STUK_N][VELD_N];
+	T tabel[PIECE_N][SQUARE_N];
 };
 
 
@@ -64,7 +64,7 @@ struct ColorSquareStats
 	void clear() { std::memset(tabel, 0, sizeof(tabel)); }
 
 private:
-	T tabel[KLEUR_N][VELD_N];
+	T tabel[COLOR_N][SQUARE_N];
 };
 
 
@@ -78,7 +78,7 @@ struct CounterMoveFullStats
 	}
 
 private:
-	MoveCompact tabel[KLEUR_N][64 * 64];
+	MoveCompact tabel[COLOR_N][64 * 64];
 };
 
 
@@ -92,7 +92,7 @@ struct CounterMoveFullPieceStats
 	}
 
 private:
-	MoveCompact tabel[STUK_N][64 * 64];
+	MoveCompact tabel[PIECE_N][64 * 64];
 };
 
 
@@ -106,7 +106,7 @@ struct CounterFollowUpMoveStats
 	}
 
 private:
-	MoveCompact tabel[STUK_N][VELD_N][STUKTYPE_N][VELD_N];
+	MoveCompact tabel[PIECE_N][SQUARE_N][PIECE_TYPE_N][SQUARE_N];
 };
 
 
@@ -121,7 +121,7 @@ struct MaxGainStats
 	}
 
 private:
-	Value tabel[STUK_N][64 * 64];
+	Value tabel[PIECE_N][64 * 64];
 };
 
 
@@ -137,7 +137,7 @@ struct SpecialKillerStats
 		tabel[kleur][index] = zet;
 	}
 private:
-	Move tabel[KLEUR_N][65536];
+	Move tabel[COLOR_N][65536];
 };
 
 

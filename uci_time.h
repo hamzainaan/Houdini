@@ -12,7 +12,7 @@ struct TimeLimit
 {
 	TimeLimit()
 	{
-		nodes = time[WIT] = time[ZWART] = inc[WIT] = inc[ZWART] =
+		nodes = time[WHITE] = time[BLACK] = inc[WHITE] = inc[BLACK] =
 			movestogo = depth = movetime = mate = infinite = ponder = 0;
 	}
 
@@ -22,7 +22,7 @@ struct TimeLimit
 	}
 
 	TimePoint startTijd;
-	int time[KLEUR_N], inc[KLEUR_N], movestogo, depth, movetime, mate, infinite, ponder;
+	int time[COLOR_N], inc[COLOR_N], movestogo, depth, movetime, mate, infinite, ponder;
 	uint64_t nodes;
 	MaxMoveList zoekZetten;
 };

@@ -20,7 +20,7 @@ using namespace std;
 
 extern void benchmark(const Position& pos, istream& is);
 #ifdef USE_LICENSE
-extern bool LICENTIE_OK;
+extern bool LICENSE_OK;
 #endif
 
 namespace
@@ -54,7 +54,7 @@ namespace
 		}
 
 		// zettenlijst
-		while (is >> token && (zet = UCI::zet_van_string(pos, token)) != GEEN_ZET)
+		while (is >> token && (zet = UCI::zet_van_string(pos, token)) != NO_MOVE)
 		{
 			pos.speel_zet(zet);
 			pos.verhoog_partij_ply();
@@ -107,10 +107,10 @@ namespace
 				while (is >> woord)
 					tijdLimiet.zoekZetten.add(UCI::zet_van_string(pos, woord));
 
-			else if (woord == "wtime")     is >> tijdLimiet.time[WIT];
-			else if (woord == "btime")     is >> tijdLimiet.time[ZWART];
-			else if (woord == "winc")      is >> tijdLimiet.inc[WIT];
-			else if (woord == "binc")      is >> tijdLimiet.inc[ZWART];
+			else if (woord == "wtime")     is >> tijdLimiet.time[WHITE];
+			else if (woord == "btime")     is >> tijdLimiet.time[BLACK];
+			else if (woord == "winc")      is >> tijdLimiet.inc[WHITE];
+			else if (woord == "binc")      is >> tijdLimiet.inc[BLACK];
 			else if (woord == "movestogo") is >> tijdLimiet.movestogo;
 			else if (woord == "depth")     is >> tijdLimiet.depth;
 			else if (woord == "nodes")     is >> tijdLimiet.nodes;
@@ -130,7 +130,7 @@ namespace
 			UciOpties["Ponder"] = string("true");
 
 #ifdef USE_LICENSE
-		if (!LICENTIE_OK)
+		if (!LICENSE_OK)
 			sync_cout << "info string No valid license found - the engine strength will be reduced" << sync_endl;
 #endif
 
@@ -155,11 +155,11 @@ std::string trim(const std::string& str, const std::string& whitespace = " \t")
 
 void toon_evaluatie(const Position& pos)
 {
-	Value v = Evaluation::evaluatie(pos, GEEN_WAARDE, GEEN_WAARDE);
-	v = pos.aan_zet() == WIT ? v : -v;
+	Value v = Evaluation::evaluatie(pos, NO_VALUE, NO_VALUE);
+	v = pos.aan_zet() == WHITE ? v : -v;
 
 	sync_cout << std::showpos << std::fixed << std::setprecision(2)
-		<< "Evaluation: " << double(v) / WAARDE_PION << sync_endl;
+		<< "Evaluation: " << double(v) / VALUE_PAWN << sync_endl;
 }
 
 
@@ -253,9 +253,9 @@ string UCI::waarde(Value v)
 {
 	stringstream ss;
 
-	if (abs(v) < LANGSTE_MAT_WAARDE)
+	if (abs(v) < LONGEST_MATE_VALUE)
 	{
-		if (abs(v) < WINST_WAARDE)
+		if (abs(v) < WIN_VALUE)
 			v -= Threads.rootContemptWaarde / 2;
 
 #if 1
@@ -275,11 +275,11 @@ string UCI::waarde(Value v)
 		else
 			vv = 14 * v + Value(800);
 
-		ss << "cp " << vv * 100 / (16 * WAARDE_PION);
+		ss << "cp " << vv * 100 / (16 * VALUE_PAWN);
 #endif
 	}
 	else
-		ss << "mate " << (v > 0 ? MAT_WAARDE - v + 1 : -MAT_WAARDE - v) / 2;
+		ss << "mate " << (v > 0 ? MATE_VALUE - v + 1 : -MATE_VALUE - v) / 2;
 
 	return ss.str();
 }
@@ -298,10 +298,10 @@ string UCI::zet(Move zet, const Position& pos)
 	Square van = van_veld(zet);
 	Square naar = naar_veld(zet);
 
-	if (zet == GEEN_ZET || zet == NULL_ZET)
+	if (zet == NO_MOVE || zet == NULL_MOVE)
 		return "0000";
 
-	if (zet_type(zet) == ROKADE && pos.is_chess960())
+	if (zet_type(zet) == CASTLING && pos.is_chess960())
 		naar = pos.rokade_toren_veld(naar);
 
 	//string sZet = UCI::veld(van) + UCI::veld(naar);
@@ -309,7 +309,7 @@ string UCI::zet(Move zet, const Position& pos)
 	sZet[1] = '1' + rij(van);
 	sZet[2] = 'a' + lijn(naar);
 	sZet[3] = '1' + rij(naar);
-	if (zet < Move(PROMOTIE_P))
+	if (zet < Move(PROMOTION_N))
 		return string(sZet, 4);
 
 	sZet[4] = "   nbrq"[promotie_stuk(zet)];
@@ -323,9 +323,9 @@ Move UCI::zet_van_string(const Position& pos, string& str)
 	{
 		// Arena gebruikt O-O en O-O-O
 		if (str == "O-O")
-			str = UCI::zet(maak_zet(ROKADE, pos.koning(pos.aan_zet()), relatief_veld(pos.aan_zet(), SQ_G1)), pos);
+			str = UCI::zet(maak_zet(CASTLING, pos.koning(pos.aan_zet()), relatief_veld(pos.aan_zet(), SQ_G1)), pos);
 		else if (str == "O-O-O")
-			str = UCI::zet(maak_zet(ROKADE, pos.koning(pos.aan_zet()), relatief_veld(pos.aan_zet(), SQ_C1)), pos);
+			str = UCI::zet(maak_zet(CASTLING, pos.koning(pos.aan_zet()), relatief_veld(pos.aan_zet(), SQ_C1)), pos);
 	}
 
 	if (str.length() == 5)
@@ -335,5 +335,5 @@ Move UCI::zet_van_string(const Position& pos, string& str)
 		if (str == UCI::zet(zet, pos))
 			return zet;
 
-	return GEEN_ZET;
+	return NO_MOVE;
 }

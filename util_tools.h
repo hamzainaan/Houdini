@@ -38,18 +38,18 @@ inline TimePoint nu()
         (std::chrono::steady_clock::now().time_since_epoch()).count();
 }
 
-template<class Tuple, int Grootte>
+template<class Tuple, int Size>
 struct HashTable
 {
 	Tuple* operator[](Key64 sleutel)
 	{
 		static_assert(sizeof(Tuple) == 32 || sizeof(Tuple) == 128, "Verkeerde grootte");
-		return (Tuple*)((char *)tabel + ((uint32_t)sleutel & ((Grootte - 1) * sizeof(Tuple))));
+		return (Tuple*)((char *)tabel + ((uint32_t)sleutel & ((Size - 1) * sizeof(Tuple))));
 		//return tabel + ((uint32_t)sleutel & (Grootte - 1));
 	}
 
 private:
-	CACHE_ALIGN Tuple tabel[Grootte];
+	CACHE_ALIGN Tuple tabel[Size];
 };
 
 
